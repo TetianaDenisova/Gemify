@@ -1,0 +1,72 @@
+import type { HomeData } from "./homeTypes";
+
+export const homeDummyData: HomeData = {
+  header: {
+    greeting: "Good morning, Tania✦",
+    subtitle: "You become who you repeatedly choose to be.",
+  },
+  goals: [
+    {
+      id: "goal-creative-business",
+      title: "Build a thriving creative business",
+      milestone: "First 10K months",
+      completedTasks: 9,
+      totalTasks: 14,
+      progressPercent: 64,
+      themeColor: "gold",
+      imageKey: "mountain_sunrise",
+      iconKey: "spark",
+    },
+    {
+      id: "goal-financial-freedom",
+      title: "Financial freedom & abundance",
+      milestone: "$10K saved",
+      completedTasks: 6,
+      totalTasks: 12,
+      progressPercent: 48,
+      themeColor: "purple",
+      imageKey: "sailboat_sunset",
+      iconKey: "lotus",
+    },
+    {
+      id: "goal-travel-purpose",
+      title: "Travel the world with purpose",
+      milestone: "Bali trip",
+      completedTasks: 4,
+      totalTasks: 12,
+      progressPercent: 32,
+      themeColor: "purple",
+      imageKey: "balloon_mountains",
+      iconKey: "mountains",
+    },
+  ],
+  currentFocus: [
+    {
+      id: "focus-review-quest",
+      timeLabel: "This morning",
+      title: "Review my top quest",
+      status: "completed",
+      statusLabel: "Completed Today",
+      iconKey: "lotus",
+      themeColor: "purple",
+    },
+    {
+      id: "focus-deep-work",
+      timeLabel: "Before work",
+      title: "Do 45 min of deep work",
+      status: "completed",
+      statusLabel: "Completed Today",
+      iconKey: "sunrise",
+      themeColor: "gold",
+    },
+    {
+      id: "focus-confidence",
+      timeLabel: "During the day",
+      title: "Speak with confidence",
+      status: "completed",
+      statusLabel: "Completed Today",
+      iconKey: "heart",
+      themeColor: "purple",
+    },
+  ],
+};

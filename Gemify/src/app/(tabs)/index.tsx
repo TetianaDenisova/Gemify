@@ -1,67 +1,50 @@
-import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+
+import { homeData } from "@/data/homeData";
+import {
+  CurrentFocusCard,
+  GoalCard,
+  HomeHeader,
+  SectionTitle,
+} from "@/components/home";
+import { colors } from "@/theme/colors";
 
 export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>Gemify</Text>
-      <Text style={styles.title}>Hello Tania.</Text>
-      <Text style={styles.body}>
-        Your tab navigator is ready. This Home tab can push screens onto the
-        root stack.
-      </Text>
-      <Link href="../details" asChild>
-        <Pressable style={styles.button}>
-          <Text style={styles.buttonText}>Open details</Text>
-        </Pressable>
-      </Link>
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <HomeHeader
+          greeting={homeData.header.greeting}
+          subtitle={homeData.header.subtitle}
+        />
+
+        <SectionTitle title="YOUR GOALS" />
+
+        {homeData.goals.map((goal) => (
+          <GoalCard key={goal.id} goal={goal} />
+        ))}
+
+        <SectionTitle title="CURRENT FOCUS" />
+
+        {homeData.currentFocus.map((item) => (
+          <CurrentFocusCard key={item.id} item={item} />
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: {
-    color: "#4d5662",
-    fontSize: 16,
-    lineHeight: 23,
-    marginBottom: 28,
-    maxWidth: 320,
-    textAlign: "center",
+  content: {
+    paddingBottom: 34,
+    paddingHorizontal: 20,
+    paddingTop: 22,
   },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#208AEF",
-    borderRadius: 8,
-    minWidth: 148,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  container: {
-    alignItems: "center",
-    backgroundColor: "#f7f9fc",
+  screen: {
+    backgroundColor: colors.background,
     flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  eyebrow: {
-    color: "#208AEF",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0,
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  title: {
-    color: "#15171a",
-    fontSize: 34,
-    fontWeight: "800",
-    letterSpacing: 0,
-    marginBottom: 12,
-    textAlign: "center",
   },
 });
