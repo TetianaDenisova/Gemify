@@ -44,7 +44,7 @@ export const homeDummyData: HomeData = {
     {
       id: "focus-review-quest",
       timeLabel: "This morning",
-      title: "Review my top quest",
+      title: "Buy tickets to Norway",
       status: "completed",
       statusLabel: "Completed Today",
       iconKey: "lotus",

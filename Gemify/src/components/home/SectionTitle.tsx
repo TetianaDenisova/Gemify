@@ -13,10 +13,10 @@ export function SectionTitle({ title }: SectionTitleProps) {
 const styles = StyleSheet.create({
   title: {
     color: colors.gold,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0,
-    marginBottom: 14,
-    marginTop: 14,
+    marginBottom: 8,
+    marginTop: 8,
   },
 });

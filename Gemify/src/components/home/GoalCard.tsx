@@ -1,6 +1,8 @@
+import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 
-import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
+import type { Goal, GoalIconKey, ThemeColor } from "@/data/homeData";
+import { goalImages } from "@/data/images";
 import { colors } from "@/theme/colors";
 
 import { GoalProgressBar } from "./GoalProgressBar";
@@ -9,6 +11,16 @@ import { GoalProgressRing } from "./GoalProgressRing";
 interface GoalCardProps {
   goal: Goal;
 }
+
+const absoluteFill = {
+  bottom: 0,
+  height: "100%" as const,
+  left: 0,
+  position: "absolute" as const,
+  right: 0,
+  top: 0,
+  width: "100%" as const,
+};
 
 function getThemeColor(themeColor: ThemeColor) {
   return themeColor === "gold" ? colors.gold : colors.purple;
@@ -19,20 +31,9 @@ function getIconSymbol(iconKey: GoalIconKey) {
     case "spark":
       return "✦";
     case "lotus":
-      return "✧";
+      return "♧";
     case "mountains":
       return "△";
-  }
-}
-
-function getImagePlaceholderStyle(imageKey: GoalImageKey) {
-  switch (imageKey) {
-    case "mountain_sunrise":
-      return styles.mountainSunrise;
-    case "sailboat_sunset":
-      return styles.sailboatSunset;
-    case "balloon_mountains":
-      return styles.balloonMountains;
   }
 }
 
@@ -41,114 +42,162 @@ export function GoalCard({ goal }: GoalCardProps) {
 
   return (
     <View style={styles.card}>
-      <View style={[styles.visual, getImagePlaceholderStyle(goal.imageKey)]}>
-        <View style={styles.horizon} />
-        <View style={[styles.glow, { backgroundColor: accentColor }]} />
-        <Text style={[styles.icon, { color: accentColor }]}>
-          {getIconSymbol(goal.iconKey)}
-        </Text>
-      </View>
+      <Image
+        source={goalImages[goal.imageKey]}
+        style={styles.backgroundImage}
+        contentFit="cover"
+        transition={180}
+      />
 
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>{goal.title}</Text>
-            <Text style={styles.milestone}>{goal.milestone}</Text>
+      <View style={styles.darkOverlay} />
+      <View style={styles.leftFade} />
+
+      <View style={styles.inner}>
+        <View style={styles.topRow}>
+          <View style={[styles.iconCircle, { borderColor: accentColor }]}>
+            <View style={[styles.iconGlow, { backgroundColor: accentColor }]} />
+            <Text style={[styles.icon, { color: accentColor }]}>
+              {getIconSymbol(goal.iconKey)}
+            </Text>
           </View>
+
+          <View style={styles.titleBlock}>
+            <Text style={styles.title} numberOfLines={2}>
+              {goal.title}
+            </Text>
+
+            <Text style={[styles.milestone, { color: accentColor }]}>
+              ⚑ Milestone: {goal.milestone}
+            </Text>
+          </View>
+
+        </View>
+
+        <View style={styles.bottomContent}>
+          <View style={styles.progressContent}>
+            <GoalProgressBar
+              progressPercent={goal.progressPercent}
+              themeColor={goal.themeColor}
+            />
+
+            <Text style={styles.taskCount}>
+              {goal.completedTasks} of {goal.totalTasks} tasks completed
+            </Text>
+          </View>
+
           <GoalProgressRing
             progressPercent={goal.progressPercent}
             themeColor={goal.themeColor}
           />
         </View>
-
-        <GoalProgressBar
-          progressPercent={goal.progressPercent}
-          themeColor={goal.themeColor}
-        />
-        <Text style={styles.taskCount}>
-          {goal.completedTasks} of {goal.totalTasks} tasks completed
-        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  balloonMountains: {
-    backgroundColor: "#27183f",
+  backgroundImage: {
+    ...absoluteFill,
+    zIndex: 0,
   },
+
   card: {
     backgroundColor: colors.card,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 15,
     borderWidth: 1,
-    marginBottom: 16,
+    height: 132,
+    marginBottom: 8,
     overflow: "hidden",
+    position: "relative",
   },
-  content: {
-    padding: 18,
+
+  darkOverlay: {
+    ...absoluteFill,
+    backgroundColor: "rgba(4, 6, 15, 0.34)",
+    zIndex: 1,
   },
-  glow: {
-    borderRadius: 999,
-    height: 74,
-    opacity: 0.24,
+
+  leftFade: {
+    bottom: 0,
+    left: 0,
     position: "absolute",
-    right: 28,
-    top: 20,
-    width: 74,
+    top: 0,
+    width: "62%",
+    backgroundColor: "rgba(4, 6, 15, 0.58)",
+    zIndex: 2,
   },
-  horizon: {
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
+
+  inner: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    zIndex: 3,
+  },
+
+  topRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+
+  iconCircle: {
+    alignItems: "center",
+    height: 52,
+    justifyContent: "center",
+    marginRight: 14,
+    overflow: "hidden",
+    width: 52,
+  },
+
+  iconGlow: {
     borderRadius: 999,
-    bottom: 24,
-    height: 44,
-    left: -18,
+    height: 34,
+    opacity: 0.18,
     position: "absolute",
-    right: -18,
+    width: 34,
   },
+
   icon: {
-    fontSize: 34,
-    fontWeight: "800",
-    position: "absolute",
-    right: 28,
-    top: 24,
+    fontSize: 27,
+    fontWeight: "700",
+    lineHeight: 31,
   },
-  milestone: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
+
+  titleBlock: {
+    flex: 1,
+    paddingRight: 12,
   },
-  mountainSunrise: {
-    backgroundColor: "#312615",
-  },
-  sailboatSunset: {
-    backgroundColor: "#191a3d",
-  },
-  taskCount: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 10,
-  },
+
   title: {
     color: colors.textPrimary,
-    fontSize: 19,
-    fontWeight: "800",
-    letterSpacing: 0,
-    lineHeight: 25,
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 22,
   },
-  titleBlock: {
+
+  milestone: {
+    fontSize: 10,
+    fontWeight: "500",
+    lineHeight: 13,
+    marginTop: 7,
+  },
+
+  bottomContent: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  progressContent: {
     flex: 1,
     paddingRight: 16,
   },
-  titleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginBottom: 16,
-  },
-  visual: {
-    height: 118,
-    position: "relative",
+
+  taskCount: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    lineHeight: 13,
+    marginTop: 8,
   },
 });

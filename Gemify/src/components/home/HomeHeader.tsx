@@ -18,20 +18,20 @@ export function HomeHeader({ greeting, subtitle }: HomeHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 28,
-    paddingTop: 10,
+    marginBottom: 12,
+    paddingTop: 2,
   },
   greeting: {
     color: colors.textPrimary,
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0,
-    lineHeight: 10,
+    lineHeight: 31,
   },
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
   },
 });

@@ -39,9 +39,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingBottom: 34,
-    paddingHorizontal: 20,
-    paddingTop: 22,
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   screen: {
     backgroundColor: colors.background,
