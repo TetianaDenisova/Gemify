@@ -31,9 +31,33 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="today"
         options={{
-          title: "Explore",
+          title: "Today",
+          tabBarIcon: ({ color, size }) => (
+            <Image
+              source={exploreIcon}
+              style={{ height: size, tintColor: color, width: size }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="sprint"
+        options={{
+          title: "Sprint",
+          tabBarIcon: ({ color, size }) => (
+            <Image
+              source={exploreIcon}
+              style={{ height: size, tintColor: color, width: size }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: "Progress",
           tabBarIcon: ({ color, size }) => (
             <Image
               source={exploreIcon}
