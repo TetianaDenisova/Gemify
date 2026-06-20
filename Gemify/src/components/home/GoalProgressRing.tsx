@@ -60,9 +60,7 @@ export function GoalProgressRing({
           strokeLinecap="round"
           strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
           strokeDashoffset={strokeDashoffset}
-          rotation="-90"
-          originX={SIZE / 2}
-          originY={SIZE / 2}
+          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
         />
       </Svg>
 
