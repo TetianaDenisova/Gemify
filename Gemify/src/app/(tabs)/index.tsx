@@ -1,12 +1,12 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
-import { homeData } from "@/data/homeData";
 import {
   CurrentFocusCard,
   GoalCard,
   HomeHeader,
-  SectionTitle,
+  SectionTitle
 } from "@/components/home";
+import { homeData } from "@/data/homeData";
 import { colors } from "@/theme/colors";
 
 export default function HomeScreen() {

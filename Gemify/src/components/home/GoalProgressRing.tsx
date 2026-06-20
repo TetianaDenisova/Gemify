@@ -10,7 +10,7 @@ interface GoalProgressRingProps {
 }
 
 const SIZE = 48;
-const STROKE_WIDTH = 4;
+const STROKE_WIDTH = 2;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -46,7 +46,7 @@ export function GoalProgressRing({
           r={RADIUS}
           stroke={accentColor}
           strokeWidth={STROKE_WIDTH}
-          strokeOpacity={0.22}
+          strokeOpacity={0.2}
           fill="rgba(5, 7, 17, 0.38)"
         />
 
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
 
   percent: {
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "300",
     letterSpacing: 0,
   },
 });

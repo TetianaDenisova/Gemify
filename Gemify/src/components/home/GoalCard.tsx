@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 
-import type { Goal, GoalIconKey, ThemeColor } from "@/data/homeData";
+import type { Goal, ThemeColor } from "@/data/homeData";
+import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
 import { colors } from "@/theme/colors";
 
@@ -26,17 +27,6 @@ function getThemeColor(themeColor: ThemeColor) {
   return themeColor === "gold" ? colors.gold : colors.purple;
 }
 
-function getIconSymbol(iconKey: GoalIconKey) {
-  switch (iconKey) {
-    case "spark":
-      return "✦";
-    case "lotus":
-      return "♧";
-    case "mountains":
-      return "△";
-  }
-}
-
 export function GoalCard({ goal }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
 
@@ -50,15 +40,15 @@ export function GoalCard({ goal }: GoalCardProps) {
       />
 
       <View style={styles.darkOverlay} />
-      <View style={styles.leftFade} />
 
       <View style={styles.inner}>
         <View style={styles.topRow}>
-          <View style={[styles.iconCircle, { borderColor: accentColor }]}>
-            <View style={[styles.iconGlow, { backgroundColor: accentColor }]} />
-            <Text style={[styles.icon, { color: accentColor }]}>
-              {getIconSymbol(goal.iconKey)}
-            </Text>
+          <View style={styles.iconWrapper}>
+            <Image
+              source={goalIcons[goal.iconKey]}
+              style={styles.iconImage}
+              contentFit="contain"
+            />
           </View>
 
           <View style={styles.titleBlock}>
@@ -70,7 +60,6 @@ export function GoalCard({ goal }: GoalCardProps) {
               ⚑ Milestone: {goal.milestone}
             </Text>
           </View>
-
         </View>
 
         <View style={styles.bottomContent}>
@@ -118,16 +107,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
-  leftFade: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    top: 0,
-    width: "62%",
-    backgroundColor: "rgba(4, 6, 15, 0.58)",
-    zIndex: 2,
-  },
-
   inner: {
     flex: 1,
     justifyContent: "space-between",
@@ -141,27 +120,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
 
-  iconCircle: {
+  iconWrapper: {
     alignItems: "center",
-    height: 52,
+    height: 64,
     justifyContent: "center",
-    marginRight: 14,
-    overflow: "hidden",
-    width: 52,
+    marginRight: 6,
+    width: 64,
   },
 
-  iconGlow: {
-    borderRadius: 999,
-    height: 34,
-    opacity: 0.18,
-    position: "absolute",
-    width: 34,
-  },
-
-  icon: {
-    fontSize: 27,
-    fontWeight: "700",
-    lineHeight: 31,
+  iconImage: {
+    height: 42,
+    width: 42,
   },
 
   titleBlock: {
@@ -171,8 +140,13 @@ const styles = StyleSheet.create({
 
   title: {
     color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: "700",
+    fontFamily: Platform.select({
+      ios: "Georgia",
+      android: "serif",
+      default: "serif",
+    }),
+    fontSize: 20,
+    letterSpacing: -0.3,
     lineHeight: 22,
   },
 

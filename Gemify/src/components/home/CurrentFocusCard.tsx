@@ -1,6 +1,8 @@
+import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 
-import type { FocusIconKey, FocusItem, ThemeColor } from "@/data/homeData";
+import type { FocusItem, ThemeColor } from "@/data/homeData";
+import { focusIcons } from "@/data/icons";
 import { colors } from "@/theme/colors";
 
 interface CurrentFocusCardProps {
@@ -11,26 +13,19 @@ function getThemeColor(themeColor: ThemeColor) {
   return themeColor === "gold" ? colors.gold : colors.purple;
 }
 
-function getIconSymbol(iconKey: FocusIconKey) {
-  switch (iconKey) {
-    case "lotus":
-      return "✧";
-    case "sunrise":
-      return "☼";
-    case "heart":
-      return "♡";
-  }
-}
-
 export function CurrentFocusCard({ item }: CurrentFocusCardProps) {
   const accentColor = getThemeColor(item.themeColor);
+  const iconSource = focusIcons[item.iconKey] ?? focusIcons.lotus;
 
   return (
     <View style={styles.card}>
       <View style={[styles.iconBubble, { borderColor: accentColor }]}>
-        <Text style={[styles.icon, { color: accentColor }]}>
-          {getIconSymbol(item.iconKey)}
-        </Text>
+        <Image
+          source={iconSource}
+          style={styles.iconImage}
+          contentFit="contain"
+          tintColor={accentColor}
+        />
       </View>
 
       <View style={styles.content}>
@@ -86,10 +81,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingLeft: 9,
   },
-  icon: {
-    fontSize: 16,
-    fontWeight: "800",
-  },
   iconBubble: {
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.04)",
@@ -98,6 +89,10 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: "center",
     width: 36,
+  },
+  iconImage: {
+    height: 21,
+    width: 21,
   },
   statusLabel: {
     color: colors.textSecondary,
