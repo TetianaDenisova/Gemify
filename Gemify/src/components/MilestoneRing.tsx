@@ -34,8 +34,9 @@ export type MilestoneRingDimensions = {
   ringWidth: number;
 };
 
-// Crops the square source canvas to its visible ring and flare artwork.
-const MAGIC_RING_VIEW_BOX = "120 360 784 400";
+// Keep enough transparent space for Gaussian blur to fade before the SVG edge.
+// A tighter crop exposes the rotated filter boundary as a visible rectangle.
+const MAGIC_RING_VIEW_BOX = "0 280 1024 560";
 
 function unwrapSvgModule(moduleValue: unknown): unknown {
   let current = moduleValue;
@@ -138,14 +139,7 @@ export function MilestoneRing({
     clamp(0.72 + glowIntensity * 0.28, 0.72, 1);
 
   const ring: ReactNode = (
-    <View
-      pointerEvents="none"
-      style={[
-        styles.assetContainer,
-        active && styles.activeGlow,
-        completed && styles.completedGlow,
-      ]}
-    >
+    <View pointerEvents="none" style={styles.assetContainer}>
       {renderMagicRingAsset({
         height: dimensions.canvasHeight,
         preserveAspectRatio: "none",
@@ -201,18 +195,6 @@ const styles = StyleSheet.create({
   assetContainer: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  activeGlow: {
-    shadowColor: "#FFD979",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-  },
-  completedGlow: {
-    shadowColor: "#F8B648",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 5,
   },
   pressed: {
     opacity: 0.66,
