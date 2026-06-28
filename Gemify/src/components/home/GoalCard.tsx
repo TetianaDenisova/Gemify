@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Goal, ThemeColor } from "@/data/homeData";
 import { goalIcons } from "@/data/icons";
@@ -11,6 +11,7 @@ import { GoalProgressRing } from "./GoalProgressRing";
 
 interface GoalCardProps {
   goal: Goal;
+  onPress?: (goal: Goal) => void;
 }
 
 const absoluteFill = {
@@ -27,11 +28,15 @@ function getThemeColor(themeColor: ThemeColor) {
   return themeColor === "gold" ? colors.gold : colors.purple;
 }
 
-export function GoalCard({ goal }: GoalCardProps) {
+export function GoalCard({ goal, onPress }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => onPress?.(goal)}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
       <Image
         source={goalImages[goal.imageKey]}
         style={styles.backgroundImage}
@@ -80,7 +85,7 @@ export function GoalCard({ goal }: GoalCardProps) {
           />
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -99,6 +104,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     overflow: "hidden",
     position: "relative",
+  },
+
+  cardPressed: {
+    opacity: 0.9,
   },
 
   darkOverlay: {
