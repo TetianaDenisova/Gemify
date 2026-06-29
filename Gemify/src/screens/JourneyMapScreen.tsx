@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { JourneyMapScroll, JOURNEY_FRAMES } from "@/components/JourneyMapScroll";
 import { JourneyMilestone } from "@/components/JourneyMilestone";
+import { JourneyMilestonePath } from "@/components/JourneyMilestonePath";
 import { useResponsiveJourneyImageLayout } from "@/components/ResponsiveJourneyBackground";
 import {
   journeyMilestones,
@@ -115,6 +116,12 @@ export function GoalJourneyMapScreen() {
         imageMode="contain"
         showAtmosphere
       >
+        <JourneyMilestonePath
+          imageHeight={imageLayout.renderedImageHeight}
+          imageWidth={imageLayout.renderedImageWidth}
+          milestones={journeyMilestones}
+        />
+
         {journeyMilestones.map((milestone) => (
           <JourneyMilestone
             imageHeight={imageLayout.renderedImageHeight}

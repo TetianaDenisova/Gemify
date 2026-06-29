@@ -1,6 +1,5 @@
 import { journeyMilestoneBoardLayout } from "@/data/journeyMilestoneBoardLayout";
 
-export type JourneyMilestoneLabelSide = "left" | "right" | "center";
 export type JourneyMilestoneRingVariant = "simple" | "detailed";
 
 /** Content and product state shown in labels and the milestone modal. */
@@ -18,7 +17,6 @@ export type JourneyMilestoneContent = {
 /** Visual configuration used only to place and draw a milestone on the map. */
 export type JourneyMilestoneBoardConfig = {
   glowIntensity: number;
-  labelSide: JourneyMilestoneLabelSide;
   milestoneId: number;
   opacity: number;
   rotation: number;

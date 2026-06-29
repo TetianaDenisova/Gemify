@@ -1,10 +1,15 @@
-import { createElement, type ComponentType, type ReactNode } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
-import { Pressable, StyleSheet, View } from "react-native";
-import { Asset } from "expo-asset";
-import { SvgUri, type SvgProps } from "react-native-svg";
+import type { ReactNode } from "react";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  View,
+  type ImageSourcePropType,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
-import MagicRingAsset from "../../assets/magic-ring.svg";
+const MagicRingAsset = require("../../assets/magic-ring-advanced.jpg") as ImageSourcePropType;
 
 export type MilestoneRingVariant = "simple" | "detailed";
 
@@ -34,70 +39,18 @@ export type MilestoneRingDimensions = {
   ringWidth: number;
 };
 
-// Keep enough transparent space for Gaussian blur to fade before the SVG edge.
-// A tighter crop exposes the rotated filter boundary as a visible rectangle.
-const MAGIC_RING_VIEW_BOX = "0 280 1024 560";
-
-function unwrapSvgModule(moduleValue: unknown): unknown {
-  let current = moduleValue;
-
-  // Metro can expose CommonJS/ESM interop as one or two nested defaults.
-  for (let depth = 0; depth < 2; depth += 1) {
-    if (
-      current &&
-      typeof current === "object" &&
-      "default" in current &&
-      (current as { default?: unknown }).default !== undefined
-    ) {
-      current = (current as { default: unknown }).default;
-      continue;
-    }
-
-    break;
-  }
-
-  return current;
-}
-
-function getAssetUri(moduleValue: unknown): string | null {
-  if (typeof moduleValue === "string") {
-    return moduleValue;
-  }
-
-  if (typeof moduleValue === "number") {
-    return Asset.fromModule(moduleValue).uri;
-  }
-
-  if (
-    moduleValue &&
-    typeof moduleValue === "object" &&
-    "uri" in moduleValue &&
-    typeof (moduleValue as { uri?: unknown }).uri === "string"
-  ) {
-    return (moduleValue as { uri: string }).uri;
-  }
-
-  return null;
-}
-
-function renderMagicRingAsset(props: SvgProps): ReactNode {
-  const resolvedModule = unwrapSvgModule(MagicRingAsset as unknown);
-
-  if (
-    typeof resolvedModule === "function" ||
-    (resolvedModule !== null &&
-      typeof resolvedModule === "object" &&
-      "$$typeof" in resolvedModule)
-  ) {
-    return createElement(resolvedModule as ComponentType<SvgProps>, props);
-  }
-
-  const uri = getAssetUri(resolvedModule);
-  return uri ? <SvgUri {...props} uri={uri} /> : null;
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function renderMagicRingAsset(): ReactNode {
+  return (
+    <Image
+      source={MagicRingAsset}
+      resizeMode="stretch"
+      style={styles.assetImage}
+    />
+  );
 }
 
 export function getMilestoneRingDimensions(
@@ -132,20 +85,26 @@ export function MilestoneRing({
   tilt = 0.34,
 }: MilestoneRingProps) {
   const dimensions = getMilestoneRingDimensions(size, tilt);
-  const stateOpacity = locked ? 0.34 : completed ? 0.9 : active ? 1 : 0.78;
+
+  const stateOpacity = locked ? 0.32 : completed ? 0.86 : active ? 0.97 : 0.76;
+
   const resolvedOpacity =
     clamp(opacity, 0, 1) *
     stateOpacity *
-    clamp(0.72 + glowIntensity * 0.28, 0.72, 1);
+    clamp(0.72 + glowIntensity * 0.18, 0.72, 0.9);
 
   const ring: ReactNode = (
-    <View pointerEvents="none" style={styles.assetContainer}>
-      {renderMagicRingAsset({
-        height: dimensions.canvasHeight,
-        preserveAspectRatio: "none",
-        viewBox: MAGIC_RING_VIEW_BOX,
-        width: dimensions.canvasWidth,
-      })}
+    <View
+      pointerEvents="none"
+      style={[
+        styles.assetContainer,
+        {
+          width: dimensions.canvasWidth,
+          height: dimensions.canvasHeight,
+        },
+      ]}
+    >
+      {renderMagicRingAsset()}
     </View>
   );
 
@@ -158,7 +117,7 @@ export function MilestoneRing({
       opacity: resolvedOpacity,
       transform: [
         { rotate: `${rotation}deg` },
-        { scale: active ? 1.025 : 1 },
+        { scale: active ? 1.018 : 1 },
       ],
     },
   ];
@@ -169,6 +128,7 @@ export function MilestoneRing({
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessibilityState={{ disabled: locked, selected: active }}
+        disabled={locked}
         hitSlop={12}
         onPress={onPress}
         style={({ pressed }) => [containerStyle, pressed && styles.pressed]}
@@ -195,6 +155,10 @@ const styles = StyleSheet.create({
   assetContainer: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  assetImage: {
+    width: "100%",
+    height: "100%",
   },
   pressed: {
     opacity: 0.66,
