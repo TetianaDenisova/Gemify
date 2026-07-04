@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -7,8 +7,21 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  cancelAnimation,
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
+import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
 import {
   JourneyMilestone,
@@ -33,6 +46,120 @@ type MilestoneModalProps = {
 };
 
 const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
+const SHIMMER_DURATION = 2200;
+const SHIMMER_PAUSE = 2500;
+
+function QuestButtonShimmer() {
+  const [buttonWidth, setButtonWidth] = useState(0);
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: SHIMMER_DURATION,
+          easing: Easing.inOut(Easing.cubic),
+        }),
+        withDelay(SHIMMER_PAUSE, withTiming(0, { duration: 0 })),
+      ),
+      -1,
+      false,
+    );
+
+    return () => cancelAnimation(progress);
+  }, [progress]);
+
+  const streakWidth = buttonWidth * 0.26;
+  const travelStart = -streakWidth * 1.6;
+  const travelEnd = buttonWidth + streakWidth * 0.6;
+
+  const bloomStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [0, 0.08, 0.82, 1],
+      [0, 0.2, 0.2, 0],
+    ),
+    transform: [
+      {
+        translateX:
+          interpolate(progress.value, [0, 1], [travelStart, travelEnd]) -
+          streakWidth * 0.18,
+      },
+      { rotate: "-24deg" },
+    ],
+  }));
+
+  const streakStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [0, 0.08, 0.88, 1],
+      [0, 0.62, 0.62, 0],
+    ),
+    transform: [
+      {
+        translateX: interpolate(
+          progress.value,
+          [0, 1],
+          [travelStart, travelEnd],
+        ),
+      },
+      { rotate: "-24deg" },
+    ],
+  }));
+
+  return (
+    <View
+      onLayout={({ nativeEvent }) =>
+        setButtonWidth(nativeEvent.layout.width)
+      }
+      pointerEvents="none"
+      style={styles.shimmerClip}
+    >
+      {buttonWidth > 0 ? (
+        <>
+          <Animated.View
+            style={[
+              styles.shimmerBloom,
+              { width: streakWidth * 1.45 },
+              bloomStyle,
+            ]}
+          >
+            <LinearGradient
+              colors={[
+                "rgba(255, 220, 145, 0)",
+                "rgba(255, 224, 157, 0.28)",
+                "rgba(255, 246, 216, 0.42)",
+                "rgba(255, 220, 145, 0)",
+              ]}
+              end={{ x: 1, y: 0.5 }}
+              locations={[0, 0.35, 0.56, 1]}
+              start={{ x: 0, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={[styles.shimmerStreak, { width: streakWidth }, streakStyle]}
+          >
+            <LinearGradient
+              colors={[
+                "rgba(255, 239, 196, 0)",
+                "rgba(255, 230, 164, 0.36)",
+                "rgba(255, 253, 239, 0.78)",
+                "rgba(255, 224, 145, 0.3)",
+                "rgba(255, 239, 196, 0)",
+              ]}
+              end={{ x: 1, y: 0.5 }}
+              locations={[0, 0.28, 0.5, 0.72, 1]}
+              start={{ x: 0, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        </>
+      ) : null}
+    </View>
+  );
+}
 
 function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
   const insets = useSafeAreaInsets();
@@ -101,6 +228,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
                   start={{ x: 0, y: 0.5 }}
                   style={styles.questButton}
                 >
+                  <QuestButtonShimmer />
                   <Text style={styles.questButtonText}>Go to Quests</Text>
                 </LinearGradient>
               </Pressable>
@@ -113,6 +241,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
 }
 
 export function GoalJourneyMapScreen() {
+  const router = useRouter();
   const [selectedMilestone, setSelectedMilestone] =
     useState<JourneyMilestoneData | null>(null);
   const currentPageIndex = 0;
@@ -139,6 +268,16 @@ export function GoalJourneyMapScreen() {
       })),
     [currentConfig, currentMilestones],
   );
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/");
+  };
+
   return (
     <View style={styles.screen}>
       <JourneyMapScroll
@@ -159,6 +298,8 @@ export function GoalJourneyMapScreen() {
           ))
         }
       </JourneyMapScroll>
+
+      <JourneyMapControls onBack={handleBack} />
 
       <MilestoneModal
         milestone={selectedMilestone}
@@ -294,6 +435,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
     shadowColor: "#b568ff",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.45,
@@ -304,6 +446,21 @@ const styles = StyleSheet.create({
     color: "#fffaff",
     fontSize: 15,
     fontWeight: "700",
+    zIndex: 2,
+  },
+  shimmerClip: {
+    ...StyleSheet.absoluteFill,
+    overflow: "hidden",
+  },
+  shimmerBloom: {
+    position: "absolute",
+    top: -32,
+    bottom: -32,
+  },
+  shimmerStreak: {
+    position: "absolute",
+    top: -28,
+    bottom: -28,
   },
   buttonPressed: {
     opacity: 0.8,
