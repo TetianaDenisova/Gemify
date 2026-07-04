@@ -1,75 +1,134 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Asset } from "expo-asset";
+import { Image } from "expo-image";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
+import type {
+  ImageSourcePropType,
+  ImageURISource,
+  LayoutChangeEvent,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
 import {
-  Image,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from "react-native";
 
+export type JourneyMapLayout = {
+  imageHeight: number;
+  imageWidth: number;
+};
+
 export type JourneyMapScrollProps = {
-  children?: ReactNode;
+  children?: ReactNode | ((layout: JourneyMapLayout) => ReactNode);
   /** Enables/disables dragging without removing the map. */
   enabled?: boolean;
   showAtmosphere?: boolean;
+  source: ImageSourcePropType;
   style?: StyleProp<ViewStyle>;
 };
 
-const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
-const JOURNEY_MAP_ASSET = Asset.fromModule(JOURNEY_MAP_SOURCE);
+type ViewportSize = {
+  height: number;
+  width: number;
+};
 
 export function JourneyMapScroll({
   children,
   enabled = true,
   showAtmosphere = true,
+  source,
   style,
 }: JourneyMapScrollProps) {
-  const { width: screenWidth } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const assetWidth = JOURNEY_MAP_ASSET.width ?? 853;
-  const assetHeight = JOURNEY_MAP_ASSET.height ?? 1844;
-  const imageHeight =
-    screenWidth * (assetHeight / assetWidth);
+  const [viewport, setViewport] = useState<ViewportSize>({
+    height: 0,
+    width: 0,
+  });
+  const asset = typeof source === "number" ? Asset.fromModule(source) : null;
+  const sourceCandidates = Array.isArray(source) ? source : [source];
+  const sourceWithDimensions = sourceCandidates.find(
+    (candidate): candidate is ImageURISource =>
+      typeof candidate !== "number" &&
+      typeof candidate?.width === "number" &&
+      typeof candidate?.height === "number",
+  );
+  const assetWidth = asset?.width ?? sourceWithDimensions?.width ?? viewport.width;
+  const assetHeight =
+    asset?.height ?? sourceWithDimensions?.height ?? viewport.height;
+  const coverScale =
+    viewport.width > 0 && viewport.height > 0
+      ? Math.max(
+          viewport.width / Math.max(assetWidth, 1),
+          viewport.height / Math.max(assetHeight, 1),
+        )
+      : 0;
+  const imageWidth = assetWidth * coverScale;
+  const imageHeight = assetHeight * coverScale;
+  const imageLeft = (viewport.width - imageWidth) / 2;
+  const layout: JourneyMapLayout = { imageHeight, imageWidth };
+  const overlay = typeof children === "function" ? children(layout) : children;
 
   useEffect(() => {
-    if (viewportHeight === 0) {
+    if (viewport.height === 0 || imageHeight === 0) {
       return;
     }
 
     scrollViewRef.current?.scrollTo({
       animated: false,
-      y: Math.max((imageHeight - viewportHeight) / 2, 0),
+      y: Math.max((imageHeight - viewport.height) / 2, 0),
     });
-  }, [imageHeight, viewportHeight]);
+  }, [imageHeight, viewport.height, viewport.width]);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { height, width } = event.nativeEvent.layout;
+
+    setViewport((current) =>
+      current.height === height && current.width === width
+        ? current
+        : { height, width },
+    );
+  };
 
   return (
-    <View style={[styles.container, style]}>
+    <View onLayout={handleLayout} style={[styles.container, style]}>
       <ScrollView
         bounces={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { minHeight: viewportHeight },
+          { minHeight: viewport.height },
         ]}
-        onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
         overScrollMode="never"
         ref={scrollViewRef}
         scrollEnabled={enabled}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
       >
-        <View style={{ width: screenWidth, height: imageHeight }}>
+        <View style={{ width: viewport.width, height: imageHeight }}>
           <Image
-            resizeMode="contain"
-            source={JOURNEY_MAP_SOURCE}
-            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            source={source}
+            style={{
+              height: imageHeight,
+              left: imageLeft,
+              position: "absolute",
+              top: 0,
+              width: imageWidth,
+            }}
           />
 
-          <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-            {children}
+          <View
+            pointerEvents="box-none"
+            style={{
+              height: imageHeight,
+              left: imageLeft,
+              position: "absolute",
+              top: 0,
+              width: imageWidth,
+            }}
+          >
+            {overlay}
           </View>
         </View>
       </ScrollView>
@@ -103,7 +162,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    alignItems: "center",
     justifyContent: "center",
   },
 });

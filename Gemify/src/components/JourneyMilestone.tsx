@@ -1,9 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 
-import {
-  MilestoneRing,
-  getMilestoneRingDimensions,
-} from "@/components/MilestoneRing";
+import { JourneyMilestoneLabel } from "@/components/JourneyMilestoneLabel";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
 
 export type JourneyMilestoneProps = {
@@ -36,8 +33,11 @@ export type JourneyMilestoneLayout = {
 
 const BASE_PHONE_WIDTH = 390;
 const MAP_EDGE_PADDING = 6;
-const RING_TILT = 0.42;
-const TITLE_BOTTOM_GAP = 8;
+const CIRCLE_ASPECT_RATIO = 1536 / 1024;
+const CIRCLE_SOURCE = require("../../assets/journey-top/circle.png");
+const CIRCLE_INACTIVE_SOURCE = require("../../assets/journey-top/circle-inactive.png");
+const LABEL_WIDTH = 148;
+const LABEL_RING_OVERLAP = 18;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -50,19 +50,15 @@ export function getJourneyMilestoneLayout(
   position: JourneyMilestonePosition = milestone,
 ): JourneyMilestoneLayout {
   const responsiveScale = clamp(imageWidth / BASE_PHONE_WIDTH, 0.72, 1.22);
-  const responsiveRingWidth = clamp(imageWidth * 0.28, 88, 130);
+  const responsiveRingWidth = clamp(imageWidth * 0.32, 96, 136);
   const ringWidth = clamp(
     Math.max(milestone.size * responsiveScale, responsiveRingWidth),
-    88,
-    130,
+    96,
+    136,
   );
-  const dimensions = getMilestoneRingDimensions(ringWidth, RING_TILT);
-  const titleWidth = clamp(imageWidth * 0.34, 90, 150);
-  const titleFontSize = clamp(14 * responsiveScale, 12.5, 15);
-  const titleLineHeight = Math.ceil(titleFontSize + 3);
-  const labelHeight = titleLineHeight + TITLE_BOTTOM_GAP;
-  const groupWidth = Math.max(dimensions.ringWidth, titleWidth);
-  const groupHeight = labelHeight + dimensions.ringHeight;
+  const ringHeight = ringWidth / CIRCLE_ASPECT_RATIO;
+  const groupWidth = ringWidth;
+  const groupHeight = ringHeight;
   const anchorX = position.x * imageWidth;
   const anchorY = position.y * imageHeight;
   const maxLeft = Math.max(
@@ -75,7 +71,7 @@ export function getJourneyMilestoneLayout(
     maxLeft,
   );
   const top = clamp(
-    anchorY - dimensions.ringHeight / 2 - labelHeight,
+    anchorY - ringHeight / 2,
     0,
     Math.max(0, imageHeight - groupHeight),
   );
@@ -83,15 +79,15 @@ export function getJourneyMilestoneLayout(
   return {
     groupHeight,
     groupWidth,
-    labelHeight,
+    labelHeight: 0,
     left,
     ringCenterX: left + groupWidth / 2,
-    ringCenterY: top + labelHeight + dimensions.ringHeight / 2,
-    ringHeight: dimensions.ringHeight,
+    ringCenterY: top + ringHeight / 2,
+    ringHeight,
     ringWidth,
-    titleFontSize,
-    titleLineHeight,
-    titleWidth,
+    titleFontSize: 0,
+    titleLineHeight: 0,
+    titleWidth: 0,
     top,
   };
 }
@@ -106,12 +102,9 @@ export function JourneyMilestone({
   const {
     groupHeight,
     groupWidth,
-    labelHeight,
     left,
+    ringHeight,
     ringWidth,
-    titleFontSize,
-    titleLineHeight,
-    titleWidth,
     top,
   } = getJourneyMilestoneLayout(
     imageHeight,
@@ -120,88 +113,80 @@ export function JourneyMilestone({
     position,
   );
 
+  const labelSide = milestone.id % 2 === 0 ? "left" : "right";
+  const labelPosition =
+    labelSide === "left"
+      ? { right: groupWidth - LABEL_RING_OVERLAP }
+      : { left: groupWidth - LABEL_RING_OVERLAP };
+
   return (
-    <Pressable
-      accessibilityHint="Open milestone details"
-      accessibilityLabel={`Milestone ${milestone.id}: ${milestone.title}`}
-      accessibilityRole="button"
-      accessibilityState={{ selected: milestone.active }}
-      hitSlop={8}
-      onPress={() => onPress(milestone)}
-      style={({ pressed }) => [
-        styles.pressable,
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.group,
         {
           left,
           top,
           width: groupWidth,
           height: groupHeight,
-          opacity: pressed ? milestone.opacity * 0.78 : milestone.opacity,
-          transform: [{ scale: pressed ? 0.988 : 1 }],
           zIndex: 20 - milestone.id,
         },
       ]}
     >
-      <View
-        pointerEvents="none"
-        style={[styles.label, { width: titleWidth, height: labelHeight }]}
-      >
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.title,
-            { fontSize: titleFontSize, lineHeight: titleLineHeight },
-          ]}
-        >
-          {milestone.title}
-        </Text>
-        <View style={styles.labelSpark} />
-      </View>
-
-      <MilestoneRing
-        active={milestone.active}
-        completed={milestone.completed}
-        glowIntensity={milestone.glowIntensity}
-        locked={milestone.locked}
-        opacity={1}
-        rotation={milestone.rotation}
-        size={ringWidth}
-        tilt={RING_TILT}
-        variant={milestone.variant}
+      <JourneyMilestoneLabel
+        number={milestone.id}
+        side={labelSide}
+        style={[
+          styles.label,
+          labelPosition,
+          { width: LABEL_WIDTH },
+        ]}
+        subtitle={milestone.subtitle}
+        title={milestone.title}
       />
-    </Pressable>
+
+      <Pressable
+        accessibilityHint="Open milestone details"
+        accessibilityLabel={`Milestone ${milestone.id}: ${milestone.title}`}
+        accessibilityRole="button"
+        accessibilityState={{ selected: milestone.active }}
+        hitSlop={8}
+        onPress={() => onPress(milestone)}
+        style={({ pressed }) => [
+          styles.pressable,
+          {
+            width: groupWidth,
+            height: groupHeight,
+            opacity: pressed ? milestone.opacity * 0.78 : milestone.opacity,
+            transform: [{ scale: pressed ? 0.988 : 1 }],
+          },
+        ]}
+      >
+        <Image
+          resizeMode="contain"
+          source={milestone.active ? CIRCLE_SOURCE : CIRCLE_INACTIVE_SOURCE}
+          style={{ width: ringWidth, height: ringHeight }}
+        />
+      </Pressable>
+    </View>
   );
 }
 
 export default JourneyMilestone;
 
 const styles = StyleSheet.create({
-  pressable: {
+  group: {
     position: "absolute",
-    alignItems: "center",
     overflow: "visible",
   },
   label: {
+    position: "absolute",
+    top: "50%",
+    marginTop: -20,
+  },
+  pressable: {
     alignItems: "center",
-  },
-  title: {
-    color: "#fff1be",
-    fontFamily: "serif",
-    fontWeight: "700",
-    textAlign: "center",
-    textShadowColor: "rgba(255, 198, 92, 0.72)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 7,
-  },
-  labelSpark: {
-    width: 4,
-    height: 4,
-    marginTop: 2,
-    borderRadius: 2,
-    backgroundColor: "#ffe49a",
-    shadowColor: "#ffd36a",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.82,
-    shadowRadius: 7,
-    elevation: 3,
+    justifyContent: "center",
+    overflow: "visible",
   },
 });

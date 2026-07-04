@@ -14,8 +14,6 @@ import {
   JourneyMilestone,
   type JourneyMilestonePosition,
 } from "@/components/JourneyMilestone";
-import { JourneyMilestonePath } from "@/components/JourneyMilestonePath";
-import { useResponsiveJourneyImageLayout } from "@/components/ResponsiveJourneyBackground";
 import {
   journeyMilestones,
   type JourneyMilestoneData,
@@ -33,6 +31,8 @@ type MilestoneModalProps = {
   milestone: JourneyMilestoneData | null;
   onClose: () => void;
 };
+
+const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
 
 function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
   const insets = useSafeAreaInsets();
@@ -134,39 +134,30 @@ export function GoalJourneyMapScreen() {
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
       currentMilestones.map((milestone, index) => ({
-        x: milestone.x,
+        x: 0.5,
         y: getMilestoneRingY(index, currentMilestones.length, currentConfig),
       })),
     [currentConfig, currentMilestones],
   );
-  const imageLayout = useResponsiveJourneyImageLayout(
-    currentConfig.source,
-    "contain",
-  );
-
   return (
     <View style={styles.screen}>
       <JourneyMapScroll
         enabled={selectedMilestone === null}
         showAtmosphere
+        source={JOURNEY_MAP_SOURCE}
       >
-        <JourneyMilestonePath
-          imageHeight={imageLayout.renderedImageHeight}
-          imageWidth={imageLayout.renderedImageWidth}
-          milestones={currentMilestones}
-          positions={positions}
-        />
-
-        {currentMilestones.map((milestone, index) => (
-          <JourneyMilestone
-            imageHeight={imageLayout.renderedImageHeight}
-            imageWidth={imageLayout.renderedImageWidth}
-            key={milestone.id}
-            milestone={milestone}
-            onPress={setSelectedMilestone}
-            position={positions[index]}
-          />
-        ))}
+        {({ imageHeight, imageWidth }) =>
+          currentMilestones.map((milestone, index) => (
+            <JourneyMilestone
+              imageHeight={imageHeight}
+              imageWidth={imageWidth}
+              key={milestone.id}
+              milestone={milestone}
+              onPress={setSelectedMilestone}
+              position={positions[index]}
+            />
+          ))
+        }
       </JourneyMapScroll>
 
       <MilestoneModal

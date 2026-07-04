@@ -4,7 +4,7 @@ export type JourneyMilestoneRingVariant = "simple" | "detailed";
 
 /** Content and product state shown in labels and the milestone modal. */
 export type JourneyMilestoneContent = {
-  active?: boolean;
+  active: boolean;
   completed?: boolean;
   description: string;
   id: number;
@@ -40,7 +40,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "Starting within",
     state: "Calm",
     description: "The first step of the journey.",
-    active: true,
+    active: false,
   },
   {
     id: 2,
@@ -48,6 +48,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "Inner shift",
     state: "Confidence",
     description: "A moment of inner transformation.",
+    active: false,
   },
   {
     id: 3,
@@ -55,6 +56,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "New foundations",
     state: "Focus",
     description: "Building new foundations.",
+    active: true,
   },
   {
     id: 4,
@@ -62,6 +64,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "New environment",
     state: "Expansion",
     description: "Entering a wider environment.",
+    active: true,
   },
   {
     id: 5,
@@ -69,6 +72,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "Your next level",
     state: "Power",
     description: "Moving toward your next level.",
+    active: true,
   },
   {
     id: 6,
@@ -76,6 +80,7 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     subtitle: "Closer to point B",
     state: "Clarity",
     description: "You are approaching the destination.",
+    active: true,
   },
 ];
 
