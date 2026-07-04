@@ -115,7 +115,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
 export function GoalJourneyMapScreen() {
   const [selectedMilestone, setSelectedMilestone] =
     useState<JourneyMilestoneData | null>(null);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const currentPageIndex = 0;
   const milestonePages = useMemo(
     () => paginateMilestones(journeyMilestones),
     [],
@@ -127,10 +127,6 @@ export function GoalJourneyMapScreen() {
         milestones,
       })),
     [milestonePages],
-  );
-  const frameSources = useMemo(
-    () => journeyPages.map((page) => page.config.source),
-    [journeyPages],
   );
   const currentPage = journeyPages[currentPageIndex];
   const currentConfig = currentPage?.config ?? journeyPageConfigs[0];
@@ -152,9 +148,6 @@ export function GoalJourneyMapScreen() {
     <View style={styles.screen}>
       <JourneyMapScroll
         enabled={selectedMilestone === null}
-        frames={frameSources}
-        imageMode="contain"
-        onPageChange={setCurrentPageIndex}
         showAtmosphere
       >
         <JourneyMilestonePath
