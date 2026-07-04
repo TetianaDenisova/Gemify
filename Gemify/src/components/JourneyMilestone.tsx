@@ -11,6 +11,12 @@ export type JourneyMilestoneProps = {
   imageWidth: number;
   milestone: JourneyMilestoneData;
   onPress: (milestone: JourneyMilestoneData) => void;
+  position?: JourneyMilestonePosition;
+};
+
+export type JourneyMilestonePosition = {
+  x: number;
+  y: number;
 };
 
 export type JourneyMilestoneLayout = {
@@ -41,6 +47,7 @@ export function getJourneyMilestoneLayout(
   imageHeight: number,
   imageWidth: number,
   milestone: JourneyMilestoneData,
+  position: JourneyMilestonePosition = milestone,
 ): JourneyMilestoneLayout {
   const responsiveScale = clamp(imageWidth / BASE_PHONE_WIDTH, 0.72, 1.22);
   const responsiveRingWidth = clamp(imageWidth * 0.28, 88, 130);
@@ -56,8 +63,8 @@ export function getJourneyMilestoneLayout(
   const labelHeight = titleLineHeight + TITLE_BOTTOM_GAP;
   const groupWidth = Math.max(dimensions.ringWidth, titleWidth);
   const groupHeight = labelHeight + dimensions.ringHeight;
-  const anchorX = milestone.x * imageWidth;
-  const anchorY = milestone.y * imageHeight;
+  const anchorX = position.x * imageWidth;
+  const anchorY = position.y * imageHeight;
   const maxLeft = Math.max(
     MAP_EDGE_PADDING,
     imageWidth - groupWidth - MAP_EDGE_PADDING,
@@ -94,6 +101,7 @@ export function JourneyMilestone({
   imageWidth,
   milestone,
   onPress,
+  position,
 }: JourneyMilestoneProps) {
   const {
     groupHeight,
@@ -105,7 +113,12 @@ export function JourneyMilestone({
     titleLineHeight,
     titleWidth,
     top,
-  } = getJourneyMilestoneLayout(imageHeight, imageWidth, milestone);
+  } = getJourneyMilestoneLayout(
+    imageHeight,
+    imageWidth,
+    milestone,
+    position,
+  );
 
   return (
     <Pressable

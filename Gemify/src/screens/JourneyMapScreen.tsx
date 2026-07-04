@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -9,14 +9,25 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { JourneyMapScroll, JOURNEY_FRAMES } from "@/components/JourneyMapScroll";
-import { JourneyMilestone } from "@/components/JourneyMilestone";
+import { JourneyMapScroll } from "@/components/JourneyMapScroll";
+import {
+  JourneyMilestone,
+  type JourneyMilestonePosition,
+} from "@/components/JourneyMilestone";
 import { JourneyMilestonePath } from "@/components/JourneyMilestonePath";
 import { useResponsiveJourneyImageLayout } from "@/components/ResponsiveJourneyBackground";
 import {
   journeyMilestones,
   type JourneyMilestoneData,
 } from "@/data/journeyMilestones";
+import {
+  getJourneyPageConfig,
+  journeyPageConfigs,
+} from "@/data/journeyPageConfig";
+import {
+  getMilestoneRingY,
+  paginateMilestones,
+} from "@/utils/milestonePagination";
 
 type MilestoneModalProps = {
   milestone: JourneyMilestoneData | null;
@@ -104,8 +115,36 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
 export function GoalJourneyMapScreen() {
   const [selectedMilestone, setSelectedMilestone] =
     useState<JourneyMilestoneData | null>(null);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const milestonePages = useMemo(
+    () => paginateMilestones(journeyMilestones),
+    [],
+  );
+  const journeyPages = useMemo(
+    () =>
+      milestonePages.map((milestones, pageIndex) => ({
+        config: getJourneyPageConfig(pageIndex),
+        milestones,
+      })),
+    [milestonePages],
+  );
+  const frameSources = useMemo(
+    () => journeyPages.map((page) => page.config.source),
+    [journeyPages],
+  );
+  const currentPage = journeyPages[currentPageIndex];
+  const currentConfig = currentPage?.config ?? journeyPageConfigs[0];
+  const currentMilestones = currentPage?.milestones ?? [];
+  const positions = useMemo<readonly JourneyMilestonePosition[]>(
+    () =>
+      currentMilestones.map((milestone, index) => ({
+        x: milestone.x,
+        y: getMilestoneRingY(index, currentMilestones.length, currentConfig),
+      })),
+    [currentConfig, currentMilestones],
+  );
   const imageLayout = useResponsiveJourneyImageLayout(
-    JOURNEY_FRAMES[0].source,
+    currentConfig.source,
     "contain",
   );
 
@@ -113,22 +152,26 @@ export function GoalJourneyMapScreen() {
     <View style={styles.screen}>
       <JourneyMapScroll
         enabled={selectedMilestone === null}
+        frames={frameSources}
         imageMode="contain"
+        onPageChange={setCurrentPageIndex}
         showAtmosphere
       >
         <JourneyMilestonePath
           imageHeight={imageLayout.renderedImageHeight}
           imageWidth={imageLayout.renderedImageWidth}
-          milestones={journeyMilestones}
+          milestones={currentMilestones}
+          positions={positions}
         />
 
-        {journeyMilestones.map((milestone) => (
+        {currentMilestones.map((milestone, index) => (
           <JourneyMilestone
             imageHeight={imageLayout.renderedImageHeight}
             imageWidth={imageLayout.renderedImageWidth}
             key={milestone.id}
             milestone={milestone}
             onPress={setSelectedMilestone}
+            position={positions[index]}
           />
         ))}
       </JourneyMapScroll>

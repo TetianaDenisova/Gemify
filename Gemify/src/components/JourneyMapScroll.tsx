@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import type { ImageSourcePropType, StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -7,6 +7,7 @@ import Animated, {
   cancelAnimation,
   Extrapolation,
   interpolate,
+  runOnJS,
   type SharedValue,
   useAnimatedStyle,
   useSharedValue,
@@ -19,7 +20,7 @@ import {
   useResponsiveJourneyImageLayout,
 } from "@/components/ResponsiveJourneyBackground";
 
-type JourneyFrame = {
+export type JourneyFrame = {
   position: number;
   source: ImageSourcePropType;
 };
@@ -36,6 +37,9 @@ export type JourneyMapScrollProps = {
   /** `contain` preserves the whole composition; `cover` fills and may crop. */
   imageMode?: JourneyBackgroundMode;
   initialProgress?: number;
+  /** Frames must contain only pages that have milestones. */
+  frames?: readonly ImageSourcePropType[];
+  onPageChange?: (pageIndex: number) => void;
   /** Optional shared value for coordinating future overlays with the map. */
   progress?: SharedValue<number>;
   showAtmosphere?: boolean;
@@ -43,12 +47,7 @@ export type JourneyMapScrollProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-// Journey levels in travel order. Keep positions ascending for snapping.
-export const JOURNEY_FRAMES: readonly JourneyFrame[] = [
-  { position: 0, source: require("../../assets/journey-levels/level1.png") },
-  { position: 0.5, source: require("../../assets/journey-levels/level2.png") },
-  { position: 1, source: require("../../assets/journey-levels/level3.png") },
-];
+const DEFAULT_FRAME_SOURCE = require("../../assets/journey-levels/level1.png");
 
 const SNAP_SPRING = {
   damping: 20,
@@ -146,18 +145,29 @@ export function JourneyMapScroll({
   children,
   dragDistanceMultiplier = 0.9,
   enabled = true,
-  // Three evenly spaced frames need a 0.5 fade range for continuous crossfades.
-  frameFadeRange = 0.5,
+  frameFadeRange,
+  frames = [DEFAULT_FRAME_SOURCE],
   imageMode = "contain",
   initialProgress = 0,
+  onPageChange,
   progress: suppliedProgress,
   showAtmosphere = true,
   snapToFrames = true,
   style,
 }: JourneyMapScrollProps) {
   const { height } = useWindowDimensions();
+  const visibleSources = frames.length > 0 ? frames : [DEFAULT_FRAME_SOURCE];
+  const lastFrameIndex = visibleSources.length - 1;
+  const journeyFrames: readonly JourneyFrame[] = visibleSources.map(
+    (source, index) => ({
+      source,
+      position: lastFrameIndex === 0 ? 0 : index / lastFrameIndex,
+    }),
+  );
+  const effectiveFadeRange =
+    frameFadeRange ?? (lastFrameIndex === 0 ? 1 : 1 / lastFrameIndex);
   const imageLayout = useResponsiveJourneyImageLayout(
-    JOURNEY_FRAMES[0].source,
+    visibleSources[0],
     imageMode,
   );
   const internalProgress = useSharedValue(clamp(initialProgress));
@@ -171,9 +181,18 @@ export function JourneyMapScroll({
     Math.max(imageLayout.renderedImageWidth * 0.38, 124),
     180,
   );
+  const updatePage = useCallback(
+    (pageIndex: number) => onPageChange?.(pageIndex),
+    [onPageChange],
+  );
+
+  useEffect(() => {
+    progress.value = 0;
+    updatePage(0);
+  }, [frames.length, progress, updatePage]);
 
   const panGesture = Gesture.Pan()
-    .enabled(enabled)
+    .enabled(enabled && lastFrameIndex > 0)
     .activeOffsetY([-4, 4])
     .onBegin(() => {
       cancelAnimation(progress);
@@ -184,6 +203,7 @@ export function JourneyMapScroll({
       progress.value = clamp(
         progressAtGestureStart.value - event.translationY / dragDistance,
       );
+      runOnJS(updatePage)(Math.round(progress.value * lastFrameIndex));
     })
     .onEnd((event) => {
       // A small velocity projection makes quick swipes feel responsive.
@@ -192,13 +212,14 @@ export function JourneyMapScroll({
       );
 
       if (snapToFrames) {
-        // With evenly spaced frames, rounding selects the nearest milestone.
-        const lastFrameIndex = JOURNEY_FRAMES.length - 1;
+        // With evenly spaced frames, rounding selects the nearest page.
         const snappedProgress =
           Math.round(projectedProgress * lastFrameIndex) / lastFrameIndex;
         progress.value = withSpring(snappedProgress, SNAP_SPRING);
+        runOnJS(updatePage)(Math.round(snappedProgress * lastFrameIndex));
       } else {
         progress.value = withSpring(projectedProgress, SNAP_SPRING);
+        runOnJS(updatePage)(Math.round(projectedProgress * lastFrameIndex));
       }
     });
 
@@ -206,10 +227,10 @@ export function JourneyMapScroll({
     <View style={[styles.container, style]}>
       <GestureDetector gesture={panGesture}>
         <View collapsable={false} style={styles.gestureSurface}>
-          {JOURNEY_FRAMES.map((frame) => (
+          {journeyFrames.map((frame, index) => (
             <JourneyFrameLayer
-              fadeRange={frameFadeRange}
-              key={frame.position}
+              fadeRange={effectiveFadeRange}
+              key={`${index}-${frame.position}`}
               mode={imageMode}
               position={frame.position}
               progress={progress}

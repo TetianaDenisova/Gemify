@@ -1,13 +1,17 @@
 import { StyleSheet } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { getJourneyMilestoneLayout } from "@/components/JourneyMilestone";
+import {
+  getJourneyMilestoneLayout,
+  type JourneyMilestonePosition,
+} from "@/components/JourneyMilestone";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
 
 export type JourneyMilestonePathProps = {
   imageHeight: number;
   imageWidth: number;
   milestones: readonly JourneyMilestoneData[];
+  positions?: readonly JourneyMilestonePosition[];
 };
 
 type Point = {
@@ -94,21 +98,21 @@ export function JourneyMilestonePath({
   imageHeight,
   imageWidth,
   milestones,
+  positions,
 }: JourneyMilestonePathProps) {
-  const points = [...milestones]
-    .sort((first, second) => first.id - second.id)
-    .map((milestone) => {
-      const layout = getJourneyMilestoneLayout(
-        imageHeight,
-        imageWidth,
-        milestone,
-      );
+  const points = milestones.map((milestone, index) => {
+    const layout = getJourneyMilestoneLayout(
+      imageHeight,
+      imageWidth,
+      milestone,
+      positions?.[index],
+    );
 
-      return {
-        x: layout.ringCenterX,
-        y: layout.ringCenterY,
-      };
-    });
+    return {
+      x: layout.ringCenterX,
+      y: layout.ringCenterY,
+    };
+  });
   const { path, segments } = buildSmoothPath(points);
   const dustPoints = getDustPoints(points);
   const outerWidth = clamp(imageWidth * 0.024, 7, 10);

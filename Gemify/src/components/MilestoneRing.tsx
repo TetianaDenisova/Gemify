@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-const MagicRingAsset = require("../../assets/magic-ring-advanced.jpg") as ImageSourcePropType;
+const MagicRingAsset = require("../../assets/magic-ring-advanced.png") as ImageSourcePropType;
 
 export type MilestoneRingVariant = "simple" | "detailed";
 
