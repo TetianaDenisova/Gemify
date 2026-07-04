@@ -24,7 +24,7 @@ export type MilestoneRingProps = {
   rotation?: number;
   size?: number;
   style?: StyleProp<ViewStyle>;
-  /** Compresses the imported oval for stronger distance perspective. */
+  /** Kept for compatibility; the PNG's own aspect ratio is preserved. */
   tilt?: number;
   variant?: MilestoneRingVariant;
 };
@@ -46,8 +46,8 @@ function clamp(value: number, min: number, max: number) {
 function renderMagicRingAsset(): ReactNode {
   return (
     <Image
+      resizeMode="contain"
       source={MagicRingAsset}
-      resizeMode="stretch"
       style={styles.assetImage}
     />
   );
@@ -55,10 +55,10 @@ function renderMagicRingAsset(): ReactNode {
 
 export function getMilestoneRingDimensions(
   size: number,
-  tilt = 0.34,
+  _tilt = 0.34,
 ): MilestoneRingDimensions {
   const ringWidth = Math.max(size, 32);
-  const ringHeight = ringWidth * clamp(tilt, 0.16, 0.58);
+  const ringHeight = ringWidth;
 
   return {
     ringWidth,
@@ -79,12 +79,10 @@ export function MilestoneRing({
   locked = false,
   onPress,
   opacity = 1,
-  rotation = 0,
   size = 120,
   style,
-  tilt = 0.34,
 }: MilestoneRingProps) {
-  const dimensions = getMilestoneRingDimensions(size, tilt);
+  const dimensions = getMilestoneRingDimensions(size);
 
   const stateOpacity = locked ? 0.32 : completed ? 0.86 : active ? 0.97 : 0.76;
 
@@ -115,10 +113,6 @@ export function MilestoneRing({
       width: dimensions.canvasWidth,
       height: dimensions.canvasHeight,
       opacity: resolvedOpacity,
-      transform: [
-        { rotate: `${rotation}deg` },
-        { scale: active ? 1.018 : 1 },
-      ],
     },
   ];
 
