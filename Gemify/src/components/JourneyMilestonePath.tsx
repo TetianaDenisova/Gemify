@@ -6,6 +6,7 @@ import {
   type JourneyMilestonePosition,
 } from "@/components/JourneyMilestone";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
+import { colors } from "@/theme/colors";
 
 export type JourneyMilestonePathProps = {
   imageHeight: number;
@@ -135,7 +136,8 @@ export function JourneyMilestonePath({
           d={segment}
           fill="none"
           key={`outer-${index}`}
-          stroke="rgba(255, 196, 92, 0.05)"
+          opacity={0.12}
+          stroke={colors.primary}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={outerWidth * (1 - index * 0.045)}
@@ -146,7 +148,8 @@ export function JourneyMilestonePath({
           d={segment}
           fill="none"
           key={`middle-${index}`}
-          stroke="rgba(255, 209, 102, 0.11)"
+          opacity={0.26}
+          stroke={colors.primary}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={middleWidth * (1 - index * 0.04)}
@@ -157,7 +160,8 @@ export function JourneyMilestonePath({
           d={segment}
           fill="none"
           key={`core-${index}`}
-          stroke="rgba(255, 230, 160, 0.52)"
+          opacity={0.72}
+          stroke={colors.primary}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={1 - index * 0.04}
@@ -167,7 +171,7 @@ export function JourneyMilestonePath({
         d={path}
         fill="none"
         opacity={0.18}
-        stroke="#fff1c7"
+        stroke={colors.textPrimary}
         strokeDasharray="0.8 24"
         strokeLinecap="round"
         strokeWidth={1.25}
@@ -176,8 +180,9 @@ export function JourneyMilestonePath({
         <Circle
           cx={dust.x}
           cy={dust.y}
-          fill="rgba(255, 224, 151, 0.2)"
+          fill={colors.primarySoft}
           key={`${index}-${dust.x}-${dust.y}`}
+          opacity={0.35}
           r={dust.radius}
         />
       ))}

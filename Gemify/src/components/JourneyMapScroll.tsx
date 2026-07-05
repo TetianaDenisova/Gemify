@@ -15,6 +15,8 @@ import {
   View,
 } from "react-native";
 
+import { colors } from "@/theme/colors";
+
 export type JourneyMapLayout = {
   imageHeight: number;
   imageWidth: number;
@@ -136,10 +138,10 @@ export function JourneyMapScroll({
       {showAtmosphere ? (
         <LinearGradient
           colors={[
-            "rgba(2, 4, 12, 0.3)",
-            "rgba(2, 4, 12, 0.01)",
-            "rgba(2, 4, 12, 0.08)",
-            "rgba(2, 4, 12, 0.38)",
+            colors.overlayDark,
+            colors.transparent,
+            colors.overlayLight,
+            colors.overlayDark,
           ]}
           locations={[0, 0.28, 0.72, 1]}
           pointerEvents="none"
@@ -155,7 +157,7 @@ export default JourneyMapScroll;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#02040c",
+    backgroundColor: colors.background,
     overflow: "hidden",
   },
   scrollView: {

@@ -4,6 +4,9 @@ import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import { Asset } from "expo-asset";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { colors } from "@/theme/colors";
+import { gradients } from "@/theme/theme";
+
 export type JourneyBackgroundMode = "contain" | "cover";
 
 export type ResponsiveJourneyImageLayout = {
@@ -120,7 +123,7 @@ export function ResponsiveJourneyBackground({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#02040c", "#0a0b1d", "#03050e"]}
+        colors={gradients.background}
         locations={[0, 0.48, 1]}
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
-    backgroundColor: "#02040c",
+    backgroundColor: colors.background,
   },
   image: {
     position: "absolute",

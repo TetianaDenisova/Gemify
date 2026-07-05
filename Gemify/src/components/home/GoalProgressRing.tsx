@@ -15,7 +15,7 @@ const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getThemeColor(themeColor: ThemeColor) {
-  return themeColor === "gold" ? colors.gold : colors.purple;
+  return themeColor === "gold" ? colors.primary : colors.primarySoft;
 }
 
 function clampProgress(progressPercent: number) {
@@ -47,7 +47,7 @@ export function GoalProgressRing({
           stroke={accentColor}
           strokeWidth={STROKE_WIDTH}
           strokeOpacity={0.2}
-          fill="rgba(5, 7, 17, 0.38)"
+          fill={colors.surfaceGlass}
         />
 
         <Circle
@@ -56,7 +56,7 @@ export function GoalProgressRing({
           r={RADIUS}
           stroke={accentColor}
           strokeWidth={STROKE_WIDTH}
-          fill="transparent"
+          fill={colors.transparent}
           strokeLinecap="round"
           strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
           strokeDashoffset={strokeDashoffset}

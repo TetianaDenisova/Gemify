@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors } from "@/theme/colors";
+import { spacing, typography } from "@/theme/theme";
 
 interface HomeHeaderProps {
   greeting: string;
@@ -18,20 +19,18 @@ export function HomeHeader({ greeting, subtitle }: HomeHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: spacing.sm,
     paddingTop: 2,
   },
   greeting: {
-    color: colors.textPrimary,
+    ...typography.title,
     fontSize: 16,
     fontWeight: "800",
-    letterSpacing: 0,
-    lineHeight: 31,
+    lineHeight: 24,
   },
   subtitle: {
+    ...typography.caption,
     color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
+    marginTop: spacing.xs,
   },
 });

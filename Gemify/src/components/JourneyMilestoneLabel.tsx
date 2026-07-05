@@ -2,6 +2,9 @@ import type { StyleProp, ViewStyle } from "react-native";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
 
+import { colors } from "@/theme/colors";
+import { shadows, typography } from "@/theme/theme";
+
 export type JourneyMilestoneLabelSide = "left" | "right";
 
 export type JourneyMilestoneLabelProps = {
@@ -31,7 +34,7 @@ function GoldenConnector() {
     >
       <Line
         opacity={0.12}
-        stroke="#D9B36A"
+        stroke={colors.primary}
         strokeLinecap="round"
         strokeWidth={5}
         x1={0}
@@ -41,7 +44,7 @@ function GoldenConnector() {
       />
       <Line
         opacity={0.82}
-        stroke="#D9B36A"
+        stroke={colors.primary}
         strokeLinecap="round"
         strokeWidth={1}
         x1={0}
@@ -123,31 +126,27 @@ const styles = StyleSheet.create({
     height: BADGE_SIZE,
     borderRadius: BADGE_SIZE / 2,
     borderWidth: 1,
-    borderColor: "rgba(217, 179, 106, 0.92)",
-    backgroundColor: "rgba(8, 8, 14, 0.72)",
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceGlass,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#D9B36A",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 5,
+    ...shadows.goldGlow,
   },
   badgeInnerRing: {
     position: "absolute",
     inset: 3,
     borderRadius: (BADGE_SIZE - 6) / 2,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(245, 210, 138, 0.24)",
+    borderColor: colors.borderSoft,
   },
   badgeText: {
-    color: "#F5D28A",
+    color: colors.primary,
     fontFamily: FANTASY_SERIF,
     fontSize: 17,
     fontWeight: "600",
     lineHeight: 21,
     textAlign: "center",
-    textShadowColor: "rgba(217, 179, 106, 0.38)",
+    textShadowColor: colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 5,
   },
@@ -162,20 +161,21 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   title: {
-    color: "#E6C27A",
+    color: colors.primarySoft,
     fontFamily: FANTASY_SERIF,
     fontSize: 15,
     fontWeight: "500",
     letterSpacing: 0.15,
     lineHeight: 18,
     textAlign: "left",
-    textShadowColor: "rgba(217, 179, 106, 0.18)",
+    textShadowColor: colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
   },
   subtitle: {
+    ...typography.caption,
     marginTop: 1,
-    color: "rgba(167, 164, 160, 0.78)",
+    color: colors.textMuted,
     fontSize: 11,
     fontWeight: "300",
     letterSpacing: 0.1,

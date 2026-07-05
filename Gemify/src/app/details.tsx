@@ -1,6 +1,9 @@
 import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+import { colors } from "@/theme/colors";
+import { spacing, typography } from "@/theme/theme";
+
 export default function DetailsScreen() {
   return (
     <View style={styles.container}>
@@ -16,25 +19,21 @@ export default function DetailsScreen() {
 
 const styles = StyleSheet.create({
   body: {
-    color: "#4d5662",
-    fontSize: 16,
-    lineHeight: 23,
+    ...typography.body,
     maxWidth: 340,
     textAlign: "center",
   },
   container: {
     alignItems: "center",
-    backgroundColor: "#f7f9fc",
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: "center",
-    padding: 24,
+    padding: spacing.lg,
   },
   title: {
-    color: "#15171a",
-    fontSize: 30,
-    fontWeight: "800",
+    ...typography.title,
     letterSpacing: 0,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
     textAlign: "center",
   },
 });

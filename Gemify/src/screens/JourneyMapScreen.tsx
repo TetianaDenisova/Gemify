@@ -31,14 +31,13 @@ import {
   journeyMilestones,
   type JourneyMilestoneData,
 } from "@/data/journeyMilestones";
-import {
-  getJourneyPageConfig,
-  journeyPageConfigs,
-} from "@/data/journeyPageConfig";
+import { journeyPageConfigs } from "@/data/journeyPageConfig";
 import {
   getMilestoneRingY,
   paginateMilestones,
 } from "@/utils/milestonePagination";
+import { colors } from "@/theme/colors";
+import { gradients, radius, shadows, spacing, typography } from "@/theme/theme";
 
 type MilestoneModalProps = {
   milestone: JourneyMilestoneData | null;
@@ -125,12 +124,7 @@ function QuestButtonShimmer() {
             ]}
           >
             <LinearGradient
-              colors={[
-                "rgba(255, 220, 145, 0)",
-                "rgba(255, 224, 157, 0.28)",
-                "rgba(255, 246, 216, 0.42)",
-                "rgba(255, 220, 145, 0)",
-              ]}
+              colors={gradients.shimmer}
               end={{ x: 1, y: 0.5 }}
               locations={[0, 0.35, 0.56, 1]}
               start={{ x: 0, y: 0.5 }}
@@ -143,11 +137,11 @@ function QuestButtonShimmer() {
           >
             <LinearGradient
               colors={[
-                "rgba(255, 239, 196, 0)",
-                "rgba(255, 230, 164, 0.36)",
-                "rgba(255, 253, 239, 0.78)",
-                "rgba(255, 224, 145, 0.3)",
-                "rgba(255, 239, 196, 0)",
+                colors.transparent,
+                colors.overlayLight,
+                colors.primaryGlow,
+                colors.overlayLight,
+                colors.transparent,
               ]}
               end={{ x: 1, y: 0.5 }}
               locations={[0, 0.28, 0.5, 0.72, 1]}
@@ -184,7 +178,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
         {milestone ? (
           <View style={styles.sheetShadow}>
             <LinearGradient
-              colors={["rgba(27, 20, 52, 0.98)", "rgba(8, 10, 24, 0.99)"]}
+              colors={gradients.surface}
               style={styles.sheet}
             >
               <View style={styles.sheetHeader}>
@@ -223,7 +217,7 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
                 style={({ pressed }) => pressed && styles.buttonPressed}
               >
                 <LinearGradient
-                  colors={["#8d50f5", "#c06cff", "#e7a96d"]}
+                  colors={gradients.primary}
                   end={{ x: 1, y: 0.5 }}
                   start={{ x: 0, y: 0.5 }}
                   style={styles.questButton}
@@ -244,25 +238,15 @@ export function GoalJourneyMapScreen() {
   const router = useRouter();
   const [selectedMilestone, setSelectedMilestone] =
     useState<JourneyMilestoneData | null>(null);
-  const currentPageIndex = 0;
   const milestonePages = useMemo(
     () => paginateMilestones(journeyMilestones),
     [],
   );
-  const journeyPages = useMemo(
-    () =>
-      milestonePages.map((milestones, pageIndex) => ({
-        config: getJourneyPageConfig(pageIndex),
-        milestones,
-      })),
-    [milestonePages],
-  );
-  const currentPage = journeyPages[currentPageIndex];
-  const currentConfig = currentPage?.config ?? journeyPageConfigs[0];
-  const currentMilestones = currentPage?.milestones ?? [];
+  const currentConfig = journeyPageConfigs[0];
+  const currentMilestones = milestonePages[0] ?? [];
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
-      currentMilestones.map((milestone, index) => ({
+      currentMilestones.map((_, index) => ({
         x: 0.5,
         y: getMilestoneRingY(index, currentMilestones.length, currentConfig),
       })),
@@ -314,7 +298,7 @@ export default GoalJourneyMapScreen;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#02040c",
+    backgroundColor: colors.background,
   },
   modalRoot: {
     flex: 1,
@@ -323,23 +307,19 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(1, 2, 10, 0.76)",
+    backgroundColor: colors.overlayDark,
   },
   sheetShadow: {
     marginHorizontal: 14,
-    borderRadius: 28,
-    backgroundColor: "#080a18",
-    shadowColor: "#a568ff",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 24,
-    elevation: 22,
+    borderRadius: radius.lg,
+    backgroundColor: colors.backgroundSoft,
+    ...shadows.softDark,
   },
   sheet: {
-    borderRadius: 28,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "rgba(211, 179, 255, 0.24)",
-    padding: 22,
+    borderColor: colors.borderSoft,
+    padding: spacing.lg,
   },
   sheetHeader: {
     flexDirection: "row",
@@ -351,16 +331,13 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(8, 8, 22, 0.9)",
+    backgroundColor: colors.surfaceGlass,
     borderWidth: 1.5,
-    borderColor: "#ffd77e",
-    shadowColor: "#ffca64",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
+    borderColor: colors.primary,
+    ...shadows.goldGlow,
   },
   modalNumberText: {
-    color: "#ffe7ad",
+    color: colors.primary,
     fontFamily: "serif",
     fontSize: 28,
     lineHeight: 33,
@@ -370,20 +347,19 @@ const styles = StyleSheet.create({
     marginLeft: 14,
   },
   modalEyebrow: {
-    color: "#c38aff",
+    color: colors.primarySoft,
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.4,
     lineHeight: 12,
   },
   modalTitle: {
-    color: "#fff8e9",
-    fontFamily: "serif",
+    ...typography.title,
     fontSize: 25,
     lineHeight: 30,
   },
   modalSubtitle: {
-    color: "rgba(231, 225, 238, 0.68)",
+    color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -393,12 +369,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    backgroundColor: colors.surfaceGlass,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: colors.borderSoft,
   },
   closeText: {
-    color: "#fff9ff",
+    color: colors.textPrimary,
     fontSize: 25,
     fontWeight: "300",
     lineHeight: 28,
@@ -406,10 +382,10 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginVertical: 18,
-    backgroundColor: "rgba(217, 190, 255, 0.14)",
+    backgroundColor: colors.borderSoft,
   },
   sectionLabel: {
-    color: "#b77dff",
+    color: colors.primarySoft,
     fontSize: 9,
     fontWeight: "700",
     letterSpacing: 1.6,
@@ -417,14 +393,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   stateValue: {
-    color: "#ffe3a3",
+    color: colors.primary,
     fontSize: 16,
     fontWeight: "600",
     lineHeight: 21,
     marginTop: 3,
   },
   description: {
-    color: "rgba(235, 230, 239, 0.72)",
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 4,
@@ -432,18 +408,14 @@ const styles = StyleSheet.create({
   },
   questButton: {
     minHeight: 52,
-    borderRadius: 17,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    shadowColor: "#b568ff",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 10,
+    ...shadows.goldGlow,
   },
   questButtonText: {
-    color: "#fffaff",
+    color: colors.secondaryDark,
     fontSize: 15,
     fontWeight: "700",
     zIndex: 2,

@@ -4,13 +4,14 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 import type { FocusItem, ThemeColor } from "@/data/homeData";
 import { focusIcons } from "@/data/icons";
 import { colors } from "@/theme/colors";
+import { radius, shadows, spacing, typography } from "@/theme/theme";
 
 interface CurrentFocusCardProps {
   item: FocusItem;
 }
 
 function getThemeColor(themeColor: ThemeColor) {
-  return themeColor === "gold" ? colors.gold : colors.purple;
+  return themeColor === "gold" ? colors.primary : colors.primarySoft;
 }
 
 export function CurrentFocusCard({ item }: CurrentFocusCardProps) {
@@ -19,7 +20,7 @@ export function CurrentFocusCard({ item }: CurrentFocusCardProps) {
 
   return (
     <View style={styles.card}>
-      <View style={[styles.iconBox, { borderColor: `${accentColor}55` }]}>
+      <View style={styles.iconBox}>
         <View style={[styles.iconGlow, { backgroundColor: accentColor }]} />
         <Image
           source={iconSource}
@@ -48,22 +49,25 @@ export function CurrentFocusCard({ item }: CurrentFocusCardProps) {
 const styles = StyleSheet.create({
   card: {
     height: 86,
-    borderRadius: 16,
-    backgroundColor: "rgba(5, 7, 17, 0.88)",
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceGlass,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     overflow: "hidden",
+    ...shadows.softDark,
   },
 
   iconBox: {
     width: 56,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: "rgba(35, 20, 58, 0.42)",
+    borderRadius: radius.md,
+    backgroundColor: colors.secondaryDark,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
@@ -74,7 +78,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 42,
     height: 42,
-    borderRadius: 999,
+    borderRadius: radius.round,
     opacity: 0.16,
   },
 
@@ -89,6 +93,7 @@ const styles = StyleSheet.create({
   },
 
   timeLabel: {
+    ...typography.caption,
     color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 15,
@@ -96,7 +101,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: colors.textPrimary,
+    ...typography.title,
     fontFamily: Platform.select({
       ios: "Georgia",
       android: "serif",
@@ -119,23 +124,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 35,
     height: 35,
-    borderRadius: 999,
+    borderRadius: radius.round,
     opacity: 0.2,
   },
 
   completedCircle: {
     width: 35,
     height: 35,
-    borderRadius: 999,
+    borderRadius: radius.round,
     borderWidth: 2,
-    backgroundColor: "rgba(5, 7, 17, 0.72)",
+    backgroundColor: colors.surfaceGlass,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#FFF1C1",
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+    ...shadows.goldGlow,
   },
 
   check: {

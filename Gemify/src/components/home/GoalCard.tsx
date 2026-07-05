@@ -5,6 +5,7 @@ import type { Goal, ThemeColor } from "@/data/homeData";
 import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
 import { colors } from "@/theme/colors";
+import { radius, shadows, spacing, typography } from "@/theme/theme";
 
 import { GoalProgressBar } from "./GoalProgressBar";
 import { GoalProgressRing } from "./GoalProgressRing";
@@ -25,7 +26,7 @@ const absoluteFill = {
 };
 
 function getThemeColor(themeColor: ThemeColor) {
-  return themeColor === "gold" ? colors.gold : colors.purple;
+  return themeColor === "gold" ? colors.primary : colors.primarySoft;
 }
 
 export function GoalCard({ goal, onPress }: GoalCardProps) {
@@ -96,14 +97,15 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderRadius: 15,
+    backgroundColor: colors.surfaceGlass,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
     borderWidth: 1,
     height: 132,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     overflow: "hidden",
     position: "relative",
+    ...shadows.softDark,
   },
 
   cardPressed: {
@@ -112,14 +114,14 @@ const styles = StyleSheet.create({
 
   darkOverlay: {
     ...absoluteFill,
-    backgroundColor: "rgba(4, 6, 15, 0.34)",
+    backgroundColor: colors.overlayDark,
     zIndex: 1,
   },
 
   inner: {
     flex: 1,
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     paddingVertical: 14,
     zIndex: 3,
   },
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: colors.textPrimary,
+    ...typography.title,
     fontFamily: Platform.select({
       ios: "Georgia",
       android: "serif",
@@ -178,6 +180,7 @@ const styles = StyleSheet.create({
   },
 
   taskCount: {
+    ...typography.caption,
     color: colors.textSecondary,
     fontSize: 10,
     lineHeight: 13,

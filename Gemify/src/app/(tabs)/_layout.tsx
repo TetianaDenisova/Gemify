@@ -4,6 +4,7 @@ import { StyleSheet } from "react-native";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
 import { colors } from "@/theme/colors";
+import { radius, shadows, spacing, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
@@ -28,10 +29,12 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: "#ffffff" },
-        headerTintColor: "#15171a",
-        tabBarActiveTintColor: colors.gold,
-        tabBarInactiveTintColor: "#B39582",
+        sceneStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.backgroundSoft },
+        headerTintColor: colors.primary,
+        headerTitleStyle: { color: colors.textPrimary },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -86,13 +89,15 @@ const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
     height: 72,
-    marginHorizontal: 28,
-    marginBottom: 10,
-    borderTopWidth: 0,
-    borderWidth: 0,
-    borderRadius: 22,
-    backgroundColor: "rgba(5, 7, 17, 0.92)",
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    borderTopWidth: 1,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceGlass,
     overflow: "hidden",
+    ...shadows.softDark,
   },
 
   tabBarItem: {
@@ -100,9 +105,9 @@ const styles = StyleSheet.create({
   },
 
   tabBarLabel: {
-    fontSize: 12,
-    fontWeight: "400",
-    lineHeight: 15,
+    ...typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     marginTop: 0,
   },
 

@@ -2,6 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import type { ThemeColor } from "@/data/homeData";
 import { colors } from "@/theme/colors";
+import { radius } from "@/theme/theme";
 
 interface GoalProgressBarProps {
   progressPercent: number;
@@ -9,7 +10,7 @@ interface GoalProgressBarProps {
 }
 
 function getThemeColor(themeColor: ThemeColor) {
-  return themeColor === "gold" ? colors.gold : colors.purple;
+  return themeColor === "gold" ? colors.primary : colors.primarySoft;
 }
 
 function clampProgress(progressPercent: number) {
@@ -40,12 +41,12 @@ export function GoalProgressBar({
 
 const styles = StyleSheet.create({
   fill: {
-    borderRadius: 999,
+    borderRadius: radius.round,
     height: "100%",
   },
   track: {
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
-    borderRadius: 999,
+    backgroundColor: colors.borderSoft,
+    borderRadius: radius.round,
     height: 3,
     overflow: "hidden",
     width: "100%",
