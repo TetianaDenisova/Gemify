@@ -17,9 +17,18 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="details" options={{ title: "Gem details" }} />
-        <Stack.Screen name="journey-map" options={{ headerShown: false }} />
-        <Stack.Screen name="create-goal" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="details"
+          options={{ headerTransparent: true, title: "Gem details" }}
+        />
+        <Stack.Screen
+          name="journey-map"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
+        <Stack.Screen
+          name="create-goal"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

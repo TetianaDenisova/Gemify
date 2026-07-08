@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   cancelAnimation,
@@ -235,7 +234,6 @@ function MilestoneModal({ milestone, onClose }: MilestoneModalProps) {
 }
 
 export function GoalJourneyMapScreen() {
-  const router = useRouter();
   const [selectedMilestone, setSelectedMilestone] =
     useState<JourneyMilestoneData | null>(null);
   const milestonePages = useMemo(
@@ -252,15 +250,6 @@ export function GoalJourneyMapScreen() {
       })),
     [currentConfig, currentMilestones],
   );
-
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    router.replace("/");
-  };
 
   return (
     <View style={styles.screen}>
@@ -283,7 +272,7 @@ export function GoalJourneyMapScreen() {
         }
       </JourneyMapScroll>
 
-      <JourneyMapControls onBack={handleBack} />
+      <JourneyMapControls />
 
       <MilestoneModal
         milestone={selectedMilestone}

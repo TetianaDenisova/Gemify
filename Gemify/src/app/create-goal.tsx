@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -11,9 +10,13 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
+import { NavigationHeader } from "@/components/NavigationHeader";
 import { colors } from "@/theme/colors";
 import { radius, shadows, spacing, typography } from "@/theme/theme";
 
@@ -22,20 +25,6 @@ const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
-}
-
-function BackIcon() {
-  return (
-    <Svg fill="none" height={22} viewBox="0 0 24 24" width={22}>
-      <Path
-        d="M19 12H5M11 18l-6-6 6-6"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </Svg>
-  );
 }
 
 function BulbIcon() {
@@ -67,7 +56,7 @@ function ArrowIcon() {
 }
 
 export default function CreateGoalScreen() {
-  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [inputFocused, setInputFocused] = useState(false);
   const [value, setValue] = useState("");
   const { height, width } = useWindowDimensions();
@@ -84,150 +73,137 @@ export default function CreateGoalScreen() {
   const sectionGap = compactLayout ? spacing.md : spacing.xl;
 
   return (
-    <View style={styles.screen}>
-      <Image
-        resizeMode="cover"
-        source={ENTERING_BACKGROUND}
-        style={[styles.backgroundImage, { height, width }]}
-      />
-      <View pointerEvents="none" style={styles.darkOverlay} />
+    <>
+      <NavigationHeader />
+      <View style={styles.screen}>
+        <Image
+          resizeMode="cover"
+          source={ENTERING_BACKGROUND}
+          style={[styles.backgroundImage, { height, width }]}
+        />
+        <View pointerEvents="none" style={styles.darkOverlay} />
 
-      <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={
-            Platform.OS === "ios"
-              ? "padding"
-              : Platform.OS === "android"
-                ? "height"
-                : undefined
-          }
-          style={styles.keyboardView}
-        >
-          <View
-            style={[
-              styles.content,
-              {
-                paddingBottom: compactLayout ? spacing.md : spacing.lg,
-                paddingHorizontal: horizontalPadding,
-              },
-            ]}
+        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+          <KeyboardAvoidingView
+            behavior={
+              Platform.OS === "ios"
+                ? "padding"
+                : Platform.OS === "android"
+                  ? "height"
+                  : undefined
+            }
+            style={styles.keyboardView}
           >
-            <Pressable
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => router.back()}
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.controlPressed,
-              ]}
-            >
-              <View pointerEvents="none" style={styles.controlInnerEdge} />
-              <BackIcon />
-            </Pressable>
-
             <View
               style={[
-                styles.topContent,
-                { marginTop: compactLayout ? spacing.xs : spacing.sm },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.title,
-                  {
-                    fontSize: titleFontSize,
-                    lineHeight: titleFontSize + 6,
-                  },
-                ]}
-              >
-                What kind of{"\n"}future makes{"\n"}you come alive?
-              </Text>
-
-              <Text
-                style={[
-                  styles.subtitle,
-                  { marginTop: spacing.lg },
-                ]}
-              >
-                Not a goal. A reality.{"\n"}A life you want to live.
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.formArea,
-                { marginTop: compactLayout ? spacing.sm : spacing.md },
+                styles.content,
+                {
+                  paddingBottom: compactLayout ? spacing.md : spacing.lg,
+                  paddingHorizontal: horizontalPadding,
+                  paddingTop: insets.top + 68,
+                },
               ]}
             >
               <View
                 style={[
-                  styles.inputWrapper,
-                  { minHeight: inputHeight },
-                  inputFocused && styles.inputWrapperFocused,
+                  styles.topContent,
+                  { marginTop: compactLayout ? spacing.xs : spacing.sm },
                 ]}
               >
-                <TextInput
-                  accessibilityLabel="Describe your future reality"
-                  maxLength={MAX_LENGTH}
-                  multiline
-                  onBlur={() => setInputFocused(false)}
-                  onChangeText={setValue}
-                  onFocus={() => setInputFocused(true)}
-                  placeholder="Write your future..."
-                  placeholderTextColor={colors.textMuted}
-                  selectionColor={colors.primary}
+                <Text
                   style={[
-                    styles.input,
-                    { minHeight: compactLayout ? 98 : 128 },
+                    styles.title,
+                    {
+                      fontSize: titleFontSize,
+                      lineHeight: titleFontSize + 6,
+                    },
                   ]}
-                  textAlignVertical="top"
-                  value={value}
-                />
+                >
+                  What kind of{"\n"}future makes{"\n"}you come alive?
+                </Text>
 
-                <Text style={styles.counter}>
-                  {value.length}/{MAX_LENGTH}
+                <Text
+                  style={[styles.subtitle, { marginTop: spacing.lg }]}
+                >
+                  Not a goal. A reality.{"\n"}A life you want to live.
                 </Text>
               </View>
-            </View>
 
-            <View style={[styles.bottomArea, { marginTop: sectionGap }]}>
               <View
                 style={[
-                  styles.hintRow,
-                  { marginBottom: compactLayout ? spacing.md : spacing.lg },
+                  styles.formArea,
+                  { marginTop: compactLayout ? spacing.sm : spacing.md },
                 ]}
               >
-                <View style={styles.iconCircle}>
-                  <BulbIcon />
-                </View>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { minHeight: inputHeight },
+                    inputFocused && styles.inputWrapperFocused,
+                  ]}
+                >
+                  <TextInput
+                    accessibilityLabel="Describe your future reality"
+                    maxLength={MAX_LENGTH}
+                    multiline
+                    onBlur={() => setInputFocused(false)}
+                    onChangeText={setValue}
+                    onFocus={() => setInputFocused(true)}
+                    placeholder="Write your future..."
+                    placeholderTextColor={colors.textMuted}
+                    selectionColor={colors.primary}
+                    style={[
+                      styles.input,
+                      { minHeight: compactLayout ? 98 : 128 },
+                    ]}
+                    textAlignVertical="top"
+                    value={value}
+                  />
 
-                <Text style={styles.hintText}>
-                  Be vivid. Be honest. Be you.{"\n"}
-                  There&apos;s no right or wrong here.
-                </Text>
+                  <Text style={styles.counter}>
+                    {value.length}/{MAX_LENGTH}
+                  </Text>
+                </View>
               </View>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => console.log("Continue creating goal", value)}
-                style={({ pressed }) => [
-                  styles.continueButton,
-                  { height: compactLayout ? 56 : 64 },
-                  pressed && styles.continueButtonPressed,
-                ]}
-              >
-                <Text style={styles.continueText}>Continue</Text>
+              <View style={[styles.bottomArea, { marginTop: sectionGap }]}>
+                <View
+                  style={[
+                    styles.hintRow,
+                    { marginBottom: compactLayout ? spacing.md : spacing.lg },
+                  ]}
+                >
+                  <View style={styles.iconCircle}>
+                    <BulbIcon />
+                  </View>
 
-                <View style={styles.arrowCircle}>
-                  <ArrowIcon />
+                  <Text style={styles.hintText}>
+                    Be vivid. Be honest. Be you.{"\n"}
+                    There&apos;s no right or wrong here.
+                  </Text>
                 </View>
-              </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => console.log("Continue creating goal", value)}
+                  style={({ pressed }) => [
+                    styles.continueButton,
+                    { height: compactLayout ? 56 : 64 },
+                    pressed && styles.continueButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.continueText}>Continue</Text>
+
+                  <View style={styles.arrowCircle}>
+                    <ArrowIcon />
+                  </View>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    </>
   );
 }
 
@@ -244,21 +220,6 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFill,
-  },
-  backButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 44,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   bottomArea: {
     width: "100%",
@@ -286,17 +247,6 @@ const styles = StyleSheet.create({
     color: colors.secondaryDark,
     fontSize: 18,
     fontWeight: "700",
-  },
-  controlInnerEdge: {
-    ...StyleSheet.absoluteFill,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    margin: 2,
-  },
-  controlPressed: {
-    backgroundColor: colors.secondary,
-    transform: [{ scale: 0.97 }],
   },
   counter: {
     ...typography.caption,
@@ -337,10 +287,14 @@ const styles = StyleSheet.create({
     width: 52,
   },
   input: {
+    backgroundColor: colors.transparent,
+    borderColor: colors.transparent,
+    borderWidth: 0,
     color: colors.textPrimary,
     flex: 1,
     fontSize: 16,
     lineHeight: 23,
+    outlineColor: colors.transparent,
     outlineWidth: 0,
     padding: 0,
   },
@@ -355,7 +309,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   inputWrapperFocused: {
-    borderColor: colors.transparent,
+    borderWidth: 0,
   },
   keyboardView: {
     flex: 1,

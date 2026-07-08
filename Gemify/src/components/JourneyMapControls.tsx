@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   Modal,
   Pressable,
@@ -9,55 +9,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
+import { NavigationHeader } from "@/components/NavigationHeader";
 import { colors } from "@/theme/colors";
 import { radius, shadows, spacing, typography } from "@/theme/theme";
-
-type FantasyIconButtonProps = {
-  accessibilityLabel: string;
-  disabled?: boolean;
-  icon: ReactNode;
-  onPress: () => void;
-};
-
-function FantasyIconButton({
-  accessibilityLabel,
-  disabled = false,
-  icon,
-  onPress,
-}: FantasyIconButtonProps) {
-  return (
-    <View style={[styles.buttonGlow, disabled && styles.buttonDisabled]}>
-      <Pressable
-        accessibilityLabel={accessibilityLabel}
-        accessibilityRole="button"
-        disabled={disabled}
-        hitSlop={8}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <View pointerEvents="none" style={styles.buttonInnerEdge} />
-        {icon}
-      </Pressable>
-    </View>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <Svg fill="none" height={25} viewBox="0 0 24 24" width={25}>
-      <Path
-        d="M19 12H5M11 18l-6-6 6-6"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </Svg>
-  );
-}
 
 function SparklesIcon() {
   return (
@@ -167,31 +121,18 @@ function JourneyOverviewModal({ onClose, visible }: JourneyOverviewModalProps) {
   );
 }
 
-type JourneyMapControlsProps = {
-  onBack: () => void;
-};
-
-export function JourneyMapControls({ onBack }: JourneyMapControlsProps) {
-  const insets = useSafeAreaInsets();
+export function JourneyMapControls() {
   const [overviewVisible, setOverviewVisible] = useState(false);
 
   return (
     <>
-      <View
-        pointerEvents="box-none"
-        style={[styles.controls, { top: insets.top + 22 }]}
-      >
-        <FantasyIconButton
-          accessibilityLabel="Navigate back"
-          icon={<ArrowLeftIcon />}
-          onPress={onBack}
-        />
-        <FantasyIconButton
-          accessibilityLabel="Open journey overview"
-          icon={<SparklesIcon />}
-          onPress={() => setOverviewVisible(true)}
-        />
-      </View>
+      <NavigationHeader
+        rightAction={{
+          accessibilityLabel: "Open journey overview",
+          icon: <SparklesIcon />,
+          onPress: () => setOverviewVisible(true),
+        }}
+      />
 
       <JourneyOverviewModal
         onClose={() => setOverviewVisible(false)}
@@ -202,47 +143,6 @@ export function JourneyMapControls({ onBack }: JourneyMapControlsProps) {
 }
 
 const styles = StyleSheet.create({
-  controls: {
-    position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  buttonGlow: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceGlass,
-    ...shadows.goldGlow,
-  },
-  button: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    backgroundColor: colors.surfaceGlass,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  buttonInnerEdge: {
-    ...StyleSheet.absoluteFill,
-    margin: 2,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderBottomColor: colors.secondaryDark,
-  },
-  buttonPressed: {
-    backgroundColor: colors.secondary,
-    borderColor: colors.primary,
-    transform: [{ scale: 0.97 }],
-  },
-  buttonDisabled: {
-    opacity: 0.38,
-  },
   modalRoot: {
     flex: 1,
     justifyContent: "flex-end",
