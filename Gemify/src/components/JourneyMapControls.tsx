@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   Modal,
   Pressable,
@@ -36,10 +37,15 @@ function SparklesIcon() {
 
 type JourneyOverviewModalProps = {
   onClose: () => void;
+  onOpenWhatIfPlan: () => void;
   visible: boolean;
 };
 
-function JourneyOverviewModal({ onClose, visible }: JourneyOverviewModalProps) {
+function JourneyOverviewModal({
+  onClose,
+  onOpenWhatIfPlan,
+  visible,
+}: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -105,14 +111,15 @@ function JourneyOverviewModal({ onClose, visible }: JourneyOverviewModalProps) {
             </View>
 
             <Pressable
+              accessibilityLabel="Check What If Plan"
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={onOpenWhatIfPlan}
               style={({ pressed }) => [
                 styles.continueButton,
                 pressed && styles.continueButtonPressed,
               ]}
             >
-              <Text style={styles.continueText}>Continue the Journey</Text>
+              <Text style={styles.continueText}>Check "What If" Plan</Text>
             </Pressable>
           </View>
         </View>
@@ -122,7 +129,13 @@ function JourneyOverviewModal({ onClose, visible }: JourneyOverviewModalProps) {
 }
 
 export function JourneyMapControls() {
+  const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
+
+  const openWhatIfPlan = () => {
+    setOverviewVisible(false);
+    router.push("/what-if-plan");
+  };
 
   return (
     <>
@@ -136,6 +149,7 @@ export function JourneyMapControls() {
 
       <JourneyOverviewModal
         onClose={() => setOverviewVisible(false)}
+        onOpenWhatIfPlan={openWhatIfPlan}
         visible={overviewVisible}
       />
     </>

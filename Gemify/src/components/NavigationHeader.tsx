@@ -1,6 +1,6 @@
 import { Stack, useRouter } from "expo-router";
 import { type ReactNode, useCallback } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
@@ -11,6 +11,7 @@ export type NavigationHeaderAction = {
   accessibilityLabel: string;
   disabled?: boolean;
   icon: ReactNode;
+  label?: string;
   onPress: () => void;
 };
 
@@ -39,10 +40,19 @@ function HeaderButton({
   accessibilityLabel,
   disabled = false,
   icon,
+  label,
   onPress,
 }: HeaderButtonProps) {
+  const hasLabel = Boolean(label);
+
   return (
-    <View style={[styles.buttonGlow, disabled && styles.buttonDisabled]}>
+    <View
+      style={[
+        styles.buttonGlow,
+        hasLabel && styles.buttonGlowWithLabel,
+        disabled && styles.buttonDisabled,
+      ]}
+    >
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
@@ -51,11 +61,13 @@ function HeaderButton({
         onPress={onPress}
         style={({ pressed }) => [
           styles.button,
+          hasLabel && styles.buttonWithLabel,
           pressed && styles.buttonPressed,
         ]}
       >
         <View pointerEvents="none" style={styles.buttonInnerEdge} />
         {icon}
+        {label ? <Text style={styles.buttonLabel}>{label}</Text> : null}
       </Pressable>
     </View>
   );
@@ -127,6 +139,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
+  buttonGlowWithLabel: {
+    minWidth: 128,
+    width: "auto",
+  },
   buttonInnerEdge: {
     ...StyleSheet.absoluteFill,
     borderBottomColor: colors.secondaryDark,
@@ -134,6 +150,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     margin: 2,
+  },
+  buttonLabel: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 20,
+    marginLeft: 8,
   },
   buttonPlaceholder: {
     height: 48,
@@ -143,6 +166,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
     borderColor: colors.primary,
     transform: [{ scale: 0.97 }],
+  },
+  buttonWithLabel: {
+    flexDirection: "row",
+    minWidth: 128,
+    paddingHorizontal: 18,
+    width: "auto",
   },
   header: {
     backgroundColor: colors.transparent,

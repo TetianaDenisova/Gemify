@@ -26,6 +26,10 @@ export default function RootLayout() {
           options={{ headerShown: true, headerTransparent: true }}
         />
         <Stack.Screen
+          name="what-if-plan"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
+        <Stack.Screen
           name="create-goal"
           options={{ headerShown: true, headerTransparent: true }}
         />
