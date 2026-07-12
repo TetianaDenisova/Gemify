@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import {
   Image,
   KeyboardAvoidingView,
@@ -21,7 +21,7 @@ import { NavigationHeader } from "@/components/NavigationHeader";
 import { colors } from "@/theme/colors";
 import { radius, shadows, spacing, typography } from "@/theme/theme";
 
-const DREAM_NAME_MAX_LENGTH = 60;
+const DESCRIPTION_MAX_LENGTH = 300;
 const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -56,11 +56,11 @@ function ArrowIcon() {
   );
 }
 
-export default function CreateGoalScreen() {
+export default function DescribeDreamScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [dreamNameFocused, setDreamNameFocused] = useState(false);
-  const [dreamName, setDreamName] = useState("");
+  const [descriptionFocused, setDescriptionFocused] = useState(false);
+  const [description, setDescription] = useState("");
   const { height, width } = useWindowDimensions();
   const compactLayout = height < 760 || width > height;
   const horizontalPadding = clamp(width * 0.06, spacing.md, spacing.xl);
@@ -69,6 +69,9 @@ export default function CreateGoalScreen() {
     compactLayout ? 28 : 32,
     compactLayout ? 32 : 37,
   );
+  const inputHeight = compactLayout
+    ? 150
+    : clamp(height * 0.22, 180, 210);
   const sectionGap = compactLayout ? spacing.md : spacing.xl;
 
   return (
@@ -118,14 +121,13 @@ export default function CreateGoalScreen() {
                     },
                   ]}
                 >
-                  Give your{"\n"}dream a name
+                  Describe{"\n"}your dream
                 </Text>
 
                 <Text
                   style={[styles.subtitle, { marginTop: spacing.lg }]}
                 >
-                  Write down the future you want to create. Give it a name,
-                  and let the journey begin.
+                  Not a goal. A reality.{"\n"}A life you want to live.
                 </Text>
               </View>
 
@@ -137,23 +139,32 @@ export default function CreateGoalScreen() {
               >
                 <View
                   style={[
-                    styles.nameInputWrapper,
-                    dreamNameFocused && styles.inputWrapperFocused,
+                    styles.inputWrapper,
+                    { minHeight: inputHeight },
+                    descriptionFocused && styles.inputWrapperFocused,
                   ]}
                 >
                   <TextInput
-                    accessibilityLabel="Name your dream"
-                    maxLength={DREAM_NAME_MAX_LENGTH}
-                    onBlur={() => setDreamNameFocused(false)}
-                    onChangeText={setDreamName}
-                    onFocus={() => setDreamNameFocused(true)}
-                    placeholder="My dream name is..."
+                    accessibilityLabel="Describe your future reality"
+                    maxLength={DESCRIPTION_MAX_LENGTH}
+                    multiline
+                    onBlur={() => setDescriptionFocused(false)}
+                    onChangeText={setDescription}
+                    onFocus={() => setDescriptionFocused(true)}
+                    placeholder="Write your future..."
                     placeholderTextColor={colors.textMuted}
-                    returnKeyType="next"
                     selectionColor={colors.primary}
-                    style={styles.nameInput}
-                    value={dreamName}
+                    style={[
+                      styles.input,
+                      { minHeight: compactLayout ? 98 : 128 },
+                    ]}
+                    textAlignVertical="top"
+                    value={description}
                   />
+
+                  <Text style={styles.counter}>
+                    {description.length}/{DESCRIPTION_MAX_LENGTH}
+                  </Text>
                 </View>
               </View>
 
@@ -169,14 +180,14 @@ export default function CreateGoalScreen() {
                   </View>
 
                   <Text style={styles.hintText}>
-                    Keep it simple, poetic, or practical.{"\n"}
-                    The name only needs to mean something to you.
+                    Be vivid. Be honest. Be you.{"\n"}
+                    There&apos;s no right or wrong here.
                   </Text>
                 </View>
 
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => router.navigate("/describe-dream")}
+                  onPress={() => router.navigate("/state")}
                   style={({ pressed }) => [
                     styles.continueButton,
                     { height: compactLayout ? 56 : 64 },
@@ -239,6 +250,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
+  counter: {
+    ...typography.caption,
+    bottom: spacing.md,
+    color: colors.textMuted,
+    position: "absolute",
+    right: spacing.md,
+  },
   darkOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: colors.overlayDark,
@@ -270,33 +288,33 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     width: 52,
   },
-  inputWrapperFocused: {
-    borderWidth: 0,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  nameInput: {
+  input: {
     backgroundColor: colors.transparent,
     borderColor: colors.transparent,
     borderWidth: 0,
     color: colors.textPrimary,
+    flex: 1,
     fontSize: 16,
     lineHeight: 23,
     outlineColor: colors.transparent,
     outlineWidth: 0,
     padding: 0,
   },
-  nameInputWrapper: {
+  inputWrapper: {
     backgroundColor: colors.surfaceGlass,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
-    justifyContent: "center",
-    marginBottom: spacing.sm,
-    minHeight: 58,
+    paddingBottom: spacing.xl,
     paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     width: "100%",
+  },
+  inputWrapperFocused: {
+    borderWidth: 0,
+  },
+  keyboardView: {
+    flex: 1,
   },
   safeArea: {
     flex: 1,

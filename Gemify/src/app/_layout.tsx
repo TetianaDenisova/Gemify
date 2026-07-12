@@ -29,6 +29,18 @@ export default function RootLayout() {
           name="create-goal"
           options={{ headerShown: true, headerTransparent: true }}
         />
+        <Stack.Screen
+          name="describe-dream"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
+        <Stack.Screen
+          name="state"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
+        <Stack.Screen
+          name="create-previous-milestone"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
