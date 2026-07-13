@@ -5,10 +5,13 @@ export type JourneyMilestoneRingVariant = "simple" | "detailed";
 /** Content and product state shown in labels and the milestone modal. */
 export type JourneyMilestoneContent = {
   active: boolean;
+  artifact?: string;
   completed?: boolean;
   description: string;
   id: number;
   locked?: boolean;
+  mentor?: string;
+  reward?: string;
   state: string;
   subtitle: string;
   title: string;
@@ -54,7 +57,10 @@ export const journeyMilestoneContent: readonly JourneyMilestoneContent[] = [
     id: 3,
     title: "Building",
     subtitle: "New foundations",
-    state: "Focus",
+    artifact: "Report on my table",
+    state: "Focused",
+    mentor: "Fitness coach",
+    reward: "Spa day",
     description: "Building new foundations.",
     active: true,
   },

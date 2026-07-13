@@ -54,6 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="today"
         options={{
+          headerShown: false,
           tabBarLabel: "Today",
           title: "Today",
           tabBarIcon: ({ focused }) => (
