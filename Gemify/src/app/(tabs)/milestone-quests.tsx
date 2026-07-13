@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
+import { controls, radius, shadows, spacing, typography } from "@/theme/theme";
 
 const QUEST_HEADER_SOURCE = require("../../../assets/quest-header.png");
 
@@ -578,7 +578,7 @@ function IdentityRow() {
   );
 }
 
-export default function TodayScreen() {
+export default function MilestoneQuestsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -692,6 +692,7 @@ export default function TodayScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
+            onPress={() => router.push("/create-habit")}
             style={({ pressed }) => [styles.addQuestButton, pressed && styles.subtlePressed]}
           >
             <PlusIcon size={24} />
@@ -738,17 +739,13 @@ const styles = StyleSheet.create({
     minWidth: 86,
   },
   activeQuestSubtitle: {
+    ...typography.body,
     color: "#BDAE9A",
-    fontSize: 16,
-    lineHeight: 23,
     marginTop: 8,
     maxWidth: 440,
   },
   activeQuestTitle: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
-    fontSize: 30,
-    lineHeight: 36,
+    ...typography.cardTitle,
   },
   addIdentityButton: {
     borderColor: "rgba(255, 95, 167, 0.45)",
@@ -760,20 +757,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(22, 13, 40, 0.84)",
     borderColor: "rgba(232, 137, 255, 0.36)",
-    borderRadius: radius.round,
+    borderRadius: controls.button.section.borderRadius,
     borderWidth: 1,
     flexDirection: "row",
     gap: 10,
-    height: 48,
+    height: controls.button.section.height,
     justifyContent: "center",
-    minWidth: 176,
-    paddingHorizontal: 22,
+    minWidth: controls.button.section.minWidth,
+    paddingHorizontal: controls.button.section.paddingHorizontal,
   },
   addQuestText: {
+    ...typography.button,
     color: "#E1A0FF",
-    fontFamily: "serif",
-    fontSize: 21,
-    lineHeight: 26,
   },
   addTaskButton: {
     alignItems: "center",
@@ -783,10 +778,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   addTaskText: {
+    ...typography.button,
     color: "#E1A0FF",
-    fontFamily: "serif",
-    fontSize: 22,
-    lineHeight: 27,
   },
   checkbox: {
     alignItems: "center",
@@ -863,7 +856,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 24,
     marginBottom: 20,
-    minHeight: 158,
+    minHeight: controls.row.habit,
     paddingHorizontal: 28,
     paddingVertical: 22,
     ...shadows.goldGlow,
@@ -881,15 +874,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(17, 8, 38, 0.74)",
     borderColor: "rgba(232, 137, 255, 0.72)",
-    borderRadius: 50,
+    borderRadius: controls.iconFrame.lg / 2,
     borderWidth: 1.2,
-    height: 100,
+    height: controls.iconFrame.lg,
     justifyContent: "center",
     shadowColor: "#A970FF",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.68,
     shadowRadius: 20,
-    width: 100,
+    width: controls.iconFrame.lg,
   },
   habitDivider: {
     backgroundColor: "rgba(255, 211, 110, 0.48)",
@@ -919,9 +912,8 @@ const styles = StyleSheet.create({
     lineHeight: 42,
   },
   habitTime: {
+    ...typography.meta,
     color: "#B8A68C",
-    fontSize: 16,
-    lineHeight: 20,
   },
   habitTimeRow: {
     alignItems: "center",
@@ -930,10 +922,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   habitTitle: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
-    fontSize: 30,
-    lineHeight: 36,
+    ...typography.cardTitle,
   },
   header: {
     alignItems: "center",
@@ -953,11 +942,8 @@ const styles = StyleSheet.create({
     width: 56,
   },
   headerTitle: {
-    ...typography.title,
+    ...typography.screenTitle,
     flex: 1,
-    fontSize: 36,
-    fontWeight: "500",
-    lineHeight: 42,
     textAlign: "center",
   },
   heroBottomShade: {
@@ -990,23 +976,20 @@ const styles = StyleSheet.create({
     shadowColor: identity.color,
   },
   identityMeta: {
+    ...typography.meta,
     color: "#B8A68C",
-    fontSize: 15,
-    lineHeight: 20,
     marginTop: 8,
   },
   identitySectionTitle: {
     color: identity.color,
   },
   identitySubtitle: {
+    ...typography.subtitle,
     color: "#B8A68C",
-    fontSize: 16,
-    lineHeight: 22,
     marginTop: 4,
   },
   identityTitle: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
+    ...typography.cardTitle,
     fontSize: 28,
     lineHeight: 34,
   },
@@ -1116,9 +1099,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   milestoneTitle: {
-    ...typography.title,
+    ...typography.cardTitle,
     fontSize: 31,
-    fontWeight: "500",
     lineHeight: 38,
   },
   panelLabel: {
@@ -1137,16 +1119,14 @@ const styles = StyleSheet.create({
   pillButton: {
     alignItems: "center",
     backgroundColor: "rgba(22, 13, 40, 0.64)",
-    borderRadius: radius.sm,
+    borderRadius: controls.button.pill.borderRadius,
     borderWidth: 1,
-    height: 42,
+    height: controls.button.pill.height,
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: controls.button.pill.paddingHorizontal,
   },
   pillButtonText: {
-    fontFamily: "serif",
-    fontSize: 20,
-    lineHeight: 24,
+    ...typography.pill,
   },
   progressRing: {
     alignItems: "center",
@@ -1214,11 +1194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   sectionTitle: {
-    color: colors.primary,
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: 2.8,
-    lineHeight: 28,
+    ...typography.sectionTitle,
   },
   sparkle: {
     position: "absolute",
@@ -1274,13 +1250,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 18,
-    minHeight: 66,
+    minHeight: controls.row.task,
     paddingHorizontal: 16,
   },
   taskTitle: {
+    ...typography.button,
     color: colors.textPrimary,
-    fontFamily: "serif",
-    fontSize: 21,
-    lineHeight: 25,
   },
 });

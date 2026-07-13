@@ -45,6 +45,10 @@ export default function RootLayout() {
           name="create-previous-milestone"
           options={{ headerShown: true, headerTransparent: true }}
         />
+        <Stack.Screen
+          name="create-habit"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

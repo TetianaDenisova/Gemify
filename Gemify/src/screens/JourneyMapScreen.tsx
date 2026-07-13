@@ -612,7 +612,7 @@ export function GoalJourneyMapScreen() {
         onClose={() => setSelectedMilestone(null)}
         onOpenQuests={() => {
           setSelectedMilestone(null);
-          router.push("/today");
+          router.push("/milestone-quests");
         }}
       />
     </View>

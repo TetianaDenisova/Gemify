@@ -52,11 +52,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="today"
+        name="milestone-quests"
         options={{
           headerShown: false,
           tabBarLabel: "Today",
-          title: "Today",
+          title: "Milestone Quests",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} tab="today" />
           ),
