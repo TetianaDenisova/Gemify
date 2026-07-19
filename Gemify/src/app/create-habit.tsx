@@ -13,54 +13,103 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 
 import { colors } from "@/theme/colors";
-import { controls, radius, shadows, spacing, typography } from "@/theme/theme";
+import { controls, spacing, typography } from "@/theme/theme";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const SELECTED_DAYS = new Set(["Mon", "Tue", "Wed", "Fri"]);
 const TIMES = ["Morning", "After lunch", "Evening"] as const;
 
-type IconName =
+type Day = (typeof DAYS)[number];
+type TimeOfDay = (typeof TIMES)[number];
+
+type StepIconName =
   | "calendar"
   | "chat"
   | "clock"
   | "close"
-  | "fire"
-  | "heart"
+  | "feather"
   | "leaf"
   | "shield"
-  | "spark"
-  | "target";
+  | "sprout";
 
-type PlanningRow = {
-  icon: IconName;
-  label: string;
+type FormStep = {
+  helper?: string;
+  icon: StepIconName;
+  input: "habitName" | "cue" | "easyStart" | "badDay" | "backupPlan";
+  multiline?: boolean;
+  placeholder: string;
+  title: string;
 };
 
-const PLANNING_ROWS: readonly PlanningRow[] = [
-  { icon: "fire", label: "Make it easy to start" },
-  { icon: "heart", label: "Easy version for bad day" },
-  { icon: "shield", label: "Obstacles & backup plan" },
+const textSteps: readonly FormStep[] = [
+  {
+    icon: "feather",
+    input: "habitName",
+    placeholder: "Eat 5 vegetables",
+    title: "1. Habit name",
+  },
+  {
+    helper: "A short cue to remind you when to do this habit.",
+    icon: "chat",
+    input: "cue",
+    placeholder: "After lunch",
+    title: "2. Cue or description",
+  },
+  {
+    helper: "A short cue to remind you when to do this habit.",
+    icon: "sprout",
+    input: "easyStart",
+    placeholder: "Put vegetables on the lunch plate before I start eating.",
+    title: "5. Make it easy to start",
+  },
+  {
+    icon: "shield",
+    input: "badDay",
+    placeholder: "Eat just 1 vegetable serving.",
+    title: "6. Easy version for bad day",
+  },
+  {
+    icon: "shield",
+    input: "backupPlan",
+    multiline: true,
+    placeholder: "If I don't have vegetables ready, I will add frozen vegetables or order a salad.",
+    title: "7. Obstacles & backup plan",
+  },
 ];
 
 function BackIcon() {
   return (
     <Svg height={30} viewBox="0 0 24 24" width={30}>
       <Path
-        d="M15 5 8 12l7 7M9 12h10"
+        d="M15.5 5 8.5 12l7 7M9 12h10"
         fill="none"
         stroke={colors.primary}
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={1.8}
+        strokeWidth={1.9}
       />
     </Svg>
   );
 }
 
-function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
+function HeaderOrnament() {
+  return (
+    <View style={styles.ornamentRow} pointerEvents="none">
+      <View style={styles.ornamentLine} />
+      <Svg height={24} viewBox="0 0 32 32" width={24}>
+        <Path
+          d="M16 2c2.5 7.9 6.1 11.5 14 14-7.9 2.5-11.5 6.1-14 14C13.5 22.1 9.9 18.5 2 16 9.9 13.5 13.5 9.9 16 2Z"
+          fill={colors.primary}
+        />
+      </Svg>
+      <View style={styles.ornamentLine} />
+    </View>
+  );
+}
+
+function Icon({ name, size = 31 }: { name: StepIconName; size?: number }) {
   if (name === "close") {
     return (
       <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -69,25 +118,7 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
           fill="none"
           stroke={colors.primary}
           strokeLinecap="round"
-          strokeWidth={1.8}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "leaf") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
-          fill={colors.primary}
-        />
-        <Path
-          d="M14 34c7-8 13-13 21-18M18 30l-2 10"
-          fill="none"
-          stroke="#25132E"
-          strokeLinecap="round"
-          strokeWidth={2.4}
+          strokeWidth={1.9}
         />
       </Svg>
     );
@@ -99,12 +130,12 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
         <Path
           d="M9 22c0-8 7-14 16-14s16 6 16 14-7 14-16 14c-2 0-4-.3-5.8-.9L10 40l3-8.1A13 13 0 0 1 9 22Z"
           fill="none"
-          stroke={colors.primary}
+          stroke="#D98AFF"
           strokeLinejoin="round"
-          strokeWidth={2.5}
+          strokeWidth={2.6}
         />
         {[19, 25, 31].map((cx) => (
-          <Circle cx={cx} cy={22} fill={colors.primary} key={cx} r={1.8} />
+          <Circle cx={cx} cy={22} fill="#F1B3FF" key={cx} r={1.9} />
         ))}
       </Svg>
     );
@@ -115,10 +146,10 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
       <Svg height={size} viewBox="0 0 48 48" width={size}>
         <Rect
           fill="none"
-          height={30}
+          height={29}
           rx={4}
-          stroke={colors.primary}
-          strokeWidth={2.4}
+          stroke="#D98AFF"
+          strokeWidth={2.5}
           width={32}
           x={8}
           y={11}
@@ -126,9 +157,9 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
         <Path
           d="M16 7v8M32 7v8M8 19h32M18 28h.01M24 28h.01M30 28h.01M18 34h.01M24 34h.01"
           fill="none"
-          stroke={colors.primary}
+          stroke="#F1B3FF"
           strokeLinecap="round"
-          strokeWidth={2.4}
+          strokeWidth={2.5}
         />
       </Svg>
     );
@@ -141,51 +172,17 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
           cx={24}
           cy={24}
           fill="none"
-          r={16}
-          stroke={colors.primary}
-          strokeWidth={2.5}
+          r={15.5}
+          stroke="#D98AFF"
+          strokeWidth={2.6}
         />
         <Path
-          d="M24 14v11l7 5"
+          d="M24 14v10.5l7 5"
           fill="none"
-          stroke={colors.primary}
+          stroke="#F1B3FF"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth={2.5}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "spark") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path d="M24 5 29 19 43 24 29 29 24 43 19 29 5 24 19 19 24 5Z" fill={colors.primary} />
-      </Svg>
-    );
-  }
-
-  if (name === "fire") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M26 4c3 8-3 10 4 17 2-5 7-6 8-1 2 11-5 20-15 20S7 33 10 23c1-5 5-9 10-14 0 8 3 10 6 14 2-7-3-10 0-19Z"
-          fill="#FF6A2E"
-        />
-        <Path d="M25 25c4 5 1 11-4 11-4 0-7-3-6-8 2 3 5 2 10-3Z" fill={colors.primary} />
-      </Svg>
-    );
-  }
-
-  if (name === "heart") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M24 39S8 29 8 17c0-6 8-10 16-1 8-9 16-5 16 1 0 12-16 22-16 22Z"
-          fill="none"
-          stroke={colors.primary}
-          strokeLinejoin="round"
-          strokeWidth={3}
+          strokeWidth={2.6}
         />
       </Svg>
     );
@@ -197,15 +194,59 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
         <Path
           d="M24 5 39 11v11c0 10-6 17-15 21C15 39 9 32 9 22V11l15-6Z"
           fill="none"
-          stroke={colors.primary}
+          stroke="#D98AFF"
           strokeLinejoin="round"
-          strokeWidth={2.6}
+          strokeWidth={2.7}
         />
         <Path
-          d="M24 17v14M18 24h12"
-          stroke={colors.primary}
+          d="m19 24 3.4 3.4L30 20"
+          fill="none"
+          stroke="#F1B3FF"
           strokeLinecap="round"
-          strokeWidth={2.6}
+          strokeLinejoin="round"
+          strokeWidth={2.7}
+        />
+      </Svg>
+    );
+  }
+
+  if (name === "sprout") {
+    return (
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
+        <Path
+          d="M24 39V24M24 25c-9-1-14-7-14-15 9 0 14 6 14 15ZM24 27c10-2 15-9 15-18-10 1-15 8-15 18Z"
+          fill="none"
+          stroke="#D98AFF"
+          strokeLinejoin="round"
+          strokeWidth={2.7}
+        />
+        <Path
+          d="M17 39h14"
+          fill="none"
+          stroke="#F1B3FF"
+          strokeLinecap="round"
+          strokeWidth={2.7}
+        />
+      </Svg>
+    );
+  }
+
+  if (name === "leaf") {
+    return (
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
+        <Path
+          d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
+          fill="none"
+          stroke="#D98AFF"
+          strokeLinejoin="round"
+          strokeWidth={2.7}
+        />
+        <Path
+          d="M14 34c7-8 13-13 21-18M18 30l-2 10"
+          fill="none"
+          stroke="#F1B3FF"
+          strokeLinecap="round"
+          strokeWidth={2.5}
         />
       </Svg>
     );
@@ -213,37 +254,54 @@ function Icon({ name, size = 32 }: { name: IconName; size?: number }) {
 
   return (
     <Svg height={size} viewBox="0 0 48 48" width={size}>
-      <Circle
-        cx={24}
-        cy={24}
-        fill="none"
-        r={15}
-        stroke={colors.primary}
-        strokeWidth={2.6}
-      />
-      <Circle
-        cx={24}
-        cy={24}
-        fill="none"
-        r={8}
-        stroke={colors.primary}
-        strokeWidth={2.6}
+      <Path
+        d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
+        fill="#D98AFF"
       />
       <Path
-        d="M24 3v8M45 24h-8M24 45v-8M3 24h8M30 18l10-10"
+        d="M14 34c7-8 13-13 21-18M18 30l-2 10"
         fill="none"
-        stroke={colors.primary}
+        stroke="#32143D"
         strokeLinecap="round"
-        strokeWidth={2.6}
+        strokeWidth={2.4}
       />
     </Svg>
   );
 }
 
-function StepIcon({ name }: { name: IconName }) {
+function SunIcon({ muted = false }: { muted?: boolean }) {
+  const tint = muted ? "#8D8F9B" : colors.primary;
+
+  return (
+    <Svg height={25} viewBox="0 0 32 32" width={25}>
+      <Circle cx={16} cy={16} fill={tint} r={4.5} />
+      <Path
+        d="M16 3v4M16 25v4M3 16h4M25 16h4M6.8 6.8l2.8 2.8M22.4 22.4l2.8 2.8M25.2 6.8l-2.8 2.8M9.6 22.4l-2.8 2.8"
+        fill="none"
+        stroke={tint}
+        strokeLinecap="round"
+        strokeWidth={2}
+      />
+    </Svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <Svg height={25} viewBox="0 0 32 32" width={25}>
+      <Path
+        d="M23.5 21.7A10.5 10.5 0 0 1 10.3 8.5 10.5 10.5 0 1 0 23.5 21.7Z"
+        fill="#A7A9B4"
+      />
+    </Svg>
+  );
+}
+
+function StepIcon({ name }: { name: StepIconName }) {
   return (
     <View style={styles.stepIcon}>
-      <Icon name={name} size={26} />
+      <View pointerEvents="none" style={styles.stepIconRing} />
+      <Icon name={name} />
     </View>
   );
 }
@@ -272,24 +330,20 @@ function HeaderIconButton({
   );
 }
 
-function ClearButton({ onPress }: { onPress: () => void }) {
+function DayChip({
+  day,
+  onPress,
+  selected,
+}: {
+  day: Day;
+  onPress: () => void;
+  selected: boolean;
+}) {
   return (
     <Pressable
-      accessibilityLabel="Clear habit name"
       accessibilityRole="button"
-      hitSlop={10}
+      accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}
-    >
-      <Icon name="close" size={22} />
-    </Pressable>
-  );
-}
-
-function DayChip({ day, selected }: { day: string; selected: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
       style={({ pressed }) => [
         styles.dayChip,
         selected && styles.dayChipSelected,
@@ -303,18 +357,29 @@ function DayChip({ day, selected }: { day: string; selected: boolean }) {
   );
 }
 
-function TimeChip({ label }: { label: string }) {
-  const selected = label === "After lunch";
-
+function TimeChip({
+  label,
+  onPress,
+  selected,
+}: {
+  label: TimeOfDay;
+  onPress: () => void;
+  selected: boolean;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.timeChip,
         selected && styles.timeChipSelected,
         pressed && styles.pressed,
       ]}
     >
+      {label === "Morning" ? <SunIcon muted={!selected} /> : null}
+      {label === "After lunch" ? <SunIcon muted={!selected} /> : null}
+      {label === "Evening" ? <MoonIcon /> : null}
       <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
         {label}
       </Text>
@@ -322,43 +387,42 @@ function TimeChip({ label }: { label: string }) {
   );
 }
 
-function ChevronRightIcon() {
+function SparkIcon() {
   return (
-    <Svg height={24} viewBox="0 0 24 24" width={24}>
+    <Svg height={26} viewBox="0 0 32 32" width={26}>
       <Path
-        d="m9 5 7 7-7 7"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
+        d="M16 3c2.2 6.8 5.2 9.8 12 12-6.8 2.2-9.8 5.2-12 12-2.2-6.8-5.2-9.8-12-12 6.8-2.2 9.8-5.2 12-12Z"
+        fill="#FFE9B2"
       />
     </Svg>
   );
 }
 
-function PlanningOption({ option }: { option: PlanningRow }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-    >
-      <View style={styles.optionIcon}>
-        <Icon name={option.icon} size={32} />
-      </View>
-      <Text style={styles.optionText}>{option.label}</Text>
-      <ChevronRightIcon />
-    </Pressable>
-  );
-}
+type FormValues = {
+  backupPlan: string;
+  badDay: string;
+  cue: string;
+  easyStart: string;
+  habitName: string;
+};
 
 export default function CreateHabitScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
-  const [habitName, setHabitName] = useState("Eat 5 vegetables");
-  const [cue, setCue] = useState("After lunch");
-  const compact = width < 520;
+  const [selectedDays, setSelectedDays] = useState<ReadonlySet<Day>>(
+    () => new Set(["Mon", "Tue", "Wed", "Fri"] as Day[]),
+  );
+  const [selectedTime, setSelectedTime] = useState<TimeOfDay>("After lunch");
+  const [values, setValues] = useState<FormValues>({
+    backupPlan:
+      "If I don't have vegetables ready, I will add frozen vegetables or order a salad.",
+    badDay: "Eat just 1 vegetable serving.",
+    cue: "After lunch",
+    easyStart: "Put vegetables on the lunch plate before I start eating.",
+    habitName: "Eat 5 vegetables",
+  });
+  const compact = width < 620;
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -366,11 +430,59 @@ export default function CreateHabitScreen() {
       return;
     }
 
-    router.replace("/milestone-quests");
+    router.replace("/habits");
+  }
+
+  function updateValue(key: keyof FormValues, value: string) {
+    setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleDay(day: Day) {
+    setSelectedDays((current) => {
+      const next = new Set(current);
+
+      if (next.has(day)) {
+        next.delete(day);
+      } else {
+        next.add(day);
+      }
+
+      return next;
+    });
+  }
+
+  function renderTextStep(step: FormStep) {
+    return (
+      <View key={step.title} style={styles.formRow}>
+        <StepIcon name={step.icon} />
+        <View style={styles.formMain}>
+          <Text style={styles.stepTitle}>{step.title}</Text>
+          <View style={[styles.inputShell, step.multiline && styles.textAreaShell]}>
+            <TextInput
+              accessibilityLabel={step.title}
+              multiline={step.multiline}
+              onChangeText={(value) => updateValue(step.input, value)}
+              placeholder={step.placeholder}
+              placeholderTextColor="rgba(246, 232, 200, 0.5)"
+              selectionColor={colors.primary}
+              style={[styles.input, step.multiline && styles.textArea]}
+              textAlignVertical={step.multiline ? "top" : "center"}
+              value={values[step.input]}
+            />
+          </View>
+          {step.helper ? <Text style={styles.helperText}>{step.helper}</Text> : null}
+        </View>
+      </View>
+    );
   }
 
   return (
     <View style={styles.screen}>
+      <LinearGradient
+        colors={["#020713", "#071021", "#030814"]}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />
       <KeyboardAvoidingView
         behavior={
           Platform.OS === "ios"
@@ -396,52 +508,16 @@ export default function CreateHabitScreen() {
         >
           <View style={styles.header}>
             <HeaderIconButton label="Back" onPress={handleBack} type="back" />
-            <Text style={styles.title}>Create Habit</Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>Create Habit</Text>
+              <HeaderOrnament />
+            </View>
             <HeaderIconButton label="Close" onPress={handleBack} type="close" />
           </View>
 
-          <View style={styles.formCard}>
-            <View style={styles.formRow}>
-              <StepIcon name="leaf" />
-              <View style={styles.formMain}>
-                <Text style={styles.stepTitle}>1. Habit name</Text>
-                <View style={styles.inputShell}>
-                  <TextInput
-                    accessibilityLabel="Habit name"
-                    onChangeText={setHabitName}
-                    placeholder="Eat 5 vegetables"
-                    placeholderTextColor="rgba(246, 232, 200, 0.5)"
-                    selectionColor={colors.primary}
-                    style={styles.input}
-                    value={habitName}
-                  />
-                  {habitName.length > 0 ? (
-                    <ClearButton onPress={() => setHabitName("")} />
-                  ) : null}
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.formRow}>
-              <StepIcon name="chat" />
-              <View style={styles.formMain}>
-                <Text style={styles.stepTitle}>2. Cue or description</Text>
-                <View style={styles.inputShell}>
-                  <TextInput
-                    accessibilityLabel="Cue or description"
-                    onChangeText={setCue}
-                    placeholder="After lunch"
-                    placeholderTextColor="rgba(246, 232, 200, 0.5)"
-                    selectionColor={colors.primary}
-                    style={styles.input}
-                    value={cue}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  A short cue to remind you when to do this habit.
-                </Text>
-              </View>
-            </View>
+          <View style={styles.form}>
+            {renderTextStep(textSteps[0])}
+            {renderTextStep(textSteps[1])}
 
             <View style={styles.formRow}>
               <StepIcon name="calendar" />
@@ -452,7 +528,8 @@ export default function CreateHabitScreen() {
                     <DayChip
                       day={day}
                       key={day}
-                      selected={SELECTED_DAYS.has(day)}
+                      onPress={() => toggleDay(day)}
+                      selected={selectedDays.has(day)}
                     />
                   ))}
                 </View>
@@ -462,98 +539,44 @@ export default function CreateHabitScreen() {
               </View>
             </View>
 
-            <View style={[styles.formRow, styles.lastFormRow]}>
+            <View style={styles.formRow}>
               <StepIcon name="clock" />
               <View style={styles.formMain}>
                 <Text style={styles.stepTitle}>4. Reminder or time of day</Text>
                 <View style={styles.timeGrid}>
                   {TIMES.map((time) => (
-                    <TimeChip key={time} label={time} />
+                    <TimeChip
+                      key={time}
+                      label={time}
+                      onPress={() => setSelectedTime(time)}
+                      selected={selectedTime === time}
+                    />
                   ))}
                 </View>
-                <Text style={styles.helperText}>
-                  When will you be reminded to do this habit?
-                </Text>
-              </View>
-            </View>
-            <View style={styles.formRow}>
-              <StepIcon name="chat" />
-              <View style={styles.formMain}>
-                <Text style={styles.stepTitle}>Make it easy to start</Text>
-                <View style={styles.inputShell}>
-                  <TextInput
-                    accessibilityLabel="Cue or description"
-                    onChangeText={setCue}
-                    placeholder="Prepare everything to quickly start"
-                    placeholderTextColor="rgba(246, 232, 200, 0.5)"
-                    selectionColor={colors.primary}
-                    style={styles.input}
-                    value={cue}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  A short cue to remind you when to do this habit.
-                </Text>
-              </View>
-            </View>
-            <View style={styles.formRow}>
-              <StepIcon name="chat" />
-              <View style={styles.formMain}>
-                <Text style={styles.stepTitle}>Easy version for bad day</Text>
-                <View style={styles.inputShell}>
-                  <TextInput
-                    accessibilityLabel="Cue or description"
-                    onChangeText={setCue}
-                    placeholder="Prepare everything to quickly start"
-                    placeholderTextColor="rgba(246, 232, 200, 0.5)"
-                    selectionColor={colors.primary}
-                    style={styles.input}
-                    value={cue}
-                  />
-                </View>
               </View>
             </View>
 
-            <View style={styles.formRow}>
-              <StepIcon name="chat" />
-              <View style={styles.formMain}>
-                <Text style={styles.stepTitle}>Obstacles & backup plan</Text>
-                <View style={styles.inputShell}>
-                  <TextInput
-                    accessibilityLabel="Obstacles & backup plan"
-                    onChangeText={setCue}
-                    placeholder="Prepare everything to quickly start"
-                    placeholderTextColor="rgba(246, 232, 200, 0.5)"
-                    selectionColor={colors.primary}
-                    style={styles.input}
-                    value={cue}
-                  />
-                </View>
-              </View>
-            </View>
+            {textSteps.slice(2).map(renderTextStep)}
           </View>
 
-          <View style={styles.planCard}>
-
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.continueButtonShell,
-                pressed && styles.continueButtonPressed,
-              ]}
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.continueButtonShell,
+              pressed && styles.continueButtonPressed,
+            ]}
+          >
+            <LinearGradient
+              colors={["#FFE7A7", "#F4BE56", "#D8952E"]}
+              end={{ x: 1, y: 0.5 }}
+              start={{ x: 0, y: 0.5 }}
+              style={styles.continueButton}
             >
-              <LinearGradient
-                colors={["#FFE59D", "#F5A92F", "#A96512"]}
-                end={{ x: 1, y: 0.5 }}
-                start={{ x: 0, y: 0.5 }}
-                style={styles.continueButton}
-              >
-                <Text style={styles.continueSpark}>+</Text>
-                <Text style={styles.continueText}>Continue</Text>
-                <Text style={styles.continueSpark}>+</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
+              <SparkIcon />
+              <Text style={styles.continueText}>Continue</Text>
+              <SparkIcon />
+            </LinearGradient>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -563,8 +586,8 @@ export default function CreateHabitScreen() {
 const styles = StyleSheet.create({
   content: {
     alignSelf: "center",
-    maxWidth: 760,
-    paddingHorizontal: 22,
+    maxWidth: 860,
+    paddingHorizontal: 28,
     width: "100%",
   },
   contentCompact: {
@@ -572,182 +595,141 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     alignItems: "center",
-    borderColor: "rgba(255, 238, 171, 0.8)",
-    borderRadius: controls.button.hero.borderRadius,
+    borderColor: "rgba(255, 238, 171, 0.84)",
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: "row",
-    height: 64,
+    height: 66,
     justifyContent: "space-between",
-    overflow: "hidden",
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   continueButtonPressed: {
     opacity: 0.84,
     transform: [{ scale: 0.99 }],
   },
   continueButtonShell: {
-    borderRadius: controls.button.hero.borderRadius,
+    borderColor: "rgba(245, 184, 75, 0.44)",
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: spacing.md,
     marginTop: spacing.lg,
     overflow: "hidden",
-    ...shadows.goldGlow,
-  },
-  continueSpark: {
-    color: "#FFE7A7",
-    fontSize: 24,
-    lineHeight: 28,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
   },
   continueText: {
-    ...typography.cardTitle,
-    color: colors.secondaryDark,
+    ...typography.title,
+    color: "#170F0A",
+    flex: 1,
     textAlign: "center",
   },
   dayChip: {
     alignItems: "center",
-    backgroundColor: "rgba(7, 10, 25, 0.74)",
-    borderColor: "rgba(160, 87, 54, 0.58)",
-    borderRadius: controls.chip.day.borderRadius,
+    backgroundColor: "rgba(8, 10, 25, 0.7)",
+    borderColor: "rgba(168, 93, 138, 0.58)",
+    borderRadius: 18,
     borderWidth: 1,
-    height: 58,
+    height: 48,
     justifyContent: "center",
-    width: 58,
+    minWidth: 80,
+    paddingHorizontal: spacing.md,
   },
   dayChipSelected: {
     borderColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
+    shadowOpacity: 0.58,
+    shadowRadius: 10,
   },
   dayChipText: {
-    ...typography.body,
-    color: "#BFB1A5",
+    ...typography.button,
+    color: "#9C9EA9",
   },
   dayChipTextSelected: {
-    color: "#FFE775",
+    color: "#FFD36E",
   },
   dayGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginTop: spacing.md,
+    gap: 14,
+    marginTop: spacing.sm,
   },
-  formCard: {
-    backgroundColor: "rgba(8, 10, 24, 0.8)",
-    borderColor: "rgba(159, 76, 40, 0.54)",
-    borderRadius: controls.surface.borderRadius,
-    borderWidth: 1,
+  form: {
+    borderTopColor: "rgba(246, 232, 200, 0.14)",
+    borderTopWidth: 1,
     marginTop: spacing.md,
-    paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
   },
   formMain: {
     flex: 1,
     minWidth: 0,
   },
   formRow: {
+    borderBottomColor: "rgba(246, 232, 200, 0.12)",
+    borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
+    gap: spacing.md,
     justifyContent: "space-between",
-    minHeight: 54,
+    minHeight: 76,
   },
   headerIconButton: {
     alignItems: "center",
-    backgroundColor: "rgba(13, 10, 21, 0.78)",
-    borderColor: "rgba(159, 76, 40, 0.56)",
-    borderRadius: controls.iconButton.sm / 2,
+    backgroundColor: "rgba(8, 10, 25, 0.62)",
+    borderColor: "rgba(240, 202, 137, 0.45)",
+    borderRadius: controls.iconButton.md / 2,
     borderWidth: 1,
-    height: controls.iconButton.sm,
+    height: controls.iconButton.md,
     justifyContent: "center",
-    width: controls.iconButton.sm,
+    width: controls.iconButton.md,
   },
   helperText: {
     ...typography.body,
-    color: "#BFB1A5",
+    color: "#A8A9B3",
     marginTop: spacing.sm,
   },
   input: {
-    ...typography.input,
-    color: colors.textPrimary,
+    ...typography.button,
+    color: "#F7F1EA",
     flex: 1,
-    fontSize: 20,
-    lineHeight: 26,
     outlineColor: colors.transparent,
     outlineWidth: 0,
     padding: 0,
   },
   inputShell: {
     alignItems: "center",
-    backgroundColor: "rgba(11, 13, 28, 0.88)",
-    borderColor: "rgba(159, 76, 40, 0.5)",
-    borderRadius: controls.field.borderRadius,
+    backgroundColor: "rgba(18, 17, 34, 0.82)",
+    borderColor: "rgba(168, 93, 138, 0.66)",
+    borderRadius: 8,
     borderWidth: 1,
     flexDirection: "row",
-    gap: 12,
-    height: 54,
+    minHeight: 55,
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   keyboardView: {
     flex: 1,
   },
-  lastFormRow: {
-    marginBottom: spacing.lg,
+  ornamentLine: {
+    backgroundColor: colors.primary,
+    flex: 1,
+    height: 1,
+    maxWidth: 170,
+    opacity: 0.62,
   },
-  optionIcon: {
+  ornamentRow: {
     alignItems: "center",
-    height: 36,
+    flexDirection: "row",
+    gap: 10,
     justifyContent: "center",
-    width: 44,
-  },
-  optionList: {
-    borderColor: "rgba(159, 76, 40, 0.28)",
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    overflow: "hidden",
-  },
-  optionRow: {
-    alignItems: "center",
-    backgroundColor: "rgba(15, 17, 32, 0.76)",
-    borderBottomColor: "rgba(159, 76, 40, 0.28)",
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    minHeight: 56,
-    paddingHorizontal: spacing.md,
-  },
-  optionText: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 24,
-    paddingLeft: spacing.sm,
-  },
-  planCard: {
-    backgroundColor: "rgba(8, 10, 24, 0.8)",
-    borderColor: "rgba(159, 76, 40, 0.54)",
-    borderRadius: controls.surface.borderRadius,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.lg,
-  },
-  planHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  planHeaderText: {
-    flex: 1,
-  },
-  planSubtitle: {
-    ...typography.body,
-    color: "#BFB1A5",
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   pressed: {
     opacity: 0.7,
@@ -759,55 +741,83 @@ const styles = StyleSheet.create({
   },
   stepIcon: {
     alignItems: "center",
-    backgroundColor: "rgba(19, 11, 37, 0.75)",
-    borderColor: "rgba(245, 184, 75, 0.72)",
-    borderRadius: 32,
+    backgroundColor: "rgba(32, 13, 54, 0.8)",
+    borderColor: "rgba(216, 138, 255, 0.74)",
+    borderRadius: 36,
     borderWidth: 1,
-    height: 64,
+    height: 70,
     justifyContent: "center",
-    width: 64,
+    shadowColor: "#B46AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.26,
+    shadowRadius: 11,
+    width: 70,
+  },
+  stepIconRing: {
+    borderColor: "rgba(216, 138, 255, 0.68)",
+    borderRadius: 31,
+    borderWidth: 1,
+    height: 62,
+    position: "absolute",
+    width: 62,
   },
   stepTitle: {
-    ...typography.label,
+    ...typography.title,
     color: colors.primary,
-    fontSize: 23,
-    lineHeight: 30,
+  },
+  textArea: {
+    minHeight: 78,
+    paddingTop: spacing.sm,
+  },
+  textAreaShell: {
+    alignItems: "flex-start",
+    minHeight: 88,
   },
   timeChip: {
     alignItems: "center",
-    backgroundColor: "rgba(7, 10, 25, 0.74)",
-    borderColor: "rgba(159, 76, 40, 0.58)",
-    borderRadius: controls.chip.time.borderRadius,
+    backgroundColor: "rgba(8, 10, 25, 0.7)",
+    borderColor: "rgba(168, 93, 138, 0.58)",
+    borderRadius: 18,
     borderWidth: 1,
     flex: 1,
-    height: 52,
+    flexDirection: "row",
+    gap: spacing.sm,
+    height: 58,
     justifyContent: "center",
-    minWidth: 132,
-    paddingHorizontal: spacing.md,
+    minWidth: 180,
+    paddingHorizontal: spacing.lg,
   },
   timeChipSelected: {
     borderColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
+    shadowOpacity: 0.58,
+    shadowRadius: 10,
   },
   timeChipText: {
-    ...typography.body,
-    color: "#BFB1A5",
+    ...typography.button,
+    color: "#9C9EA9",
   },
   timeChipTextSelected: {
-    color: "#FFE775",
+    color: "#FFD36E",
   },
   timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginTop: spacing.md,
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
   title: {
     ...typography.screenTitle,
-    flex: 1,
+    color: "#F7D99B",
+    fontWeight: "700",
     textAlign: "center",
+    textShadowColor: "rgba(245, 184, 75, 0.42)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
 });

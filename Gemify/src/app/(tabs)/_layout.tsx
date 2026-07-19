@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import { StyleSheet } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
 import { colors } from "@/theme/colors";
@@ -8,10 +9,41 @@ import { radius, shadows, spacing, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
-  tab: MenuTab;
+  tab: MenuTab | "habits";
 }
 
 function TabIcon({ focused, tab }: TabIconProps) {
+  if (tab === "habits") {
+    const tint = focused ? colors.primary : colors.textMuted;
+
+    return (
+      <Svg height={28} viewBox="0 0 28 28" width={28} style={styles.tabIcon}>
+        <Circle
+          cx={14}
+          cy={14}
+          fill={focused ? "rgba(245, 184, 75, 0.14)" : colors.transparent}
+          r={11.5}
+          stroke={tint}
+          strokeWidth={1.4}
+        />
+        <Path
+          d="M14 5.5 16 11.2 21.8 14 16 16.8 14 22.5 12 16.8 6.2 14 12 11.2 14 5.5Z"
+          fill="none"
+          stroke={tint}
+          strokeLinejoin="round"
+          strokeWidth={1.4}
+        />
+        <Path
+          d="M9.5 17.2c1.7-1 3.3-1.5 4.8-1.5M18.5 10.8c-1.5.1-2.8.5-3.9 1.3"
+          fill="none"
+          stroke={tint}
+          strokeLinecap="round"
+          strokeWidth={1.2}
+        />
+      </Svg>
+    );
+  }
+
   const iconSource = focused
     ? menuIcons[tab].active
     : menuIcons[tab].inactive;
@@ -65,8 +97,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sprint"
         options={{
-          tabBarLabel: "Sprint",
-          title: "Sprint",
+          headerShown: false,
+          tabBarLabel: "Weekly Plan",
+          title: "Weekly Plan",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} tab="sprint" />
           ),
@@ -79,6 +112,17 @@ export default function TabLayout() {
           title: "Progress",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} tab="progress" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="habits"
+        options={{
+          headerShown: false,
+          tabBarLabel: "Habits",
+          title: "Habits",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} tab="habits" />
           ),
         }}
       />

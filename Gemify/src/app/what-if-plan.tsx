@@ -121,7 +121,7 @@ export default function WhatIfPlanScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.heroCopy, { marginBottom: compact ? 230 : 238 }]}>
+          <View style={[styles.heroCopy, { marginBottom: compact ? 116 : 128 }]}>
             <View style={styles.heroShield}>
               <ShieldStarIcon color="#FFE2A1" size={compact ? 42 : 54} />
             </View>
