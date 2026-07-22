@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import { HabitItemCard } from "@/components/HabitItem";
 import { colors } from "@/theme/colors";
 import { controls, radius, shadows, spacing, typography } from "@/theme/theme";
 
@@ -444,7 +445,6 @@ function IdeaRow({
 function TaskRow({ compact, task }: { compact: boolean; task: QuestTask }) {
   return (
     <View style={styles.taskRow}>
-      <DragHandle />
       <View style={[styles.checkbox, task.done && styles.checkboxDone]}>
         {task.done ? <CheckIcon /> : null}
       </View>
@@ -452,7 +452,7 @@ function TaskRow({ compact, task }: { compact: boolean; task: QuestTask }) {
         <Text style={styles.taskTitle}>{task.title}</Text>
         <Text style={styles.taskFrequency}>{task.frequency}</Text>
       </View>
-      <PillButton label="Add to sprint" minWidth={compact ? 84 : 126} />
+      <DragHandle />
     </View>
   );
 }
@@ -466,8 +466,8 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
           compact && styles.activeQuestHeaderCompact,
         ]}
       >
-        <View style={styles.largeIconFrame}>
-          <QuestIcon color={colors.primary} icon="spark" />
+        <View style={styles.activeQuestProgressRing}>
+          <ProgressRing color={colors.primary} progress={67} size={74} />
         </View>
         <View style={styles.activeQuestCopy}>
           <Text style={styles.activeQuestTitle}>Morning routine mastery</Text>
@@ -482,9 +482,6 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
               <Text style={styles.questMetaText}>7 days active</Text>
             </View>
           </View>
-        </View>
-        <View style={styles.activeQuestSide}>
-          <ProgressRing color={colors.primary} progress={67} size={74} />
         </View>
         <PillButton label="Add to sprint" minWidth={compact ? 84 : 126} />
       </View>
@@ -505,61 +502,15 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
   );
 }
 
-function HabitRow() {
-  return (
-    <View style={styles.habitCard}>
-      <View style={styles.habitIconFrame}>
-        <Svg height={86} viewBox="0 0 96 96" width={86}>
-          <Circle cx={48} cy={48} fill="#100823" r={44} />
-          <Circle cx={48} cy={48} fill="#24105A" opacity={0.82} r={34} />
-          <Path
-            d="M26 57c14-4 27-4 43 1"
-            fill="none"
-            stroke="#472875"
-            strokeLinecap="round"
-            strokeWidth={3}
-          />
-          <Path
-            d="M29 66c10-2 28-2 38 0"
-            fill="none"
-            stroke="#472875"
-            strokeLinecap="round"
-            strokeWidth={3}
-          />
-          <Path
-            d="M27 59c11-11 21-22 27-33 8 8 16 12 25 13l-5 16H45l-8 8H28c-3 0-4-2-1-4Z"
-            fill="#B752FF"
-          />
-          <Path
-            d="M56 31c2 3 2 6-1 8"
-            fill="none"
-            stroke="#FFE6A8"
-            strokeLinecap="round"
-            strokeWidth={3}
-          />
-          <Path
-            d="M41 54h17"
-            fill="none"
-            stroke="#FFE6A8"
-            strokeLinecap="round"
-            strokeWidth={2}
-          />
-        </Svg>
-      </View>
-      <View style={styles.habitCopy}>
-        <Text style={styles.habitTitle}>Workout</Text>
-        <View style={styles.habitTimeRow}>
-          <ClockIcon />
-          <Text style={styles.habitTime}>After work</Text>
-        </View>
-      </View>
-      <View style={styles.habitActionSlot}>
-        <PillButton label="Add to sprint" minWidth={170} />
-      </View>
-      <ChevronDownIcon color="#FFD36E" />
-    </View>
-  );
-}
+const dummyHabit = {
+  accent: colors.primary,
+  day: 12,
+  goal: 24,
+  icon: "workout" as const,
+  progress: ["done", "done", "done", "missed", "open", "missed", "missed"] as const,
+  time: "After work",
+  title: "Workout",
+};
 
 function IdentityRow() {
   return (
@@ -700,7 +651,7 @@ export default function MilestoneQuestsScreen() {
           </Pressable>
         </View>
 
-        <HabitRow />
+        <HabitItemCard habit={dummyHabit} />
       </ScrollView>
     </View>
   );
@@ -726,17 +677,15 @@ const styles = StyleSheet.create({
   activeQuestHeader: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 14,
+    gap: 20,
   },
   activeQuestHeaderCompact: {
-    alignItems: "flex-start",
-  },
-  activeQuestSide: {
     alignItems: "center",
-    gap: 8,
+  },
+  activeQuestProgressRing: {
+    alignItems: "center",
     justifyContent: "center",
-    minWidth: 86,
+    minWidth: 90,
   },
   activeQuestSubtitle: {
     ...typography.body,
@@ -846,56 +795,6 @@ const styles = StyleSheet.create({
     maxWidth: 104,
     textAlign: "center",
   },
-  habitCard: {
-    alignItems: "center",
-    backgroundColor: "rgba(4, 10, 23, 0.92)",
-    borderColor: "rgba(245, 184, 75, 0.82)",
-    borderRadius: 20,
-    borderWidth: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 24,
-    marginBottom: 20,
-    minHeight: controls.row.habit,
-    paddingHorizontal: 28,
-    paddingVertical: 22,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-  },
-  habitCopy: {
-    flex: 1,
-    minWidth: 180,
-  },
-  habitActionSlot: {
-    marginLeft: "auto",
-  },
-  habitIconFrame: {
-    alignItems: "center",
-    backgroundColor: "rgba(17, 8, 38, 0.74)",
-    borderColor: "rgba(232, 137, 255, 0.72)",
-    borderRadius: controls.iconFrame.lg / 2,
-    borderWidth: 1.2,
-    height: controls.iconFrame.lg,
-    justifyContent: "center",
-    shadowColor: "#A970FF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.68,
-    shadowRadius: 20,
-    width: controls.iconFrame.lg,
-  },
-  habitDivider: {
-    backgroundColor: "rgba(255, 211, 110, 0.48)",
-    flex: 1,
-    height: 1,
-    maxWidth: 160,
-  },
-  habitDividerStar: {
-    color: "#FFD36E",
-    fontSize: 26,
-    lineHeight: 30,
-    marginHorizontal: 10,
-  },
   habitHeadingRow: {
     alignItems: "center",
     flex: 1,
@@ -905,24 +804,6 @@ const styles = StyleSheet.create({
   habitSectionHeader: {
     marginTop: 28,
     paddingHorizontal: 34,
-  },
-  habitSectionTitle: {
-    fontSize: 34,
-    letterSpacing: 10,
-    lineHeight: 42,
-  },
-  habitTime: {
-    ...typography.meta,
-    color: "#B8A68C",
-  },
-  habitTimeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
-  },
-  habitTitle: {
-    ...typography.cardTitle,
   },
   header: {
     alignItems: "center",

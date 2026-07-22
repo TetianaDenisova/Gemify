@@ -10,15 +10,18 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Line, Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
+import { type HabitCompletion, HabitItemRow } from "@/components/HabitItem";
 import { colors } from "@/theme/colors";
-import { controls, spacing, typography } from "@/theme/theme";
+import { controls, fontSizes, lineHeights, spacing, typography } from "@/theme/theme";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const ACTIVE_DAY_INDEX = 2;
 
-type Completion = "done" | "missed" | "open" | "partial";
+/** Below this width the full-size layout overflows, so switch to the phone scale. */
+const COMPACT_BREAKPOINT = 620;
+
+type Completion = HabitCompletion;
 
 type HabitDetailSection = {
   icon: "sun" | "feather" | "shield";
@@ -208,29 +211,6 @@ function PlusIcon({ size = 30 }: { size?: number }) {
   );
 }
 
-function ClockIcon() {
-  return (
-    <Svg height={17} viewBox="0 0 24 24" width={17}>
-      <Circle
-        cx={12}
-        cy={12}
-        fill="none"
-        r={8.2}
-        stroke="#A0A5B1"
-        strokeWidth={1.9}
-      />
-      <Path
-        d="M12 7.8v5l3.2 2"
-        fill="none"
-        stroke="#A0A5B1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
-
 function ChevronIcon({ expanded = false }: { expanded?: boolean }) {
   return (
     <Svg height={25} viewBox="0 0 24 24" width={25}>
@@ -246,10 +226,10 @@ function ChevronIcon({ expanded = false }: { expanded?: boolean }) {
   );
 }
 
-function DetailIcon({ icon }: { icon: HabitDetailSection["icon"] }) {
+function DetailIcon({ icon, size = 58 }: { icon: HabitDetailSection["icon"]; size?: number }) {
   if (icon === "feather") {
     return (
-      <Svg height={58} viewBox="0 0 64 64" width={58}>
+      <Svg height={size} viewBox="0 0 64 64" width={size}>
         <Circle cx={32} cy={32} fill="#160B2C" r={29} />
         <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
         <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
@@ -273,7 +253,7 @@ function DetailIcon({ icon }: { icon: HabitDetailSection["icon"] }) {
 
   if (icon === "shield") {
     return (
-      <Svg height={58} viewBox="0 0 64 64" width={58}>
+      <Svg height={size} viewBox="0 0 64 64" width={size}>
         <Circle cx={32} cy={32} fill="#160B2C" r={29} />
         <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
         <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
@@ -297,7 +277,7 @@ function DetailIcon({ icon }: { icon: HabitDetailSection["icon"] }) {
   }
 
   return (
-    <Svg height={58} viewBox="0 0 64 64" width={58}>
+    <Svg height={size} viewBox="0 0 64 64" width={size}>
       <Circle cx={32} cy={32} fill="#160B2C" r={29} />
       <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
       <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
@@ -319,17 +299,17 @@ function DetailIcon({ icon }: { icon: HabitDetailSection["icon"] }) {
   );
 }
 
-function HeaderOrnament() {
+function HeaderOrnament({ compact }: { compact: boolean }) {
   return (
     <View style={styles.ornamentRow} pointerEvents="none">
-      <View style={styles.ornamentLine} />
-      <Svg height={32} viewBox="0 0 32 32" width={32}>
+      <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
+      <Svg height={compact ? 24 : 32} viewBox="0 0 32 32" width={compact ? 24 : 32}>
         <Path
           d="M16 1.8c2.6 8.1 6.1 11.6 14.2 14.2C22.1 18.6 18.6 22.1 16 30.2 13.4 22.1 9.9 18.6 1.8 16 9.9 13.4 13.4 9.9 16 1.8Z"
           fill={colors.primary}
         />
       </Svg>
-      <View style={styles.ornamentLine} />
+      <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
     </View>
   );
 }
@@ -376,114 +356,6 @@ function GroupIcon({ icon, tint }: { icon: HabitGroup["icon"]; tint: string }) {
   );
 }
 
-function HabitArt({ accent, icon }: { accent: string; icon: Habit["icon"] }) {
-  return (
-    <View style={[styles.habitArt, { borderColor: `${accent}A8`, shadowColor: accent }]}>
-      <Svg height={90} viewBox="0 0 90 90" width={90}>
-        <Circle cx={45} cy={45} fill="#050817" r={42} />
-        <Circle cx={45} cy={45} fill={accent} opacity={0.15} r={34} />
-        <Circle cx={45} cy={45} fill="none" opacity={0.58} r={37} stroke={accent} strokeWidth={1.4} />
-        <Circle cx={45} cy={13.5} fill={accent} r={1.8} />
-        <Circle cx={45} cy={76.5} fill={accent} r={1.8} />
-        <Circle cx={13.5} cy={45} fill={accent} r={1.8} />
-        <Circle cx={76.5} cy={45} fill={accent} r={1.8} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={45} x2={45} y1={6} y2={12} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={45} x2={45} y1={78} y2={84} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={6} x2={12} y1={45} y2={45} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={78} x2={84} y1={45} y2={45} />
-        {icon === "workout" ? (
-          <>
-            <Path
-              d="M25 38v14M31 33v24M58 33v24M64 38v14M31 45h27"
-              fill="none"
-              stroke={accent}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={3.2}
-            />
-            <Path d="M36 39h17v12H36z" fill="none" stroke="#FBE3A8" strokeWidth={1.7} />
-          </>
-        ) : null}
-        {icon === "water" ? (
-          <Path
-            d="M45 22c10.1 14 16.2 21.1 16.2 31.2 0 9-6.9 15.8-16.2 15.8s-16.2-6.8-16.2-15.8C28.8 43.1 34.9 36 45 22Z"
-            fill="none"
-            stroke={accent}
-            strokeLinejoin="round"
-            strokeWidth={3}
-          />
-        ) : null}
-        {icon === "book" ? (
-          <>
-            <Path
-              d="M25 31c8.8 0 14.3 2.6 20 9 5.7-6.4 11.2-9 20-9v27c-8.8 0-14.3 2.6-20 9-5.7-6.4-11.2-9-20-9V31Z"
-              fill="#6D318A"
-              stroke="#D39BFF"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-            <Path
-              d="M45 40v27M29 37c6.2.4 10.8 2.2 16 6.8M61 37c-6.2.4-10.8 2.2-16 6.8"
-              fill="none"
-              stroke="#FFE2A3"
-              strokeLinecap="round"
-              strokeWidth={2.2}
-            />
-          </>
-        ) : null}
-        {icon === "meditate" ? (
-          <>
-            <Circle cx={45} cy={31} fill="#DFA7FF" r={6.2} />
-            <Path d="M43.8 39.5c-9 6.3-9 15.1 1.2 20.7 10.2-5.6 10.2-14.4 1.2-20.7Z" fill="#A36EFF" />
-            <Path
-              d="M25 65c9.2-9.5 17-10.5 20-4.2 3-6.3 10.8-5.3 20 4.2M34 48.5 23 57M56 48.5 67 57"
-              fill="none"
-              stroke="#CA96FF"
-              strokeLinecap="round"
-              strokeWidth={3.5}
-            />
-          </>
-        ) : null}
-      </Svg>
-    </View>
-  );
-}
-
-function DayStatus({ status }: { status: Completion }) {
-  if (status === "partial") {
-    return (
-      <View style={styles.partialDot}>
-        <View style={styles.partialFill} />
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={[
-        styles.dayDot,
-        status === "done" && styles.dayDotDone,
-        status === "missed" && styles.dayDotMissed,
-      ]}
-    />
-  );
-}
-
-function CheckIcon() {
-  return (
-    <Svg height={18} viewBox="0 0 24 24" width={18}>
-      <Path
-        d="m5.5 12.5 4.2 4.1 8.8-9.1"
-        fill="none"
-        stroke="#FFF0C1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.4}
-      />
-    </Svg>
-  );
-}
-
 function DetailCheckbox() {
   return (
     <View style={styles.detailCheckbox}>
@@ -492,50 +364,26 @@ function DetailCheckbox() {
   );
 }
 
-function HabitProgress({ compact, expanded, progress }: { compact: boolean; expanded: boolean; progress: readonly Completion[] }) {
+function HabitDetailSectionView({
+  compact,
+  section,
+}: {
+  compact: boolean;
+  section: HabitDetailSection;
+}) {
   return (
-    <View style={[styles.progressRow, expanded && styles.progressRowExpanded, compact && styles.progressRowCompact]}>
-      {DAYS.map((day, index) => {
-        const highlighted = index === ACTIVE_DAY_INDEX;
-
-        return (
-          <View
-            key={day}
-            style={[
-              styles.dayCell,
-              highlighted && !expanded && styles.dayCellHighlighted,
-              expanded && styles.dayCellExpanded,
-              compact && styles.dayCellCompact,
-            ]}
-          >
-            <Text style={[styles.dayLabel, expanded && styles.dayLabelExpanded, highlighted && styles.dayLabelHighlighted]}>
-              {expanded ? day : day.toUpperCase()}
-            </Text>
-            <DayStatus status={progress[index] ?? "missed"} />
-            {expanded && progress[index] === "done" ? (
-              <View pointerEvents="none" style={styles.dayCheck}>
-                <CheckIcon />
-              </View>
-            ) : null}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function HabitDetailSectionView({ section }: { section: HabitDetailSection }) {
-  return (
-    <View style={styles.detailSection}>
-      <View style={styles.detailIconFrame}>
-        <DetailIcon icon={section.icon} />
+    <View style={[styles.detailSection, compact && styles.detailSectionCompact]}>
+      <View style={[styles.detailIconFrame, compact && styles.detailIconFrameCompact]}>
+        <DetailIcon icon={section.icon} size={compact ? 44 : 58} />
       </View>
       <View style={styles.detailCopy}>
-        <Text style={styles.detailTitle}>{section.title}</Text>
+        <Text style={[styles.detailTitle, compact && styles.detailTitleCompact]}>
+          {section.title}
+        </Text>
         {section.rows.map((row) => (
-          <View key={row} style={styles.detailRow}>
+          <View key={row} style={[styles.detailRow, compact && styles.detailRowCompact]}>
             <DetailCheckbox />
-            <Text style={styles.detailText}>{row}</Text>
+            <Text style={[styles.detailText, compact && styles.detailTextCompact]}>{row}</Text>
           </View>
         ))}
       </View>
@@ -561,50 +409,43 @@ function HabitRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.habitRow,
+        compact && styles.habitRowCompact,
         expanded && styles.habitRowExpanded,
+        expanded && compact && styles.habitRowExpandedCompact,
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.habitTop, compact && styles.habitTopCompact]}>
-        <View style={styles.habitIdentity}>
-          <HabitArt accent={habit.accent} icon={habit.icon} />
-          <View style={styles.habitInfo}>
-            <Text style={styles.habitTitle}>{habit.title}</Text>
-            <View style={styles.habitTimeRow}>
-              <ClockIcon />
-              <Text style={styles.habitTime}>{habit.time}</Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.habitMeta}>
-          <View style={styles.habitDay}>
-            <Text style={styles.dayCount}>Day {habit.day}</Text>
-            <Text style={styles.goalCount}> / {habit.goal}</Text>
-          </View>
-          <ChevronIcon expanded={expanded} />
-        </View>
-      </View>
-      <HabitProgress compact={compact} expanded={expanded} progress={habit.progress} />
+      <HabitItemRow
+        activeDayIndex={ACTIVE_DAY_INDEX}
+        compact={compact}
+        expanded={expanded}
+        habit={habit}
+      />
       {expanded ? (
-        <>
-          <View style={styles.detailPanel}>
-            {habit.details.map((section) => (
-              <HabitDetailSectionView key={section.title} section={section} />
-            ))}
-          </View>
-        </>
+        <View style={styles.detailPanel}>
+          {habit.details.map((section) => (
+            <HabitDetailSectionView compact={compact} key={section.title} section={section} />
+          ))}
+        </View>
       ) : null}
     </Pressable>
   );
 }
 
-function GroupHeader({ group }: { group: HabitGroup }) {
+function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }) {
   return (
-    <View style={styles.groupHeader}>
-      <View style={styles.groupTitleRow}>
+    <View style={[styles.groupHeader, compact && styles.groupHeaderCompact]}>
+      <View style={[styles.groupTitleRow, compact && styles.groupTitleRowCompact]}>
         <GroupIcon icon={group.icon} tint={group.tint} />
-        <Text style={styles.groupTitle}>{group.title}</Text>
-        <Text style={styles.groupCount}>{group.count}</Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.groupTitle, compact && styles.groupTitleCompact]}
+        >
+          {group.title}
+        </Text>
+        <Text style={[styles.groupCount, compact && styles.groupCountCompact]}>
+          {group.count}
+        </Text>
       </View>
       {group.habits.length === 0 ? <ChevronIcon /> : null}
     </View>
@@ -615,7 +456,7 @@ export default function HabitsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const compact = width < 620;
+  const compact = width < COMPACT_BREAKPOINT;
   const [expandedHabit, setExpandedHabit] = useState<string | null>(null);
 
   function handleHabitPress(title: string) {
@@ -635,14 +476,6 @@ export default function HabitsScreen() {
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />
-      <LinearGradient
-        colors={["rgba(72, 36, 120, 0.2)", "rgba(245, 184, 75, 0.08)", "rgba(3, 8, 19, 0)"]}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-        start={{ x: 0.5, y: 0 }}
-        style={styles.centerGlow}
-      />
-
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -654,32 +487,45 @@ export default function HabitsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, compact && styles.headerCompact]}>
           <Pressable
             accessibilityLabel="Open menu"
             accessibilityRole="button"
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.headerButton,
+              compact && styles.headerButtonCompact,
+              pressed && styles.pressed,
+            ]}
           >
             <MenuIcon />
           </Pressable>
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>My Habits</Text>
-            <HeaderOrnament />
+          <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.title, compact && styles.titleCompact]}
+            >
+              My Habits
+            </Text>
+            <HeaderOrnament compact={compact} />
           </View>
           <Pressable
             accessibilityLabel="Add habit"
             accessibilityRole="button"
             onPress={() => router.push("/create-habit")}
-            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.headerButton,
+              compact && styles.headerButtonCompact,
+              pressed && styles.pressed,
+            ]}
           >
-            <PlusIcon />
+            <PlusIcon size={compact ? 26 : 30} />
           </Pressable>
         </View>
 
         <View style={styles.groups}>
           {habitGroups.map((group) => (
             <View key={group.title} style={styles.group}>
-              <GroupHeader group={group} />
+              <GroupHeader compact={compact} group={group} />
               {group.habits.map((habit) => (
                 <HabitRow
                   compact={compact}
@@ -698,13 +544,6 @@ export default function HabitsScreen() {
 }
 
 const styles = StyleSheet.create({
-  centerGlow: {
-    bottom: 70,
-    height: 260,
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
   content: {
     alignSelf: "center",
     maxWidth: 820,
@@ -713,75 +552,6 @@ const styles = StyleSheet.create({
   },
   contentCompact: {
     paddingHorizontal: spacing.md,
-  },
-  dayCell: {
-    alignItems: "center",
-    borderRadius: 12,
-    gap: 16,
-    justifyContent: "center",
-    minHeight: 86,
-    minWidth: 68,
-    paddingHorizontal: 5,
-    paddingVertical: 10,
-  },
-  dayCellCompact: {
-    flex: 1,
-    minWidth: 44,
-  },
-  dayCellHighlighted: {
-    backgroundColor: "rgba(116, 62, 170, 0.34)",
-    borderColor: "rgba(180, 106, 255, 0.8)",
-    borderWidth: 1.2,
-    shadowColor: "#B46AFF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.62,
-    shadowRadius: 14,
-  },
-  dayCellExpanded: {
-    gap: 14,
-    minHeight: 78,
-  },
-  dayCheck: {
-    alignItems: "center",
-    height: 30,
-    justifyContent: "center",
-    position: "absolute",
-    top: 40,
-    width: 30,
-  },
-  dayCount: {
-    ...typography.pill,
-    color: colors.primary,
-    fontWeight: "700",
-  },
-  dayDot: {
-    borderColor: colors.primary,
-    borderRadius: 15,
-    borderWidth: 2,
-    height: 30,
-    width: 30,
-  },
-  dayDotDone: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.72,
-    shadowRadius: 11,
-  },
-  dayDotMissed: {
-    borderColor: "#626B82",
-  },
-  dayLabel: {
-    ...typography.caption,
-    color: "#AAAEBB",
-    fontWeight: "800",
-  },
-  dayLabelHighlighted: {
-    color: "#D29CFF",
-  },
-  dayLabelExpanded: {
-    ...typography.pill,
-    color: "#D7C4AF",
   },
   detailCheckbox: {
     alignItems: "center",
@@ -818,10 +588,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 26,
   },
+  detailIconFrameCompact: {
+    height: 52,
+    width: 52,
+  },
   detailRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 18,
+  },
+  detailRowCompact: {
+    gap: 12,
   },
   detailSection: {
     borderBottomColor: "rgba(246, 232, 200, 0.14)",
@@ -831,18 +608,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 24,
   },
+  detailSectionCompact: {
+    gap: 14,
+    paddingHorizontal: 2,
+    paddingVertical: 18,
+  },
   detailText: {
     ...typography.body,
     color: "#D6C8BC",
     flex: 1,
   },
+  detailTextCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: 20,
+  },
   detailTitle: {
     ...typography.pill,
     color: colors.primary,
   },
-  goalCount: {
-    ...typography.pill,
-    color: "#9A9DA9",
+  detailTitleCompact: {
+    fontSize: fontSizes.lg,
+    lineHeight: 22,
   },
   group: {
     borderTopColor: "rgba(246, 232, 200, 0.14)",
@@ -855,9 +641,18 @@ const styles = StyleSheet.create({
     minHeight: 66,
     paddingHorizontal: 12,
   },
+  groupHeaderCompact: {
+    minHeight: 54,
+    paddingHorizontal: 2,
+  },
   groupTitle: {
     ...typography.button,
     color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  groupTitleCompact: {
+    fontSize: fontSizes.xl,
+    lineHeight: 25,
   },
   groupTitleRow: {
     alignItems: "center",
@@ -866,47 +661,21 @@ const styles = StyleSheet.create({
     gap: 13,
     minWidth: 0,
   },
+  groupTitleRowCompact: {
+    gap: 9,
+  },
   groupCount: {
     ...typography.subtitle,
     color: "#8E929E",
     marginLeft: 7,
   },
+  groupCountCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+    marginLeft: 0,
+  },
   groups: {
     marginTop: 28,
-  },
-  habitArt: {
-    alignItems: "center",
-    backgroundColor: "rgba(3, 6, 17, 0.9)",
-    borderRadius: 61,
-    borderWidth: 1.1,
-    height: 102,
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    width: 102,
-  },
-  habitDay: {
-    alignItems: "baseline",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    minWidth: 118,
-  },
-  habitIdentity: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 24,
-    minWidth: 250,
-  },
-  habitInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  habitMeta: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 16,
   },
   habitRow: {
     borderTopColor: "rgba(246, 232, 200, 0.12)",
@@ -914,6 +683,14 @@ const styles = StyleSheet.create({
     paddingBottom: 23,
     paddingHorizontal: 18,
     paddingTop: 16,
+  },
+  habitRowCompact: {
+    paddingBottom: 16,
+    paddingHorizontal: 2,
+    paddingTop: 14,
+  },
+  habitRowExpandedCompact: {
+    paddingHorizontal: 10,
   },
   habitRowExpanded: {
     backgroundColor: "rgba(5, 9, 22, 0.84)",
@@ -927,31 +704,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 18,
-  },
-  habitTime: {
-    ...typography.subtitle,
-    color: "#B1B3BC",
-    flexShrink: 1,
-  },
-  habitTimeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 7,
-  },
-  habitTitle: {
-    ...typography.button,
-    color: colors.textPrimary,
-  },
-  habitTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 18,
-    justifyContent: "space-between",
-  },
-  habitTopCompact: {
-    alignItems: "flex-start",
-    flexWrap: "wrap",
   },
   header: {
     alignItems: "center",
@@ -973,12 +725,23 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     width: controls.iconButton.md,
   },
+  headerButtonCompact: {
+    borderRadius: 16,
+    height: controls.iconButton.sm,
+    width: controls.iconButton.sm,
+  },
+  headerCompact: {
+    minHeight: 72,
+  },
   ornamentLine: {
     backgroundColor: colors.primary,
     flex: 1,
     height: 1,
     maxWidth: 112,
     opacity: 0.6,
+  },
+  ornamentLineCompact: {
+    maxWidth: 64,
   },
   ornamentRow: {
     alignItems: "center",
@@ -987,36 +750,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 5,
   },
-  partialDot: {
-    borderColor: colors.primary,
-    borderRadius: 15,
-    borderWidth: 2,
-    height: 30,
-    overflow: "hidden",
-    width: 30,
-  },
-  partialFill: {
-    backgroundColor: colors.primary,
-    height: "100%",
-    width: "50%",
-  },
   pressed: {
     opacity: 0.74,
     transform: [{ scale: 0.98 }],
-  },
-  progressRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginLeft: 9,
-    marginTop: 14,
-  },
-  progressRowExpanded: {
-    marginLeft: 0,
-    marginTop: 24,
-  },
-  progressRowCompact: {
-    marginLeft: 0,
-    width: "100%",
   },
   screen: {
     backgroundColor: colors.background,
@@ -1035,5 +771,12 @@ const styles = StyleSheet.create({
   titleBlock: {
     flex: 1,
     paddingHorizontal: 18,
+  },
+  titleBlockCompact: {
+    paddingHorizontal: 8,
+  },
+  titleCompact: {
+    fontSize: fontSizes.cardTitle,
+    lineHeight: lineHeights.cardTitle,
   },
 });
