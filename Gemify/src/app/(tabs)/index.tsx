@@ -1,17 +1,20 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
-import {
-  CurrentFocusCard,
-  GoalCard,
-  HomeHeader,
-  SectionTitle,
-} from "@/components/home";
+import { GoalCard, HomeHeader, SectionTitle, TodayProgressCard } from "@/components/home";
+import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal } from "@/data/homeData";
 import { homeData } from "@/data/homeData";
+import type { TimeBlock } from "@/data/timeBlocks";
+import { getCurrentTimeBlockKey, timeBlocks } from "@/data/timeBlocks";
 import { colors } from "@/theme/colors";
 import { radius, shadows, spacing, typography } from "@/theme/theme";
+
+/** Floating tab bar height (72) plus its bottom margin and a small gap. */
+const FOOTER_BOTTOM_OFFSET = 72 + spacing.sm * 2;
 
 function AddGoalIcon() {
   return (
@@ -28,6 +31,32 @@ function AddGoalIcon() {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [blocks, setBlocks] = useState<readonly TimeBlock[]>(timeBlocks);
+
+  const currentBlockKey = getCurrentTimeBlockKey(new Date());
+  const currentBlock = blocks.find((block) => block.key === currentBlockKey) ?? blocks[0];
+
+  const totalActions = blocks.reduce((sum, block) => sum + block.actions.length, 0);
+  const completedActions = blocks.reduce(
+    (sum, block) => sum + block.actions.filter((action) => action.done).length,
+    0,
+  );
+
+  function toggleBlockAction(index: number) {
+    setBlocks((current) =>
+      current.map((block) =>
+        block.key === currentBlock.key
+          ? {
+              ...block,
+              actions: block.actions.map((action, i) =>
+                i === index ? { ...action, done: !action.done } : action,
+              ),
+            }
+          : block,
+      ),
+    );
+  }
 
   function handleGoalPress(goal: Goal) {
     console.log("Opening journey map for goal", goal);
@@ -37,7 +66,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + FOOTER_BOTTOM_OFFSET + spacing.lg },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <HomeHeader
@@ -72,9 +104,18 @@ export default function HomeScreen() {
 
         <SectionTitle title="CURRENT FOCUS" />
 
-        {homeData.currentFocus.map((item) => (
-          <CurrentFocusCard key={item.id} item={item} />
-        ))}
+        <TimeBlockCard
+          block={currentBlock}
+          onToggleAction={toggleBlockAction}
+          showHeader={false}
+          showIntro={false}
+          style={styles.currentBlock}
+        />
+
+        <TodayProgressCard
+          completedActions={completedActions}
+          totalActions={totalActions}
+        />
       </ScrollView>
     </View>
   );
@@ -89,10 +130,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
-    height: 36,
+    height: 40,
     justifyContent: "center",
     overflow: "hidden",
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   addGoalButtonPressed: {
     backgroundColor: colors.secondary,
@@ -116,14 +157,17 @@ const styles = StyleSheet.create({
   addGoalText: {
     ...typography.caption,
     color: colors.primary,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    lineHeight: 16,
   },
   content: {
-    paddingBottom: 96,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
+  },
+  currentBlock: {
+    marginBottom: spacing.md,
   },
   goalSectionHeader: {
     alignItems: "center",

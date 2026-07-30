@@ -314,6 +314,45 @@ function HeaderOrnament({ compact }: { compact: boolean }) {
   );
 }
 
+function TodaySparkle({ size = 20 }: { size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 32 32" width={size}>
+      <Path
+        d="M16 1.8c2.6 8.1 6.1 11.6 14.2 14.2C22.1 18.6 18.6 22.1 16 30.2 13.4 22.1 9.9 18.6 1.8 16 9.9 13.4 13.4 9.9 16 1.8Z"
+        fill={colors.primary}
+      />
+    </Svg>
+  );
+}
+
+function TodayBar({ compact }: { compact: boolean }) {
+  const dateLabel = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  });
+  const totalHabits = habitGroups.reduce((sum, group) => sum + group.habits.length, 0);
+
+  return (
+    <View style={[styles.todayBar, compact && styles.todayBarCompact]}>
+      <View style={[styles.todayLabelRow, compact && styles.todayLabelRowCompact]}>
+        <TodaySparkle size={compact ? 16 : 20} />
+        <Text style={[styles.todayLabel, compact && styles.todayLabelCompact]}>Today</Text>
+      </View>
+      <View style={styles.todayDivider} />
+      <Text
+        numberOfLines={1}
+        style={[styles.todayDate, compact && styles.todayDateCompact]}
+      >
+        {dateLabel}
+      </Text>
+      <Text style={[styles.todayCount, compact && styles.todayCountCompact]}>
+        {totalHabits} habits
+      </Text>
+    </View>
+  );
+}
+
 function GroupIcon({ icon, tint }: { icon: HabitGroup["icon"]; tint: string }) {
   if (icon === "heart") {
     return (
@@ -522,6 +561,8 @@ export default function HabitsScreen() {
           </Pressable>
         </View>
 
+        <TodayBar compact={compact} />
+
         <View style={styles.groups}>
           {habitGroups.map((group) => (
             <View key={group.title} style={styles.group}>
@@ -675,7 +716,60 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   groups: {
-    marginTop: 28,
+    marginTop: 18,
+  },
+  todayBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 26,
+    paddingHorizontal: 12,
+  },
+  todayBarCompact: {
+    gap: 10,
+    marginTop: 18,
+    paddingHorizontal: 2,
+  },
+  todayCount: {
+    ...typography.subtitle,
+    color: "#8E929E",
+  },
+  todayCountCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
+  todayDate: {
+    ...typography.subtitle,
+    color: "#C9CDD8",
+    flex: 1,
+  },
+  todayDateCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
+  todayDivider: {
+    backgroundColor: "rgba(246, 232, 200, 0.24)",
+    height: 22,
+    width: 1,
+  },
+  todayLabel: {
+    ...typography.pill,
+    color: colors.primary,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+  },
+  todayLabelCompact: {
+    fontSize: fontSizes.sm,
+    letterSpacing: 1.2,
+    lineHeight: lineHeights.sm,
+  },
+  todayLabelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 9,
+  },
+  todayLabelRowCompact: {
+    gap: 6,
   },
   habitRow: {
     borderTopColor: "rgba(246, 232, 200, 0.12)",

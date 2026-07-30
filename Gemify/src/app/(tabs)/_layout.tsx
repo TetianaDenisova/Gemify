@@ -84,14 +84,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="milestone-quests"
+        name="my-day"
         options={{
           headerShown: false,
           tabBarLabel: "Today",
-          title: "Milestone Quests",
+          title: "My Day",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} tab="today" />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="milestone-quests"
+        options={{
+          headerShown: false,
+          href: null,
+          title: "Milestone Quests",
         }}
       />
       <Tabs.Screen
@@ -108,6 +116,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
+          headerShown: false,
           tabBarLabel: "Progress",
           title: "Progress",
           tabBarIcon: ({ focused }) => (

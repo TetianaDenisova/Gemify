@@ -9,6 +9,11 @@ export const colors = {
   primaryDark: "#8A5A18",
   primaryGlow: "rgba(245, 184, 75, 0.45)",
 
+  accentViolet: "#B78CFF",
+  accentVioletGlow: "rgba(183, 140, 255, 0.45)",
+  accentPink: "#EF6FAF",
+  accentPinkGlow: "rgba(239, 111, 175, 0.45)",
+
   secondary: "#1B2F4A",
   secondarySoft: "#263F5F",
   secondaryDark: "#08111F",

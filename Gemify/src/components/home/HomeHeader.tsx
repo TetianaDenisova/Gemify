@@ -9,9 +9,15 @@ interface HomeHeaderProps {
 }
 
 export function HomeHeader({ greeting, subtitle }: HomeHeaderProps) {
+  const hasSpark = greeting.endsWith("✦");
+  const greetingText = hasSpark ? greeting.slice(0, -1).trimEnd() : greeting;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.greeting}>{greeting}</Text>
+      <Text style={styles.greeting}>
+        {greetingText}
+        {hasSpark ? <Text style={styles.spark}> ✦</Text> : null}
+      </Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
     </View>
   );
@@ -19,18 +25,22 @@ export function HomeHeader({ greeting, subtitle }: HomeHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.sm,
-    paddingTop: 2,
+    marginBottom: spacing.md,
+    paddingTop: spacing.sm,
   },
   greeting: {
-    ...typography.title,
-    fontSize: 16,
-    fontWeight: "800",
-    lineHeight: 24,
+    ...typography.screenTitle,
+    fontSize: 34,
+    lineHeight: 42,
+  },
+  spark: {
+    color: colors.primary,
   },
   subtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: "400",
+    lineHeight: 21,
+    marginTop: spacing.sm,
   },
 });

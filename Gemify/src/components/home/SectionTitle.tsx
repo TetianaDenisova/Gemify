@@ -17,9 +17,10 @@ const styles = StyleSheet.create({
   title: {
     ...typography.caption,
     color: colors.primary,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
-    letterSpacing: 0,
+    letterSpacing: 1.2,
+    lineHeight: 18,
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
