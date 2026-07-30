@@ -363,7 +363,6 @@ export default function SprintScreen() {
           <ChevronIcon direction="right" />
         </Pressable>
 
-        <SectionLabel title="TRANSFORMATION ARC" />
         <View style={[styles.arcCard, compact && styles.arcCardCompact]}>
           <LinearGradient
             colors={["rgba(245, 184, 75, 0.06)", "rgba(126, 58, 205, 0.03)", "rgba(3, 8, 18, 0)"]}
@@ -415,7 +414,6 @@ export default function SprintScreen() {
           { bottom: insets.bottom + FOOTER_BOTTOM_OFFSET },
         ]}
       >
-        <SectionLabel title="WEEKLY PROGRESS" />
         <View style={styles.weeklyCard}>
           <Image contentFit="cover" source={PORTAL_ART_SOURCE} style={styles.portalArt} />
           <View style={styles.weeklyCopy}>
@@ -805,7 +803,7 @@ const styles = StyleSheet.create({
   },
   weeklyCard: {
     alignItems: "center",
-    backgroundColor: "rgba(6, 9, 20, 0.82)",
+    backgroundColor: "#060914",
     borderColor: "rgba(245, 184, 75, 0.28)",
     borderRadius: 20,
     borderWidth: 1,

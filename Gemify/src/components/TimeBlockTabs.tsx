@@ -20,9 +20,9 @@ const COMPACT_BREAKPOINT = 560;
 
 const PURPLE = "#C79BFF";
 
-function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+function ChevronIcon({ direction, size = 24 }: { direction: "left" | "right"; size?: number }) {
   return (
-    <Svg height={24} viewBox="0 0 24 24" width={24}>
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
       <Path
         d={direction === "left" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6"}
         fill="none"
@@ -101,13 +101,22 @@ function TimeTab({
         styles.timeTab,
         compact && styles.timeTabCompact,
         active && styles.timeTabActive,
+        active && compact && styles.timeTabActiveCompact,
         pressed && styles.pressed,
       ]}
     >
-      <BlockIconArt color={active ? "#E6B4FF" : "rgba(246, 232, 200, 0.68)"} icon={block.icon} size={28} />
+      <BlockIconArt
+        color={active ? "#E6B4FF" : "rgba(246, 232, 200, 0.68)"}
+        icon={block.icon}
+        size={compact ? 22 : 28}
+      />
       <Text
         numberOfLines={1}
-        style={[styles.timeTabLabel, active && styles.timeTabLabelActive]}
+        style={[
+          styles.timeTabLabel,
+          compact && styles.timeTabLabelCompact,
+          active && styles.timeTabLabelActive,
+        ]}
       >
         {block.label}
       </Text>
@@ -158,12 +167,16 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => shiftActive(-1)}
-        style={({ pressed }) => [styles.tabsArrow, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.tabsArrow,
+          compact && styles.tabsArrowCompact,
+          pressed && styles.pressed,
+        ]}
       >
-        <ChevronIcon direction="left" />
+        <ChevronIcon direction="left" size={compact ? 20 : 24} />
       </Pressable>
       <ScrollView
-        contentContainerStyle={styles.tabsContent}
+        contentContainerStyle={[styles.tabsContent, compact && styles.tabsContentCompact]}
         horizontal
         onLayout={(event) => {
           viewportWidthRef.current = event.nativeEvent.layout.width;
@@ -200,9 +213,13 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => shiftActive(1)}
-        style={({ pressed }) => [styles.tabsArrow, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.tabsArrow,
+          compact && styles.tabsArrowCompact,
+          pressed && styles.pressed,
+        ]}
       >
-        <ChevronIcon direction="right" />
+        <ChevronIcon direction="right" size={compact ? 20 : 24} />
       </Pressable>
     </View>
   );
@@ -219,11 +236,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
+  tabsArrowCompact: {
+    height: 40,
+    width: 34,
+  },
   tabsContent: {
     alignItems: "center",
     minHeight: 96,
     paddingHorizontal: 4,
     paddingVertical: 12,
+  },
+  tabsContentCompact: {
+    minHeight: 72,
+    paddingVertical: 8,
   },
   tabsRow: {
     alignItems: "center",
@@ -257,9 +282,14 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 28,
   },
+  timeTabActiveCompact: {
+    gap: 8,
+    paddingHorizontal: 18,
+  },
   timeTabCompact: {
-    minHeight: 64,
-    paddingHorizontal: 16,
+    gap: 4,
+    minHeight: 54,
+    paddingHorizontal: 14,
   },
   timeTabDivider: {
     backgroundColor: "rgba(246, 232, 200, 0.12)",
@@ -276,6 +306,10 @@ const styles = StyleSheet.create({
   timeTabLabelActive: {
     color: PURPLE,
     fontWeight: "700",
+  },
+  timeTabLabelCompact: {
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.md,
   },
   timeTabSlot: {
     alignItems: "center",

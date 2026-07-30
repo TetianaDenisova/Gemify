@@ -3,6 +3,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -15,6 +16,9 @@ import { fontSizes, lineHeights, shadows, typography } from "@/theme/theme";
 
 const PURPLE = "#C79BFF";
 const PURPLE_STRONG = "#B46AFF";
+
+/** Below this width the roomy card layout overflows, so switch to the phone scale. */
+const COMPACT_BREAKPOINT = 560;
 
 function SparkIcon({ color = PURPLE, size = 18 }: { color?: string; size?: number }) {
   return (
@@ -129,21 +133,27 @@ function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number })
 
 function ActionRow({
   action,
+  compact,
   last,
   onToggle,
 }: {
   action: DayAction;
+  compact: boolean;
   last: boolean;
   onToggle: () => void;
 }) {
   return (
-    <View style={[styles.actionRow, last && styles.actionRowLast]}>
-      <View style={styles.actionIcon}>
-        <ActionIconArt icon={action.icon} />
+    <View style={[styles.actionRow, compact && styles.actionRowCompact, last && styles.actionRowLast]}>
+      <View style={[styles.actionIcon, compact && styles.actionIconCompact]}>
+        <ActionIconArt icon={action.icon} size={compact ? 28 : 36} />
       </View>
       <View style={styles.actionCopy}>
-        <Text style={styles.actionTitle}>{action.title}</Text>
-        <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
+        <Text style={[styles.actionTitle, compact && styles.actionTitleCompact]}>
+          {action.title}
+        </Text>
+        <Text style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}>
+          {action.subtitle}
+        </Text>
       </View>
       <Pressable
         accessibilityLabel={action.done ? `Mark ${action.title} incomplete` : `Mark ${action.title} complete`}
@@ -153,6 +163,7 @@ function ActionRow({
         onPress={onToggle}
         style={({ pressed }) => [
           styles.checkbox,
+          compact && styles.checkboxCompact,
           action.done && styles.checkboxDone,
           pressed && styles.pressed,
         ]}
@@ -179,40 +190,53 @@ export function TimeBlockCard({
   showIntro = true,
   style,
 }: TimeBlockCardProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < COMPACT_BREAKPOINT;
   const done = block.actions.filter((action) => action.done).length;
 
   return (
     <View style={style}>
       {showHeader ? (
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionBadge}>
-            <BlockIconArt color={PURPLE} icon={block.icon} size={20} />
+          <View style={[styles.sectionBadge, compact && styles.sectionBadgeCompact]}>
+            <BlockIconArt color={PURPLE} icon={block.icon} size={compact ? 17 : 20} />
           </View>
-          <Text style={styles.sectionLabel}>{block.label.toUpperCase()}</Text>
+          <Text style={[styles.sectionLabel, compact && styles.sectionLabelCompact]}>
+            {block.label.toUpperCase()}
+          </Text>
           <View style={styles.sectionDivider} />
-          <Text style={styles.sectionTime}>{block.time}</Text>
-          <Text style={styles.sectionCount}>
+          <Text style={[styles.sectionTime, compact && styles.sectionTimeCompact]}>
+            {block.time}
+          </Text>
+          <Text style={[styles.sectionCount, compact && styles.sectionCountCompact]}>
             {done} / {block.actions.length}
           </Text>
         </View>
       ) : null}
 
-      <View style={[styles.card, !showHeader && styles.cardNoHeader]}>
+      <View style={[styles.card, compact && styles.cardCompact, !showHeader && styles.cardNoHeader]}>
         {showIntro ? (
           <>
             <View style={styles.identityRow}>
-              <SparkIcon />
-              <Text style={styles.identityText}>{block.identity}</Text>
+              <SparkIcon size={compact ? 15 : 18} />
+              <Text style={[styles.identityText, compact && styles.identityTextCompact]}>
+                {block.identity}
+              </Text>
             </View>
-            <Text style={styles.routineTitle}>{block.routineTitle}</Text>
-            <Text style={styles.routineSubtitle}>{block.routineSubtitle}</Text>
+            <Text style={[styles.routineTitle, compact && styles.routineTitleCompact]}>
+              {block.routineTitle}
+            </Text>
+            <Text style={[styles.routineSubtitle, compact && styles.routineSubtitleCompact]}>
+              {block.routineSubtitle}
+            </Text>
           </>
         ) : null}
 
-        <View style={[styles.actionList, !showIntro && styles.actionListBare]}>
+        <View style={[styles.actionList, compact && styles.actionListCompact, !showIntro && styles.actionListBare]}>
           {block.actions.map((action, index) => (
             <ActionRow
               action={action}
+              compact={compact}
               key={action.title}
               last={index === block.actions.length - 1}
               onToggle={() => onToggleAction(index)}
@@ -235,11 +259,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 40,
   },
+  actionIconCompact: {
+    height: 32,
+    width: 32,
+  },
   actionList: {
     marginTop: 20,
   },
   actionListBare: {
     marginTop: 0,
+  },
+  actionListCompact: {
+    marginTop: 14,
   },
   actionRow: {
     alignItems: "center",
@@ -250,6 +281,11 @@ const styles = StyleSheet.create({
     minHeight: 74,
     paddingVertical: 14,
   },
+  actionRowCompact: {
+    gap: 14,
+    minHeight: 60,
+    paddingVertical: 10,
+  },
   actionRowLast: {
     borderBottomWidth: 0,
   },
@@ -258,9 +294,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 3,
   },
+  actionSubtitleCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+    marginTop: 2,
+  },
   actionTitle: {
     ...typography.button,
     color: colors.textPrimary,
+  },
+  actionTitleCompact: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
   },
   card: {
     backgroundColor: "rgba(6, 11, 26, 0.9)",
@@ -270,6 +315,11 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 24,
     ...shadows.softDark,
+  },
+  cardCompact: {
+    borderRadius: 18,
+    marginTop: 14,
+    padding: 18,
   },
   cardNoHeader: {
     marginTop: 0,
@@ -282,6 +332,11 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: "center",
     width: 38,
+  },
+  checkboxCompact: {
+    borderRadius: 16,
+    height: 32,
+    width: 32,
   },
   checkboxDone: {
     borderColor: PURPLE_STRONG,
@@ -302,6 +357,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2.4,
     lineHeight: lineHeights.sm,
   },
+  identityTextCompact: {
+    fontSize: fontSizes.xs,
+    letterSpacing: 1.8,
+    lineHeight: lineHeights.xs,
+  },
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.98 }],
@@ -312,9 +372,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 6,
   },
+  routineSubtitleCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+    marginTop: 4,
+  },
   routineTitle: {
     ...typography.cardTitle,
     marginTop: 14,
+  },
+  routineTitleCompact: {
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxl,
+    marginTop: 10,
   },
   sectionBadge: {
     alignItems: "center",
@@ -326,12 +396,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
+  sectionBadgeCompact: {
+    borderRadius: 18,
+    height: 36,
+    width: 36,
+  },
   sectionCount: {
     color: colors.textPrimary,
     fontFamily: "serif",
     fontSize: fontSizes.xl,
     lineHeight: lineHeights.lg,
     marginLeft: "auto",
+  },
+  sectionCountCompact: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.md,
   },
   sectionDivider: {
     backgroundColor: "rgba(246, 232, 200, 0.2)",
@@ -350,10 +429,19 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     lineHeight: lineHeights.lg,
   },
+  sectionLabelCompact: {
+    fontSize: fontSizes.sm,
+    letterSpacing: 1.6,
+    lineHeight: lineHeights.sm,
+  },
   sectionTime: {
     color: colors.primary,
     fontSize: fontSizes.lg,
     fontWeight: "600",
     lineHeight: lineHeights.lg,
+  },
+  sectionTimeCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
   },
 });

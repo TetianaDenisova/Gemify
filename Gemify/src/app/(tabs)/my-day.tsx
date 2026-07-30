@@ -16,7 +16,7 @@ import { TimeBlockTabs } from "@/components/TimeBlockTabs";
 import type { TimeBlock } from "@/data/timeBlocks";
 import { timeBlocks } from "@/data/timeBlocks";
 import { colors } from "@/theme/colors";
-import { fontSizes, lineHeights, shadows, spacing, typography } from "@/theme/theme";
+import { fontSizes, lineHeights, radius, shadows, spacing, typography } from "@/theme/theme";
 
 /** Below this width the roomy layout overflows, so switch to the phone scale. */
 const COMPACT_BREAKPOINT = 560;
@@ -51,7 +51,7 @@ function StarBadge({ size = 26 }: { size?: number }) {
 }
 
 function ProgressRing({ percent, size = 62 }: { percent: number; size?: number }) {
-  const strokeWidth = 5;
+  const strokeWidth = size < 60 ? 4 : 5;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   const dashOffset = circumference * (1 - percent / 100);
@@ -80,7 +80,7 @@ function ProgressRing({ percent, size = 62 }: { percent: number; size?: number }
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <Text style={styles.ringValue}>{percent}%</Text>
+      <Text style={[styles.ringValue, size < 60 && styles.ringValueCompact]}>{percent}%</Text>
     </View>
   );
 }
@@ -131,7 +131,7 @@ export default function MyDayScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingBottom: insets.bottom + FOOTER_BOTTOM_OFFSET + 150,
+            paddingBottom: insets.bottom + FOOTER_BOTTOM_OFFSET + (compact ? 120 : 150),
             paddingTop: Math.max(insets.top + 10, 20),
           },
           compact && styles.contentCompact,
@@ -139,18 +139,26 @@ export default function MyDayScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={styles.headerSpacer} />
+          <View style={[styles.headerSpacer, compact && styles.headerSpacerCompact]} />
           <View style={styles.headerTitleBlock}>
-            <Text style={styles.headerTitle}>{headerTitle}</Text>
-            <Text style={styles.headerSubtitle}>Focus only on what matters now.</Text>
+            <Text style={[styles.headerTitle, compact && styles.headerTitleCompact]}>
+              {headerTitle}
+            </Text>
+            <Text style={[styles.headerSubtitle, compact && styles.headerSubtitleCompact]}>
+              Focus only on what matters now.
+            </Text>
           </View>
           <Pressable
             accessibilityLabel="Open calendar"
             accessibilityRole="button"
             onPress={() => setCalendarOpen(true)}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.iconButton,
+              compact && styles.iconButtonCompact,
+              pressed && styles.pressed,
+            ]}
           >
-            <CalendarIcon size={24} />
+            <CalendarIcon size={compact ? 20 : 24} />
           </Pressable>
         </View>
 
@@ -158,13 +166,13 @@ export default function MyDayScreen() {
           activeKey={activeKey}
           blocks={blocks}
           onSelect={setActiveKey}
-          style={styles.tabs}
+          style={compact ? styles.tabsCompact : styles.tabs}
         />
 
         <TimeBlockCard
           block={activeBlock}
           onToggleAction={(index) => toggleAction(activeBlock.key, index)}
-          style={styles.blockSection}
+          style={compact ? styles.blockSectionCompact : styles.blockSection}
         />
       </ScrollView>
 
@@ -175,18 +183,20 @@ export default function MyDayScreen() {
           compact && styles.progressFooterCompact,
         ]}
       >
-        <View style={styles.progressCard}>
-          <StarBadge />
+        <View style={[styles.progressCard, compact && styles.progressCardCompact]}>
+          <StarBadge size={compact ? 22 : 26} />
           <View style={styles.progressCopy}>
-            <Text style={styles.progressTitle}>{"Today's progress"}</Text>
-            <Text style={styles.progressMeta}>
+            <Text style={[styles.progressTitle, compact && styles.progressTitleCompact]}>
+              {"Today's progress"}
+            </Text>
+            <Text style={[styles.progressMeta, compact && styles.progressMetaCompact]}>
               {completed} / {total} actions completed
             </Text>
-            <View style={styles.progressTrack}>
+            <View style={[styles.progressTrack, compact && styles.progressTrackCompact]}>
               <View style={[styles.progressFill, { width: `${percent}%` }]} />
             </View>
           </View>
-          <ProgressRing percent={percent} />
+          <ProgressRing percent={percent} size={compact ? 50 : 62} />
         </View>
       </View>
 
@@ -210,6 +220,9 @@ const styles = StyleSheet.create({
   blockSection: {
     marginTop: 24,
   },
+  blockSectionCompact: {
+    marginTop: spacing.md,
+  },
   content: {
     alignSelf: "center",
     maxWidth: 820,
@@ -228,6 +241,9 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 52,
   },
+  headerSpacerCompact: {
+    width: 44,
+  },
   headerSubtitle: {
     color: colors.primary,
     fontSize: fontSizes.md,
@@ -235,9 +251,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "center",
   },
+  headerSubtitleCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
   headerTitle: {
     ...typography.screenTitle,
     textAlign: "center",
+  },
+  headerTitleCompact: {
+    fontSize: fontSizes.cardTitle,
+    lineHeight: lineHeights.cardTitle,
   },
   headerTitleBlock: {
     alignItems: "center",
@@ -252,6 +276,11 @@ const styles = StyleSheet.create({
     height: 52,
     justifyContent: "center",
     width: 52,
+  },
+  iconButtonCompact: {
+    borderRadius: 22,
+    height: 44,
+    width: 44,
   },
   pressed: {
     opacity: 0.72,
@@ -271,6 +300,11 @@ const styles = StyleSheet.create({
     ...shadows.goldGlow,
     shadowOpacity: 0.16,
     shadowRadius: 12,
+  },
+  progressCardCompact: {
+    borderRadius: radius.md,
+    gap: spacing.sm + spacing.xs,
+    padding: spacing.md,
   },
   progressCopy: {
     flex: 1,
@@ -300,10 +334,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  progressMetaCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
   progressTitle: {
     ...typography.cardTitle,
     fontSize: fontSizes.xxl,
     lineHeight: lineHeights.xxl,
+  },
+  progressTitleCompact: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
   },
   progressTrack: {
     backgroundColor: "rgba(246, 232, 200, 0.12)",
@@ -313,6 +355,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
   },
+  progressTrackCompact: {
+    height: 5,
+    marginTop: spacing.sm,
+  },
   ringValue: {
     color: colors.primary,
     fontFamily: "serif",
@@ -320,11 +366,18 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     position: "absolute",
   },
+  ringValueCompact: {
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.md,
+  },
   screen: {
     backgroundColor: colors.background,
     flex: 1,
   },
   tabs: {
     marginTop: 36,
+  },
+  tabsCompact: {
+    marginTop: spacing.lg,
   },
 });
