@@ -1,16 +1,13 @@
+import { Image } from "expo-image";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import {
-  AppText,
-  Card,
-  ProgressBar,
-  ProgressRing,
-  SparkIcon,
-} from "@/shared/components";
+import { AppText, Card, ProgressBar, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, spacing } from "@/theme/theme";
+import { shadows, spacing } from "@/theme/theme";
 
-const RING_SIZE = 64;
+const RING_SIZE = 72;
+
+const PORTAL_ART_SOURCE = require("../../../assets/sprint-door-icon.png");
 
 interface TodayProgressCardProps {
   completedActions: number;
@@ -28,45 +25,54 @@ export function TodayProgressCard({
 
   return (
     <Card style={[styles.card, style]}>
-      <View style={styles.iconFrame}>
-        <SparkIcon />
-      </View>
+      <Image contentFit="cover" source={PORTAL_ART_SOURCE} style={styles.portalArt} />
       <View style={styles.body}>
-        <AppText variant="cardTitle">Today’s progress</AppText>
-        <AppText color={colors.primary} style={styles.meta} variant="bodySmall">
-          {completedActions} / {totalActions} actions completed
+        <AppText color={colors.textPrimary} variant="bodySmall">
+          You&apos;re showing up for your future.
         </AppText>
-        <ProgressBar style={styles.bar} value={percent} />
+        <AppText variant="bodySmall">Keep going, your future self is proud.</AppText>
+        <ProgressBar glow style={styles.bar} value={percent} />
       </View>
-      <ProgressRing size={RING_SIZE} value={percent} />
+      <View style={styles.percent}>
+        <ProgressRing
+          backgroundColor={colors.surfaceDeep}
+          size={RING_SIZE}
+          value={percent}
+        />
+        <AppText color={colors.textSecondary} variant="caption">
+          {completedActions} / {totalActions} actions
+        </AppText>
+      </View>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   bar: {
-    marginTop: spacing.sm + spacing.xs,
+    marginTop: 13,
   },
   body: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 130,
   },
   card: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
+    overflow: "hidden",
+    ...shadows.goldGlow,
+    shadowOpacity: 0.12,
   },
-  iconFrame: {
+  percent: {
     alignItems: "center",
-    backgroundColor: colors.surfaceDeep,
-    borderColor: colors.borderFaint,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 56,
-    justifyContent: "center",
-    width: 56,
+    gap: spacing.xs,
   },
-  meta: {
-    marginTop: spacing.xs,
+  portalArt: {
+    borderColor: colors.borderSoft,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 82,
+    overflow: "hidden",
+    width: 96,
   },
 });

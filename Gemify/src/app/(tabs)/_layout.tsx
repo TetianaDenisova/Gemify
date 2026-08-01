@@ -142,14 +142,15 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
+    bottom: spacing.sm,
+    left: spacing.lg,
+    right: spacing.lg,
     height: layout.tabBarHeight,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
     borderTopWidth: 1,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceGlass,
+    backgroundColor: colors.surface,
     overflow: "hidden",
     ...shadows.softDark,
   },

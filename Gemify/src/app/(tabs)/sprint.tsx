@@ -1,5 +1,4 @@
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   Pressable,
@@ -267,11 +266,6 @@ export default function SprintScreen() {
         />
 
         <Card style={styles.arcCard}>
-          <LinearGradient
-            colors={["rgba(245, 184, 75, 0.06)", "rgba(126, 58, 205, 0.03)", "rgba(3, 8, 18, 0)"]}
-            pointerEvents="none"
-            style={StyleSheet.absoluteFill}
-          />
           <View style={[styles.arcTop, compact && styles.arcTopCompact]}>
             <View style={[styles.flameFrame, compact && styles.flameFrameCompact]}>
               <FlameIcon size={compact ? 56 : 72} />

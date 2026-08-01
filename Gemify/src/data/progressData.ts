@@ -6,9 +6,7 @@ export type TimelineIconKey =
   | "chat"
   | "target";
 
-export type StatIconKey = "check" | "flame" | "trend" | "calendar" | "gift";
-
-export type ProgressAccent = "violet" | "gold" | "pink" | "ember";
+export type ProgressAccent = "violet" | "gold" | "pink" | "ember" | "muted";
 
 export interface ProgressGoalOption {
   key: string;
@@ -17,8 +15,6 @@ export interface ProgressGoalOption {
 
 export interface AchievementForecast {
   headline: string;
-  subline: string;
-  dateIntro: string;
   date: string;
   eta: string;
 }
@@ -31,17 +27,34 @@ export interface TimelineMoment {
   locked: boolean;
 }
 
-export interface DayFulfillment {
+export interface FulfillmentPoint {
   key: string;
-  day: string;
+  label: string;
   percent: number;
 }
 
-export interface ProgressStatItem {
+export type FulfillmentChartKind = "line" | "bars";
+
+/** Side panel copy for bar-chart ranges — "Monthly Average · 77% · 51 of 66". */
+export interface FulfillmentSummary {
+  eyebrow: string;
+  percent: number;
+  caption: string;
+}
+
+export interface FulfillmentRange {
   key: string;
   label: string;
-  value: string;
-  icon: StatIconKey;
+  points: readonly FulfillmentPoint[];
+  /** Average block shown beside the bars. Bar chart ranges only. */
+  summary?: FulfillmentSummary;
+}
+
+export interface FulfillmentTab {
+  key: string;
+  label: string;
+  chart: FulfillmentChartKind;
+  ranges: readonly FulfillmentRange[];
 }
 
 export interface ProgressContent {
@@ -49,16 +62,10 @@ export interface ProgressContent {
   subtitle: string;
   goals: readonly ProgressGoalOption[];
   forecast: AchievementForecast;
-  timelineTitle: string;
-  timelineSubtitle: string;
   moments: readonly TimelineMoment[];
-  fulfillmentTitle: string;
-  fulfillmentSubtitle: string;
-  rangeLabel: string;
-  week: readonly DayFulfillment[];
-  averageLabel: string;
-  averagePercent: number;
-  stats: readonly ProgressStatItem[];
+  fulfillmentTabs: readonly FulfillmentTab[];
+  /** Label above the overall progress bar under the goal line chart. */
+  overallLabel: string;
 }
 
 /** Screen copy and numbers — dummy data until real tracking lands. */
@@ -71,14 +78,10 @@ export const progressContent: ProgressContent = {
     { key: "purposeful-travel", label: "Purposeful Travel" },
   ],
   forecast: {
-    headline: "If you keep moving like this...",
-    subline: "You will achieve your goal.",
-    dateIntro: "You will achieve it on",
-    date: "September 28, 2025",
+    headline: "Stay consistent and you will finish by",
+    date: "September 28, 2025.",
     eta: "In 5 months",
   },
-  timelineTitle: "Reality Shift Timeline",
-  timelineSubtitle: "Moments that changed your reality.",
   moments: [
     {
       key: "decided",
@@ -123,27 +126,108 @@ export const progressContent: ProgressContent = {
       locked: true,
     },
   ],
-  fulfillmentTitle: "Goal Fulfillment",
-  fulfillmentSubtitle: "How consistently you complete your goals.",
-  rangeLabel: "Week",
-  week: [
-    { key: "mon", day: "Mon", percent: 72 },
-    { key: "tue", day: "Tue", percent: 84 },
-    { key: "wed", day: "Wed", percent: 68 },
-    { key: "thu", day: "Thu", percent: 91 },
-    { key: "fri", day: "Fri", percent: 76 },
-    { key: "sat", day: "Sat", percent: 60 },
-    { key: "sun", day: "Sun", percent: 78 },
+  fulfillmentTabs: [
+    {
+      key: "goal",
+      label: "Goal Progress",
+      chart: "line",
+      ranges: [
+        {
+          key: "week",
+          label: "Week",
+          points: [
+            { key: "mon", label: "Mon", percent: 52 },
+            { key: "tue", label: "Tue", percent: 54 },
+            { key: "wed", label: "Wed", percent: 54 },
+            { key: "thu", label: "Thu", percent: 58 },
+            { key: "fri", label: "Fri", percent: 60 },
+            { key: "sat", label: "Sat", percent: 61 },
+            { key: "sun", label: "Sun", percent: 64 },
+          ],
+        },
+        {
+          key: "month",
+          label: "Month",
+          points: [
+            { key: "w1", label: "W1", percent: 52 },
+            { key: "w2", label: "W2", percent: 54 },
+            { key: "w3", label: "W3", percent: 54 },
+            { key: "w4", label: "W4", percent: 64 },
+          ],
+        },
+        {
+          key: "6months",
+          label: "6 Months",
+          points: [
+            { key: "mar", label: "Mar", percent: 28 },
+            { key: "apr", label: "Apr", percent: 37 },
+            { key: "may", label: "May", percent: 44 },
+            { key: "jun", label: "Jun", percent: 52 },
+            { key: "jul", label: "Jul", percent: 58 },
+            { key: "aug", label: "Aug", percent: 64 },
+          ],
+        },
+      ],
+    },
+    {
+      key: "daily",
+      label: "Task Completion",
+      chart: "bars",
+      ranges: [
+        {
+          key: "week",
+          label: "Week",
+          points: [
+            { key: "mon", label: "Mon", percent: 72 },
+            { key: "tue", label: "Tue", percent: 76 },
+            { key: "wed", label: "Wed", percent: 81 },
+            { key: "thu", label: "Thu", percent: 79 },
+            { key: "fri", label: "Fri", percent: 84 },
+            { key: "sat", label: "Sat", percent: 68 },
+            { key: "sun", label: "Sun", percent: 75 },
+          ],
+          summary: {
+            eyebrow: "Weekly Average",
+            percent: 76,
+            caption: "23 of 30 tasks completed",
+          },
+        },
+        {
+          key: "month",
+          label: "Month",
+          points: [
+            { key: "w1", label: "Week 1", percent: 72 },
+            { key: "w2", label: "Week 2", percent: 76 },
+            { key: "w3", label: "Week 3", percent: 81 },
+            { key: "w4", label: "Week 4", percent: 79 },
+          ],
+          summary: {
+            eyebrow: "Monthly Average",
+            percent: 77,
+            caption: "51 of 66 tasks completed",
+          },
+        },
+        {
+          key: "6months",
+          label: "6 Months",
+          points: [
+            { key: "mar", label: "Mar", percent: 54 },
+            { key: "apr", label: "Apr", percent: 61 },
+            { key: "may", label: "May", percent: 58 },
+            { key: "jun", label: "Jun", percent: 69 },
+            { key: "jul", label: "Jul", percent: 74 },
+            { key: "aug", label: "Aug", percent: 78 },
+          ],
+          summary: {
+            eyebrow: "6-Month Average",
+            percent: 66,
+            caption: "261 of 396 tasks completed",
+          },
+        },
+      ],
+    },
   ],
-  averageLabel: "Average",
-  averagePercent: 76,
-  stats: [
-    { key: "average", label: "Average", value: "74%", icon: "check" },
-    { key: "streak", label: "Best streak", value: "14 days", icon: "flame" },
-    { key: "completed", label: "Total completed", value: "87 tasks", icon: "trend" },
-    { key: "active", label: "Days active", value: "26 / 30", icon: "calendar" },
-    { key: "rewards", label: "Rewards unlocked", value: "12", icon: "gift" },
-  ],
+  overallLabel: "Overall Goal Progress",
 } as const;
 
 /**
@@ -151,24 +235,14 @@ export const progressContent: ProgressContent = {
  * retuned without touching copy (same pattern as the journey board layout).
  */
 export const progressAccentLayout: {
-  bars: Record<string, ProgressAccent>;
   moments: Record<string, ProgressAccent>;
 } = {
-  bars: {
-    mon: "violet",
-    tue: "gold",
-    wed: "violet",
-    thu: "pink",
-    fri: "violet",
-    sat: "gold",
-    sun: "violet",
-  },
   moments: {
     decided: "violet",
     "mvp-screen": "violet",
-    "user-interview": "gold",
-    "private-beta": "gold",
-    "user-feedback": "ember",
-    "pricing-module": "ember",
+    "user-interview": "violet",
+    "private-beta": "violet",
+    "user-feedback": "gold",
+    "pricing-module": "muted",
   },
 };

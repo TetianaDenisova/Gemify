@@ -1,13 +1,29 @@
+import { Image } from "expo-image";
+import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import {
   progressAccentLayout,
   progressContent,
+  type FulfillmentPoint,
   type ProgressAccent,
-  type StatIconKey,
   type TimelineIconKey,
+  type TimelineMoment,
 } from "@/data/progressData";
 import {
   AppText,
@@ -24,20 +40,390 @@ import {
   fonts,
   layout,
   lineHeights,
+  pressed,
   radius,
   shadows,
   spacing,
 } from "@/theme/theme";
 
-const BAR_MAX_HEIGHT = 150;
-const BAR_MIN_HEIGHT = 52;
+const CHART_PLOT_HEIGHT = 150;
+const CHART_TOP_PAD = 52;
+const CHART_Y_AXIS_WIDTH = 34;
+/** Wider axis gutter for the line chart — fits fractional ticks like "62.5%". */
+const LINE_Y_AXIS_WIDTH = 48;
+const CHART_X_LABEL_HEIGHT = 26;
+const CHART_POINT_INSET = 14;
+const CHART_Y_TICKS = [100, 75, 50, 25, 0] as const;
+
+const BAR_MAX_WIDTH = 58;
+/** How far the glassy track cap rises above the 100% gridline. */
+const BAR_TRACK_OVERSHOOT = 12;
+const BAR_TRACK_FILL = "rgba(133, 149, 199, 0.16)";
+const BAR_AXIS_STROKE = "rgba(246, 232, 200, 0.32)";
+
+const TIMELINE_ITEM_WIDTH = 104;
+const TIMELINE_CONNECTOR_WIDTH = 26;
+const TIMELINE_ELLIPSIS_MIN_WIDTH = 34;
+
+const PROGRESS_BACK = require("../../../assets/progress-back.png");
 
 const accentTints: Record<ProgressAccent, { glow: string; main: string }> = {
   ember: { glow: "rgba(184, 92, 74, 0.4)", main: colors.danger },
   gold: { glow: colors.primaryGlow, main: colors.primary },
+  muted: { glow: "rgba(111, 120, 144, 0.35)", main: colors.textMuted },
   pink: { glow: colors.accentPinkGlow, main: colors.accentPink },
   violet: { glow: colors.accentVioletGlow, main: colors.accentViolet },
 };
+
+/** Mix two hex colors (returns hex, so results can be mixed again). */
+function lerpColor(from: string, to: string, t: number) {
+  const a = parseInt(from.slice(1), 16);
+  const b = parseInt(to.slice(1), 16);
+  const channel = (shift: number) => {
+    const x = (a >> shift) & 0xff;
+    const y = (b >> shift) & 0xff;
+    return Math.round(x + (y - x) * t);
+  };
+  const mixed = (channel(16) << 16) | (channel(8) << 8) | channel(0);
+  return `#${mixed.toString(16).padStart(6, "0")}`;
+}
+
+function FulfillmentChart({
+  compact,
+  points,
+}: {
+  compact: boolean;
+  points: readonly FulfillmentPoint[];
+}) {
+  const [chartWidth, setChartWidth] = useState(0);
+
+  const svgHeight = CHART_TOP_PAD + CHART_PLOT_HEIGHT + 8;
+
+  // Zoom the y-axis to a "nice" domain around the data (52..64 → 50..65)
+  // so small week-to-week changes stay readable.
+  const values = points.map((point) => point.percent);
+  let domainLo = Math.floor(Math.min(...values) / 5) * 5;
+  let domainHi = Math.ceil(Math.max(...values) / 5) * 5;
+  if (domainLo === Math.min(...values)) domainLo = Math.max(0, domainLo - 5);
+  if (domainHi === Math.max(...values)) domainHi = Math.min(100, domainHi + 5);
+  const tickStep = (domainHi - domainLo) / 6;
+  const ticks = Array.from({ length: 7 }, (_, i) => domainHi - i * tickStep);
+
+  const yFor = (percent: number) =>
+    CHART_TOP_PAD +
+    (1 - (percent - domainLo) / (domainHi - domainLo)) * CHART_PLOT_HEIGHT;
+
+  const startX = LINE_Y_AXIS_WIDTH + CHART_POINT_INSET;
+  const endX = chartWidth - CHART_POINT_INSET;
+  const step = points.length > 1 ? (endX - startX) / (points.length - 1) : 0;
+
+  const dots = points.map((point, index) => ({
+    ...point,
+    tint: lerpColor(
+      colors.accentViolet,
+      colors.accentPink,
+      points.length > 1 ? index / (points.length - 1) : 0,
+    ),
+    x: startX + index * step,
+    y: yFor(point.percent),
+  }));
+
+  // Straight glowing segments, like the mock (no spline).
+  const linePath = dots
+    .map((dot, index) => `${index === 0 ? "M" : "L"} ${dot.x} ${dot.y}`)
+    .join(" ");
+  const areaPath =
+    dots.length > 1
+      ? `${linePath} L ${dots[dots.length - 1].x} ${yFor(domainLo)} L ${dots[0].x} ${yFor(domainLo)} Z`
+      : "";
+
+  // Mid-segment change badges, in percent points ("↑ +2%").
+  const segments = dots.slice(1).map((dot, index) => {
+    const prev = dots[index];
+    const delta = dot.percent - prev.percent;
+    return {
+      delta,
+      key: dot.key,
+      label:
+        delta > 0 ? `↑ +${delta}%` : delta < 0 ? `↓ ${delta}%` : "— 0%",
+      x: (prev.x + dot.x) / 2,
+      y: (prev.y + dot.y) / 2,
+    };
+  });
+
+  const formatTick = (tick: number) =>
+    Number.isInteger(tick) ? `${tick}%` : `${tick.toFixed(1)}%`;
+
+  return (
+    <View
+      onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
+      style={styles.chartCanvas}
+    >
+      {chartWidth > 0 ? (
+        <>
+          <Svg height={svgHeight} width={chartWidth}>
+            <Defs>
+              <LinearGradient id="fulfillmentLine" x1="0" x2="1" y1="0" y2="0">
+                <Stop offset="0" stopColor={colors.accentViolet} />
+                <Stop offset="1" stopColor={colors.accentPink} />
+              </LinearGradient>
+              <LinearGradient id="fulfillmentArea" x1="0" x2="0" y1="0" y2="1">
+                <Stop offset="0" stopColor={colors.accentViolet} stopOpacity={0.4} />
+                <Stop offset="1" stopColor={colors.accentViolet} stopOpacity={0.04} />
+              </LinearGradient>
+            </Defs>
+            {areaPath ? <Path d={areaPath} fill="url(#fulfillmentArea)" /> : null}
+            {linePath ? (
+              <Path
+                d={linePath}
+                fill="none"
+                stroke="url(#fulfillmentLine)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+              />
+            ) : null}
+            {dots.map((dot) => (
+              <Circle
+                cx={dot.x}
+                cy={dot.y}
+                fill={dot.tint}
+                key={`glow-${dot.key}`}
+                opacity={0.35}
+                r={10}
+              />
+            ))}
+            {dots.map((dot) => (
+              <Circle
+                cx={dot.x}
+                cy={dot.y}
+                fill={colors.textPrimary}
+                key={`dot-${dot.key}`}
+                r={4.5}
+                stroke={dot.tint}
+                strokeWidth={2}
+              />
+            ))}
+          </Svg>
+          {ticks.map((tick) => (
+            <AppText
+              color={colors.textPrimary}
+              key={`tick-${tick}`}
+              style={[styles.lineTickLabel, { top: yFor(tick) - 9 }]}
+            >
+              {formatTick(tick)}
+            </AppText>
+          ))}
+          {dots.map((dot) => (
+            <AppText
+              align="center"
+              color={colors.textPrimary}
+              key={`percent-${dot.key}`}
+              style={[
+                styles.chartPointLabel,
+                compact && styles.chartPointLabelCompact,
+                { left: dot.x - 28, top: dot.y - 34 },
+              ]}
+            >
+              {dot.percent}%
+            </AppText>
+          ))}
+          {segments.map((segment) => (
+            <View
+              key={`delta-${segment.key}`}
+              style={[
+                styles.deltaBadge,
+                { left: segment.x - 39, top: segment.y + 10 },
+              ]}
+            >
+              <AppText
+                color={
+                  segment.delta > 0
+                    ? colors.accentPink
+                    : segment.delta < 0
+                      ? colors.danger
+                      : colors.accentViolet
+                }
+                style={styles.deltaBadgeLabel}
+              >
+                {segment.label}
+              </AppText>
+            </View>
+          ))}
+          {dots.map((dot) => (
+            <AppText
+              align="center"
+              color={colors.textPrimary}
+              key={`label-${dot.key}`}
+              style={[styles.lineAxisLabel, { left: dot.x - 28 }]}
+            >
+              {dot.label}
+            </AppText>
+          ))}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/** Bar tints: violet→pink across the range, gold for the current (last) bar. */
+function barTint(index: number, count: number) {
+  if (index === count - 1) return colors.primary;
+  const span = Math.max(count - 2, 1);
+  return lerpColor(colors.accentVioletStrong, colors.accentPink, index / span);
+}
+
+function TaskBarsChart({
+  compact,
+  points,
+}: {
+  compact: boolean;
+  points: readonly FulfillmentPoint[];
+}) {
+  const [chartWidth, setChartWidth] = useState(0);
+
+  const svgHeight = CHART_TOP_PAD + CHART_PLOT_HEIGHT + 8;
+  const yFor = (percent: number) =>
+    CHART_TOP_PAD + (1 - percent / 100) * CHART_PLOT_HEIGHT;
+
+  const plotLeft = CHART_Y_AXIS_WIDTH + 6;
+  const slot = points.length > 0 ? (chartWidth - plotLeft) / points.length : 0;
+  const barWidth = Math.max(
+    22,
+    Math.min(compact ? 42 : BAR_MAX_WIDTH, slot * 0.45),
+  );
+
+  const bars = points.map((point, index) => ({
+    ...point,
+    center: plotLeft + slot * (index + 0.5),
+    tint: barTint(index, points.length),
+    top: yFor(point.percent),
+  }));
+
+  return (
+    <View
+      onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
+      style={styles.chartCanvas}
+    >
+      {chartWidth > 0 ? (
+        <>
+          <Svg height={svgHeight} width={chartWidth}>
+            <Defs>
+              {bars.map((bar, index) => (
+                <LinearGradient
+                  id={`barFill-${index}`}
+                  key={`grad-${bar.key}`}
+                  x1="0"
+                  x2="0"
+                  y1="0"
+                  y2="1"
+                >
+                  <Stop
+                    offset="0"
+                    stopColor={lerpColor(bar.tint, colors.background, 0.3)}
+                  />
+                  <Stop offset="1" stopColor={bar.tint} />
+                </LinearGradient>
+              ))}
+            </Defs>
+            {CHART_Y_TICKS.map((tick) => (
+              <Line
+                key={tick}
+                stroke={colors.borderSoft}
+                strokeDasharray="3 6"
+                strokeWidth={1}
+                x1={CHART_Y_AXIS_WIDTH}
+                x2={chartWidth}
+                y1={yFor(tick)}
+                y2={yFor(tick)}
+              />
+            ))}
+            <Line
+              stroke={BAR_AXIS_STROKE}
+              strokeWidth={1.4}
+              x1={CHART_Y_AXIS_WIDTH}
+              x2={CHART_Y_AXIS_WIDTH}
+              y1={yFor(100)}
+              y2={yFor(0)}
+            />
+            <Line
+              stroke={BAR_AXIS_STROKE}
+              strokeWidth={1.4}
+              x1={CHART_Y_AXIS_WIDTH}
+              x2={chartWidth}
+              y1={yFor(0)}
+              y2={yFor(0)}
+            />
+            {bars.map((bar) => (
+              <Rect
+                fill={BAR_TRACK_FILL}
+                height={CHART_PLOT_HEIGHT + BAR_TRACK_OVERSHOOT}
+                key={`track-${bar.key}`}
+                rx={barWidth / 2}
+                stroke={colors.borderSoft}
+                strokeWidth={1}
+                width={barWidth}
+                x={bar.center - barWidth / 2}
+                y={yFor(100) - BAR_TRACK_OVERSHOOT}
+              />
+            ))}
+            {bars.map((bar, index) => (
+              <Rect
+                fill={`url(#barFill-${index})`}
+                height={yFor(0) - bar.top}
+                key={`fill-${bar.key}`}
+                rx={Math.min(barWidth / 2, (yFor(0) - bar.top) / 2)}
+                width={barWidth}
+                x={bar.center - barWidth / 2}
+                y={bar.top}
+              />
+            ))}
+          </Svg>
+          {CHART_Y_TICKS.map((tick) => (
+            <AppText
+              color={colors.textMuted}
+              key={`tick-${tick}`}
+              style={[styles.chartTickLabel, { top: yFor(tick) - 7 }]}
+              variant="caption"
+            >
+              {tick}%
+            </AppText>
+          ))}
+          {bars.map((bar) => (
+            <AppText
+              align="center"
+              color={colors.textPrimary}
+              key={`percent-${bar.key}`}
+              style={[
+                styles.barPercentLabel,
+                compact && styles.chartPointLabelCompact,
+                { left: bar.center - 28, top: bar.top + spacing.sm },
+              ]}
+              variant="pill"
+            >
+              {bar.percent}%
+            </AppText>
+          ))}
+          {bars.map((bar) => (
+            <AppText
+              align="center"
+              color={colors.textPrimary}
+              key={`label-${bar.key}`}
+              style={[
+                styles.barAxisLabel,
+                compact && styles.barAxisLabelCompact,
+                { left: bar.center - 36 },
+              ]}
+              variant="pill"
+            >
+              {bar.label}
+            </AppText>
+          ))}
+        </>
+      ) : null}
+    </View>
+  );
+}
 
 function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: string; size?: number }) {
   return (
@@ -47,6 +433,20 @@ function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: stri
         fill={color}
       />
       <Path d="M19 15c.4 2 1 2.6 3 3-2 .4-2.6 1-3 3-.4-2-1-2.6-3-3 2-.4 2.6-1 3-3Z" fill={color} opacity={0.7} />
+    </Svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <Svg height={27} viewBox="0 0 24 24" width={27}>
+      <Path
+        d="M5 7h14M5 12h14M5 17h14"
+        fill="none"
+        stroke={colors.primary}
+        strokeLinecap="round"
+        strokeWidth={1.7}
+      />
     </Svg>
   );
 }
@@ -70,43 +470,11 @@ function ClockGlyph({ color = colors.primary, size = 18 }: { color?: string; siz
   );
 }
 
-function LockGlyph({ color = colors.danger, size = 16 }: { color?: string; size?: number }) {
+function LockGlyph({ color = colors.primary, size = 14 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect fill="none" height={8.5} rx={2} stroke={color} strokeWidth={1.6} width={11} x={6.5} y={10.5} />
-      <Path d="M9 10.5V8a3 3 0 0 1 6 0v2.5" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.6} />
-    </Svg>
-  );
-}
-
-function CalendarGlyph({ color = colors.primary, size = 64 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 48 48" width={size}>
-      <Rect fill="none" height={30} rx={5} stroke={color} strokeWidth={2.2} width={36} x={6} y={10} />
-      <Path d="M15 5v9M33 5v9M6 20h36" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2.2} />
-      <Circle cx={15} cy={28} fill={color} r={1.9} />
-      <Circle cx={24} cy={28} fill={color} r={1.9} />
-      <Circle cx={15} cy={35} fill={color} r={1.9} />
-      <Circle cx={24} cy={35} fill={color} r={1.9} />
-      <Circle cx={33} cy={28} fill={color} r={1.9} />
-    </Svg>
-  );
-}
-
-/** Faint arc + winding trail echoing the journey-map art in the forecast card. */
-function ForecastArt({ height, width }: { height: number; width: number }) {
-  return (
-    <Svg height={height} pointerEvents="none" viewBox="0 0 200 260" width={width}>
-      <Circle cx={130} cy={92} fill="none" opacity={0.4} r={72} stroke={colors.primarySoft} strokeWidth={1.6} />
-      <Path
-        d="M148 62c-26 24 24 44-8 72s16 50-14 78c-16 15-34 26-52 34"
-        fill="none"
-        opacity={0.55}
-        stroke={colors.primary}
-        strokeDasharray="1 10"
-        strokeLinecap="round"
-        strokeWidth={4}
-      />
+      <Rect fill="none" height={8.5} rx={2} stroke={color} strokeWidth={1.8} width={11} x={6.5} y={10.5} />
+      <Path d="M9 10.5V8a3 3 0 0 1 6 0v2.5" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.8} />
     </Svg>
   );
 }
@@ -166,86 +534,117 @@ function TimelineGlyph({ color, icon, size = 26 }: { color: string; icon: Timeli
   }
 }
 
-function StatGlyph({ color = colors.primary, icon, size = 30 }: { color?: string; icon: StatIconKey; size?: number }) {
-  const stroke = { fill: "none", stroke: color, strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.6 } as const;
+function TimelineMomentItem({ moment }: { moment: TimelineMoment }) {
+  const tint = accentTints[progressAccentLayout.moments[moment.key] ?? "gold"];
 
-  switch (icon) {
-    case "check":
-      return (
-        <Svg height={size} viewBox="0 0 24 24" width={size}>
-          <Circle cx={12} cy={12} r={9} {...stroke} />
-          <Path d="m8 12.3 2.6 2.7L16 9.5" {...stroke} />
-        </Svg>
-      );
-    case "flame":
-      return (
-        <Svg height={size} viewBox="0 0 24 24" width={size}>
-          <Path
-            d="M12 3c.6 3.4-3.5 5.4-3.5 9a5.5 5.5 0 0 0 11 0c0-2.2-1-4-2.4-5.6-.4 1.6-1.3 2.4-2.6 2.6C14.9 6.6 13.8 4.6 12 3Z"
-            {...stroke}
-          />
-        </Svg>
-      );
-    case "trend":
-      return (
-        <Svg height={size} viewBox="0 0 24 24" width={size}>
-          <Path d="m4 17 5-5 3 3 8-8M15 7h5v5" {...stroke} />
-        </Svg>
-      );
-    case "calendar":
-      return (
-        <Svg height={size} viewBox="0 0 24 24" width={size}>
-          <Rect height={15} rx={2.4} width={18} x={3} y={5} {...stroke} />
-          <Path d="M7 3v4M17 3v4M3 10h18" {...stroke} />
-          <Circle cx={8} cy={14} fill={color} r={1} />
-          <Circle cx={12} cy={14} fill={color} r={1} />
-          <Circle cx={16} cy={14} fill={color} r={1} />
-        </Svg>
-      );
-    case "gift":
-      return (
-        <Svg height={size} viewBox="0 0 24 24" width={size}>
-          <Rect height={9} rx={1.5} width={16} x={4} y={11} {...stroke} />
-          <Path d="M3 8h18v3H3zM12 8v12" {...stroke} />
-          <Path d="M12 8c-1.5-3.2-6-3.2-5.2-.4.6 2 3.6 1.4 5.2.4Zm0 0c1.5-3.2 6-3.2 5.2-.4-.6 2-3.6 1.4-5.2.4Z" {...stroke} />
-        </Svg>
-      );
-  }
+  return (
+    <View style={styles.timelineItem}>
+      <View style={styles.timelineBadgeSlot}>
+        {moment.locked ? (
+          <View style={[styles.lockBubble, { borderColor: tint.main }]}>
+            <LockGlyph color={tint.main} />
+          </View>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.timelineCircle,
+          { borderColor: tint.main, shadowColor: tint.main },
+        ]}
+      >
+        <TimelineGlyph color={tint.main} icon={moment.icon} />
+      </View>
+      <AppText style={styles.timelineDate} variant="pill">
+        {moment.date}
+      </AppText>
+      <AppText
+        align="center"
+        color={colors.textSecondary}
+        style={styles.timelineLabel}
+        variant="caption"
+      >
+        {moment.label}
+      </AppText>
+    </View>
+  );
 }
 
 export default function ProgressScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
 
-  const { forecast } = progressContent;
+  const { forecast, fulfillmentTabs } = progressContent;
   const [goalKey, setGoalKey] = useState(progressContent.goals[0].key);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const [tabKey, setTabKey] = useState(fulfillmentTabs[0].key);
+  const [rangeKey, setRangeKey] = useState(fulfillmentTabs[0].ranges[0].key);
+  const [rangePickerOpen, setRangePickerOpen] = useState(false);
+  const [timelineWidth, setTimelineWidth] = useState(0);
 
   const selectedGoal =
     progressContent.goals.find((goal) => goal.key === goalKey) ??
     progressContent.goals[0];
+  const selectedTab =
+    fulfillmentTabs.find((tab) => tab.key === tabKey) ?? fulfillmentTabs[0];
+  const selectedRange =
+    selectedTab.ranges.find((range) => range.key === rangeKey) ??
+    selectedTab.ranges[0];
+  const currentPercent =
+    selectedRange.points[selectedRange.points.length - 1].percent;
+
+  // Show only the milestones that fit; past that, collapse the middle into a
+  // dotted ellipsis so the last milestone stays visible without scrolling.
+  // Nothing renders until the track width is known — otherwise the full row
+  // stretches the layout on web and the measurement reads the inflated width.
+  const { moments } = progressContent;
+  const fullTimelineWidth =
+    moments.length * TIMELINE_ITEM_WIDTH +
+    (moments.length - 1) * TIMELINE_CONNECTOR_WIDTH;
+  const timelineTruncated =
+    timelineWidth > 0 && fullTimelineWidth > timelineWidth;
+
+  let leadingMoments: readonly TimelineMoment[] =
+    timelineWidth > 0 ? moments : [];
+  if (timelineTruncated) {
+    let fit = 1;
+    while (
+      fit < moments.length - 1 &&
+      (fit + 2) * TIMELINE_ITEM_WIDTH +
+        fit * TIMELINE_CONNECTOR_WIDTH +
+        TIMELINE_ELLIPSIS_MIN_WIDTH <=
+        timelineWidth
+    ) {
+      fit += 1;
+    }
+    leadingMoments = moments.slice(0, fit);
+  }
+  const lastMoment = moments[moments.length - 1];
 
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
-      <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <View style={styles.headerTitleRow}>
-            <AppText variant="screenTitle">{progressContent.title}</AppText>
-            <SparkleGlyph />
-          </View>
+      <View style={[styles.header, compact && styles.headerCompact]}>
+        <IconButton
+          accessibilityLabel="Open menu"
+          icon={<MenuIcon />}
+          onPress={() => {}}
+          size={compact ? "sm" : "md"}
+        />
+        <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
           <AppText
-            color={colors.primarySoft}
-            style={styles.headerSubtitle}
-            variant="subtitle"
+            align="center"
+            color={colors.primary}
+            numberOfLines={1}
+            style={[styles.title, compact && styles.titleCompact]}
+            variant="screenTitle"
           >
-            {progressContent.subtitle}
+            {progressContent.title}
           </AppText>
         </View>
         <IconButton
           accessibilityLabel="More options"
           icon={<DotsGlyph />}
           onPress={() => {}}
-          size="sm"
+          size={compact ? "sm" : "md"}
         />
       </View>
 
@@ -278,303 +677,305 @@ export default function ProgressScreen() {
           : null}
       </Card>
 
-      <Card style={styles.forecastCard} variant="glass">
-        <View style={styles.forecastArt}>
-          <ForecastArt height={compact ? 200 : 260} width={compact ? 154 : 200} />
-        </View>
-
-        <AppText variant="cardTitle">{forecast.headline}</AppText>
-        <AppText style={styles.forecastSubline} variant="body">
-          {forecast.subline}
-        </AppText>
-
-        <View style={[styles.forecastDateRow, compact && styles.forecastDateRowCompact]}>
-          <View style={styles.forecastCalendarFrame}>
-            <CalendarGlyph size={compact ? 52 : 64} />
-          </View>
-          <View style={styles.forecastDateCopy}>
-            <AppText color={colors.textPrimary} variant="body">
-              {forecast.dateIntro}
-            </AppText>
-            <AppText
-              color={colors.primary}
-              style={[styles.forecastDate, compact && styles.forecastDateCompact]}
-              variant="cardTitle"
-            >
-              {forecast.date}
-            </AppText>
-            <Badge
-              color={colors.primary}
-              icon={<ClockGlyph size={15} />}
-              label={forecast.eta}
-              style={styles.etaPill}
-              textStyle={styles.serifPillLabel}
-            />
-          </View>
-        </View>
-
-        <View style={styles.timelineHeader}>
-          <View style={styles.timelineTitleRow}>
-            <ClockGlyph size={20} />
-            <AppText style={styles.timelineTitle} variant="cardTitle">
-              {progressContent.timelineTitle}
-            </AppText>
-          </View>
-          <Badge
-            color={colors.textPrimary}
-            icon={<ChevronIcon color={colors.textSecondary} size={15} strokeWidth={1.8} />}
-            label={selectedGoal.label}
-            style={styles.rangePill}
-            textStyle={styles.serifPillLabel}
-          />
-        </View>
-        <AppText style={styles.timelineSubtitle} variant="body">
-          {progressContent.timelineSubtitle}
-        </AppText>
-
-        <ScrollView
-          contentContainerStyle={styles.timelineTrack}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {progressContent.moments.map((moment, index) => {
-            const tint = accentTints[progressAccentLayout.moments[moment.key] ?? "gold"];
-
-            return (
-              <View key={moment.key} style={styles.timelineItemGroup}>
-                {index > 0 ? <View style={styles.timelineConnector} /> : null}
-                <View style={[styles.timelineItem, moment.locked && styles.timelineItemLocked]}>
-                  <View style={styles.timelineBadgeSlot}>
-                    {moment.locked ? <LockGlyph color={tint.main} /> : null}
-                  </View>
-                  <View
-                    style={[
-                      styles.timelineCircle,
-                      { borderColor: tint.main, shadowColor: tint.main },
-                      moment.locked && styles.timelineCircleLocked,
-                    ]}
-                  >
-                    <TimelineGlyph color={tint.main} icon={moment.icon} />
-                  </View>
-                  <AppText style={styles.timelineDate} variant="pill">
-                    {moment.date}
-                  </AppText>
+      <Card style={styles.fulfillmentCard} variant="glass">
+        <View style={styles.controlsRow}>
+          <View style={styles.tabsRow}>
+            {fulfillmentTabs.map((tab) => {
+              const active = tab.key === selectedTab.key;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  key={tab.key}
+                  onPress={() => {
+                    setTabKey(tab.key);
+                    setRangePickerOpen(false);
+                  }}
+                  style={({ pressed: isPressed }) => [
+                    styles.tab,
+                    active && styles.tabActive,
+                    isPressed && pressed,
+                  ]}
+                >
                   <AppText
                     align="center"
-                    color={colors.textSecondary}
-                    style={styles.timelineLabel}
-                    variant="caption"
+                    color={active ? colors.textPrimary : colors.textMuted}
+                    numberOfLines={1}
+                    style={[styles.tabLabel, compact && styles.tabLabelCompact]}
                   >
-                    {moment.label}
+                    {tab.label}
                   </AppText>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-      </Card>
-
-      <Card style={styles.fulfillmentCard} variant="glass">
-        <View style={styles.timelineHeader}>
-          <View style={styles.timelineTitleRow}>
-            <StatGlyph icon="check" size={22} />
-            <AppText style={styles.timelineTitle} variant="cardTitle">
-              {progressContent.fulfillmentTitle}
-            </AppText>
-          </View>
-          <Badge
-            color={colors.textPrimary}
-            icon={<ChevronIcon color={colors.textSecondary} size={15} strokeWidth={1.8} />}
-            label={progressContent.rangeLabel}
-            style={styles.rangePill}
-            textStyle={styles.serifPillLabel}
-          />
-        </View>
-        <AppText style={styles.timelineSubtitle} variant="body">
-          {progressContent.fulfillmentSubtitle}
-        </AppText>
-
-        <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
-          <View style={styles.chartBars}>
-            {progressContent.week.map((day) => {
-              const tint = accentTints[progressAccentLayout.bars[day.key] ?? "violet"];
-              const barHeight =
-                BAR_MIN_HEIGHT + (day.percent / 100) * (BAR_MAX_HEIGHT - BAR_MIN_HEIGHT);
-
-              return (
-                <View key={day.key} style={styles.chartColumn}>
-                  <AppText color={tint.main} style={styles.chartPercent} variant="pill">
-                    {day.percent}%
-                  </AppText>
-                  <View
-                    style={[
-                      styles.chartCapsule,
-                      { borderColor: tint.glow, height: barHeight },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.chartFill,
-                        {
-                          backgroundColor: tint.main,
-                          height: barHeight - 24,
-                          shadowColor: tint.main,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <AppText color={colors.textSecondary} variant="caption">
-                    {day.day}
-                  </AppText>
-                </View>
+                </Pressable>
               );
             })}
           </View>
-          <View style={[styles.chartDivider, compact && styles.chartDividerCompact]} />
-          <View style={styles.chartAverage}>
-            <AppText style={styles.chartAverageLabel} variant="subtitle">
-              {progressContent.averageLabel}
-            </AppText>
-            <AppText color={colors.primary} style={styles.chartAverageValue}>
-              {progressContent.averagePercent}%
-            </AppText>
+          <View>
+            <Pressable
+              accessibilityLabel="Choose range"
+              accessibilityRole="button"
+              onPress={() => setRangePickerOpen((open) => !open)}
+              style={({ pressed: isPressed }) => [
+                styles.rangeTrigger,
+                isPressed && pressed,
+              ]}
+            >
+              <AppText style={styles.rangeTriggerLabel} variant="pill">
+                {selectedRange.label}
+              </AppText>
+              <View style={rangePickerOpen ? styles.chevronOpen : null}>
+                <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
+              </View>
+            </Pressable>
+            {rangePickerOpen ? (
+              <View style={styles.rangeMenu}>
+                {selectedTab.ranges
+                  .filter((range) => range.key !== selectedRange.key)
+                  .map((range, index) => (
+                    <Pressable
+                      key={range.key}
+                      onPress={() => {
+                        setRangeKey(range.key);
+                        setRangePickerOpen(false);
+                      }}
+                      style={({ pressed: isPressed }) => [
+                        styles.rangeOption,
+                        index === 0 && styles.rangeOptionFirst,
+                        isPressed && pressed,
+                      ]}
+                    >
+                      <AppText color={colors.textSecondary} variant="pill">
+                        {range.label}
+                      </AppText>
+                    </Pressable>
+                  ))}
+              </View>
+            ) : null}
           </View>
         </View>
+
+        <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
+          {selectedTab.chart === "bars" ? (
+            <TaskBarsChart compact={compact} points={selectedRange.points} />
+          ) : (
+            <FulfillmentChart compact={compact} points={selectedRange.points} />
+          )}
+          {selectedRange.summary ? (
+            <>
+              <View style={styles.panelDivider} />
+              <View
+                style={[
+                  styles.summaryPanel,
+                  compact && styles.summaryPanelCompact,
+                ]}
+              >
+                <AppText align="center" variant="eyebrow">
+                  {selectedRange.summary.eyebrow}
+                </AppText>
+                <AppText
+                  color={colors.accentPink}
+                  style={[
+                    styles.summaryValue,
+                    compact && styles.summaryValueCompact,
+                  ]}
+                >
+                  {selectedRange.summary.percent}%
+                </AppText>
+                <AppText
+                  align="center"
+                  color={colors.textPrimary}
+                  style={styles.summaryCaption}
+                >
+                  {selectedRange.summary.caption}
+                </AppText>
+              </View>
+            </>
+          ) : null}
+        </View>
+
+        {selectedTab.chart === "line" ? (
+          <>
+            <View style={styles.overallDivider} />
+            <View style={styles.overallRow}>
+              <View style={styles.overallBlock}>
+                <AppText color={colors.textMuted} variant="eyebrow">
+                  {progressContent.overallLabel}
+                </AppText>
+                <View style={styles.overallTrack}>
+                  <ExpoLinearGradient
+                    colors={[
+                      colors.accentVioletStrong,
+                      colors.accentViolet,
+                      colors.accentPink,
+                    ]}
+                    end={{ x: 1, y: 0 }}
+                    start={{ x: 0, y: 0 }}
+                    style={[styles.overallFill, { width: `${currentPercent}%` }]}
+                  />
+                </View>
+              </View>
+              <AppText style={styles.overallValue}>{currentPercent}%</AppText>
+            </View>
+          </>
+        ) : null}
       </Card>
 
-      <Card style={styles.statsCard} variant="glass">
-        {progressContent.stats.map((stat) => (
-          <View key={stat.key} style={styles.statItem}>
-            <StatGlyph icon={stat.icon} />
-            <View style={styles.statCopy}>
-              <AppText color={colors.primarySoft} variant="caption">
-                {stat.label}
-              </AppText>
-              <AppText color={colors.primary} style={styles.statValue}>
-                {stat.value}
-              </AppText>
+      <Card padded={false} style={styles.forecastCard} variant="glass">
+        <Image
+          contentFit="cover"
+          source={PROGRESS_BACK}
+          style={styles.forecastBackground}
+        />
+        <View style={styles.forecastCopy}>
+          <AppText color={colors.textPrimary} style={styles.forecastHeadline}>
+            {forecast.headline}
+          </AppText>
+          <AppText color={colors.primary} style={styles.forecastDate}>
+            {forecast.date}
+          </AppText>
+          <Badge
+            color={colors.primary}
+            icon={<ClockGlyph size={15} />}
+            label={forecast.eta}
+            style={styles.etaPill}
+            textStyle={styles.serifPillLabel}
+          />
+        </View>
+
+        <View
+          onLayout={(event) =>
+            setTimelineWidth(event.nativeEvent.layout.width - spacing.lg * 2)
+          }
+          style={styles.timelineTrack}
+        >
+          {leadingMoments.map((moment, index) => (
+            <View key={moment.key} style={styles.timelineItemGroup}>
+              {index > 0 ? <View style={styles.timelineConnector} /> : null}
+              <TimelineMomentItem moment={moment} />
             </View>
-          </View>
-        ))}
+          ))}
+          {timelineTruncated ? (
+            <>
+              <View style={[styles.timelineConnector, styles.timelineEllipsis]} />
+              <TimelineMomentItem moment={lastMoment} />
+            </>
+          ) : null}
+        </View>
       </Card>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  chartAverage: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 108,
+  barAxisLabel: {
+    bottom: 0,
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.md,
+    position: "absolute",
+    width: 72,
   },
-  chartAverageLabel: {
-    color: colors.textPrimary,
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.lg,
+  barAxisLabelCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
   },
-  chartAverageValue: {
-    fontFamily: fonts.serif,
-    fontSize: 44,
-    fontWeight: "500",
-    lineHeight: 54,
-    marginTop: spacing.xs,
-  },
-  chartBars: {
-    alignItems: "flex-end",
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  chartCapsule: {
-    alignItems: "center",
-    borderRadius: radius.round,
-    borderWidth: 1.5,
-    justifyContent: "flex-end",
-    paddingBottom: spacing.xs,
-    width: 24,
-  },
-  chartColumn: {
-    alignItems: "center",
-    flex: 1,
-    gap: spacing.sm,
-  },
-  chartDivider: {
-    alignSelf: "stretch",
-    backgroundColor: colors.borderSoft,
-    marginHorizontal: spacing.md,
-    width: 1,
-  },
-  chartDividerCompact: {
-    marginHorizontal: spacing.sm,
-  },
-  chartFill: {
-    borderRadius: radius.round,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.75,
-    shadowRadius: 8,
-    width: 14,
-  },
-  chartPercent: {
+  barPercentLabel: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
+    position: "absolute",
+    width: 56,
+  },
+  chartCanvas: {
+    flex: 1,
+    height: CHART_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
+    minWidth: 0,
+  },
+  chartPointLabel: {
+    fontSize: fontSizes.lg,
+    fontWeight: "700",
+    lineHeight: lineHeights.lg,
+    position: "absolute",
+    width: 56,
+  },
+  chartPointLabelCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
+  chartTickLabel: {
+    fontSize: fontSizes.xs,
+    left: 0,
+    lineHeight: lineHeights.xs,
+    position: "absolute",
+    textAlign: "right",
+    width: CHART_Y_AXIS_WIDTH - 8,
   },
   chartRow: {
     flexDirection: "row",
+    gap: spacing.md,
     marginTop: spacing.lg,
   },
   chartRowCompact: {
+    gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  chevronOpen: {
+    transform: [{ rotate: "180deg" }],
   },
   content: {
     gap: spacing.md,
   },
+  controlsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    zIndex: 20,
+  },
+  deltaBadge: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.accentVioletStrong,
+    borderRadius: radius.round,
+    borderWidth: 1.2,
+    paddingVertical: spacing.xs,
+    position: "absolute",
+    width: 78,
+  },
+  deltaBadgeLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: "600",
+    lineHeight: lineHeights.sm,
+  },
   etaPill: {
     borderColor: colors.border,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
-  forecastArt: {
+  forecastBackground: {
     bottom: 0,
-    opacity: 0.85,
+    left: 0,
     position: "absolute",
     right: 0,
     top: 0,
   },
-  forecastCalendarFrame: {
-    alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1.4,
-    height: 104,
-    justifyContent: "center",
-    width: 104,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.2,
-  },
   forecastCard: {
+    borderColor: colors.border,
     overflow: "hidden",
   },
+  forecastCopy: {
+    justifyContent: "center",
+    maxWidth: "70%",
+    minHeight: 200,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+  },
   forecastDate: {
+    fontFamily: fonts.serif,
+    fontSize: 30,
+    fontWeight: "500",
+    lineHeight: 38,
     marginTop: spacing.xs,
   },
-  forecastDateCompact: {
-    fontSize: fontSizes.xxl + 2,
-    lineHeight: lineHeights.xxl + 4,
-  },
-  forecastDateCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  forecastDateRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.lg,
-    marginTop: spacing.lg,
-  },
-  forecastDateRowCompact: {
-    gap: spacing.md,
-  },
-  forecastSubline: {
-    marginTop: spacing.xs,
+  forecastHeadline: {
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxl + 6,
   },
   fulfillmentCard: {
     borderColor: colors.accentVioletGlow,
@@ -589,27 +990,120 @@ const styles = StyleSheet.create({
   },
   goalPickerRow: {
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   header: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  headerSubtitle: {
-    marginTop: spacing.xs,
-  },
-  headerTitleRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm,
+    justifyContent: "space-between",
+    minHeight: 92,
   },
-  rangePill: {
+  headerCompact: {
+    minHeight: 72,
+  },
+  lockBubble: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
+    borderRadius: radius.round,
+    borderWidth: 1.4,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  lineAxisLabel: {
+    bottom: 0,
+    fontSize: fontSizes.md,
+    fontWeight: "600",
+    lineHeight: lineHeights.md,
+    position: "absolute",
+    width: 56,
+  },
+  lineTickLabel: {
+    fontSize: fontSizes.sm,
+    left: 0,
+    lineHeight: lineHeights.sm,
+    position: "absolute",
+    textAlign: "right",
+    width: LINE_Y_AXIS_WIDTH - 8,
+  },
+  overallBlock: {
+    flex: 1,
+    gap: spacing.sm,
+    minWidth: 0,
+  },
+  overallDivider: {
+    backgroundColor: colors.borderSoft,
+    height: 1,
+    marginTop: spacing.lg,
+  },
+  overallFill: {
+    borderRadius: radius.round,
+    height: "100%",
+  },
+  overallRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  overallTrack: {
+    backgroundColor: colors.surfaceDeep,
     borderColor: colors.borderSoft,
-    flexDirection: "row-reverse",
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 14,
+    overflow: "hidden",
+  },
+  overallValue: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.cardTitle,
+    fontWeight: "700",
+    lineHeight: lineHeights.cardTitle,
+  },
+  panelDivider: {
+    alignSelf: "stretch",
+    backgroundColor: colors.borderSoft,
+    width: 1,
+  },
+  rangeMenu: {
+    ...shadows.softDark,
+    backgroundColor: colors.surface,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    elevation: 12,
+    marginTop: spacing.xs,
+    minWidth: 148,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    top: "100%",
+    zIndex: 30,
+  },
+  rangeOption: {
+    borderTopColor: colors.divider,
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  rangeOptionFirst: {
+    borderTopWidth: 0,
+  },
+  rangeTrigger: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: layout.minTouchTarget,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  rangeTriggerLabel: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
   },
   /** Serif pill/badge label, matching the pre-migration ETA/range pills. */
   serifPillLabel: {
@@ -618,32 +1112,75 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     lineHeight: lineHeights.sm,
   },
-  statCopy: {
-    minWidth: 0,
+  summaryCaption: {
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.lg,
+    marginTop: spacing.sm,
   },
-  statItem: {
+  summaryPanel: {
     alignItems: "center",
-    flexDirection: "row",
-    flexGrow: 1,
-    gap: spacing.md,
-    minWidth: 150,
+    justifyContent: "center",
+    maxWidth: 168,
+    minWidth: 128,
+    paddingHorizontal: spacing.xs,
   },
-  statValue: {
+  summaryPanelCompact: {
+    minWidth: 96,
+  },
+  summaryValue: {
     fontFamily: fonts.serif,
-    fontSize: fontSizes.xxl,
+    fontSize: 44,
     fontWeight: "500",
-    lineHeight: lineHeights.xxl,
-    marginTop: 2,
+    lineHeight: 54,
+    marginTop: spacing.sm,
   },
-  statsCard: {
-    columnGap: spacing.lg,
+  summaryValueCompact: {
+    fontSize: 34,
+    lineHeight: 42,
+  },
+  tab: {
+    alignItems: "center",
+    borderColor: colors.transparent,
+    borderRadius: radius.md - spacing.xs,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: layout.minTouchTarget,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  tabActive: {
+    backgroundColor: "rgba(183, 140, 255, 0.12)",
+    borderColor: colors.accentViolet,
+    elevation: 6,
+    shadowColor: colors.accentViolet,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  tabLabel: {
+    fontSize: fontSizes.md,
+    fontWeight: "600",
+    lineHeight: lineHeights.md,
+  },
+  tabLabelCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
+  tabsRow: {
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flex: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
-    rowGap: spacing.md,
+    gap: spacing.xs,
+    minWidth: 0,
+    padding: spacing.xs,
   },
   timelineBadgeSlot: {
     alignItems: "center",
-    height: 20,
+    height: 32,
     justifyContent: "center",
     marginBottom: spacing.xs,
   },
@@ -659,28 +1196,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     width: 64,
   },
-  timelineCircleLocked: {
-    shadowOpacity: 0.15,
-  },
   timelineConnector: {
     alignSelf: "flex-start",
     borderColor: "rgba(246, 232, 200, 0.28)",
     borderStyle: "dotted",
     borderTopWidth: 2,
-    marginTop: 56,
+    marginTop: 67,
     width: 26,
   },
   timelineDate: {
+    fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
     marginTop: spacing.sm,
-  },
-  timelineHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    marginTop: spacing.xl,
   },
   timelineItem: {
     alignItems: "center",
@@ -689,27 +1217,34 @@ const styles = StyleSheet.create({
   timelineItemGroup: {
     flexDirection: "row",
   },
-  timelineItemLocked: {
-    opacity: 0.8,
-  },
   timelineLabel: {
     marginTop: spacing.xs,
   },
-  timelineSubtitle: {
-    marginTop: spacing.xs,
-  },
-  timelineTitle: {
-    fontSize: fontSizes.xxl + 2,
-    lineHeight: lineHeights.xxl + 4,
-  },
-  timelineTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexShrink: 1,
-    gap: spacing.sm,
+  timelineEllipsis: {
+    flex: 1,
+    marginHorizontal: spacing.xs,
+    minWidth: TIMELINE_ELLIPSIS_MIN_WIDTH - spacing.xs * 2,
   },
   timelineTrack: {
-    paddingBottom: spacing.xs,
-    paddingTop: spacing.md,
+    alignItems: "flex-start",
+    flexDirection: "row",
+    padding: spacing.lg,
+  },
+  title: {
+    fontWeight: "700",
+    textShadowColor: colors.primaryGlow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  titleBlock: {
+    flex: 1,
+    paddingHorizontal: 18,
+  },
+  titleBlockCompact: {
+    paddingHorizontal: spacing.sm,
+  },
+  titleCompact: {
+    fontSize: fontSizes.cardTitle,
+    lineHeight: lineHeights.cardTitle,
   },
 });
