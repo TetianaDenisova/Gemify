@@ -106,8 +106,10 @@ function FulfillmentChart({
   let domainHi = Math.ceil(Math.max(...values) / 5) * 5;
   if (domainLo === Math.min(...values)) domainLo = Math.max(0, domainLo - 5);
   if (domainHi === Math.max(...values)) domainHi = Math.min(100, domainHi + 5);
-  const tickStep = (domainHi - domainLo) / 6;
-  const ticks = Array.from({ length: 7 }, (_, i) => domainHi - i * tickStep);
+  const ticks = Array.from(
+    { length: Math.floor((domainHi - domainLo) / 5) + 1 },
+    (_, i) => domainHi - i * 5,
+  );
 
   const yFor = (percent: number) =>
     CHART_TOP_PAD +
@@ -137,22 +139,18 @@ function FulfillmentChart({
       ? `${linePath} L ${dots[dots.length - 1].x} ${yFor(domainLo)} L ${dots[0].x} ${yFor(domainLo)} Z`
       : "";
 
-  // Mid-segment change badges, in percent points ("↑ +2%").
+  // Mid-segment change badges, in percent ("+2%", "0%").
   const segments = dots.slice(1).map((dot, index) => {
     const prev = dots[index];
     const delta = dot.percent - prev.percent;
     return {
       delta,
       key: dot.key,
-      label:
-        delta > 0 ? `↑ +${delta}%` : delta < 0 ? `↓ ${delta}%` : "— 0%",
+      label: `${delta > 0 ? "+" : ""}${delta}%`,
       x: (prev.x + dot.x) / 2,
       y: (prev.y + dot.y) / 2,
     };
   });
-
-  const formatTick = (tick: number) =>
-    Number.isInteger(tick) ? `${tick}%` : `${tick.toFixed(1)}%`;
 
   return (
     <View
@@ -172,6 +170,42 @@ function FulfillmentChart({
                 <Stop offset="1" stopColor={colors.accentViolet} stopOpacity={0.04} />
               </LinearGradient>
             </Defs>
+            {ticks.map((tick) => (
+              <Line
+                key={`grid-${tick}`}
+                stroke={colors.borderSoft}
+                strokeDasharray="3 7"
+                strokeWidth={1}
+                x1={LINE_Y_AXIS_WIDTH}
+                x2={chartWidth}
+                y1={yFor(tick)}
+                y2={yFor(tick)}
+              />
+            ))}
+            <Line
+              stroke={BAR_AXIS_STROKE}
+              strokeWidth={1.4}
+              x1={LINE_Y_AXIS_WIDTH}
+              x2={LINE_Y_AXIS_WIDTH}
+              y1={yFor(domainHi)}
+              y2={yFor(domainLo)}
+            />
+            <Line
+              stroke={BAR_AXIS_STROKE}
+              strokeWidth={1.4}
+              x1={LINE_Y_AXIS_WIDTH}
+              x2={LINE_Y_AXIS_WIDTH + 10}
+              y1={yFor(domainHi)}
+              y2={yFor(domainHi)}
+            />
+            <Line
+              stroke={BAR_AXIS_STROKE}
+              strokeWidth={1.4}
+              x1={LINE_Y_AXIS_WIDTH}
+              x2={LINE_Y_AXIS_WIDTH + 10}
+              y1={yFor(domainLo)}
+              y2={yFor(domainLo)}
+            />
             {areaPath ? <Path d={areaPath} fill="url(#fulfillmentArea)" /> : null}
             {linePath ? (
               <Path
@@ -205,13 +239,16 @@ function FulfillmentChart({
               />
             ))}
           </Svg>
+          <AppText color={colors.textMuted} style={styles.zoomLabel}>
+            {`ZOOMED VIEW · ${domainLo}–${domainHi}%`}
+          </AppText>
           {ticks.map((tick) => (
             <AppText
               color={colors.textPrimary}
               key={`tick-${tick}`}
-              style={[styles.lineTickLabel, { top: yFor(tick) - 9 }]}
+              style={[styles.lineTickLabel, { top: yFor(tick) - 10 }]}
             >
-              {formatTick(tick)}
+              {tick}%
             </AppText>
           ))}
           {dots.map((dot) => (
@@ -233,7 +270,7 @@ function FulfillmentChart({
               key={`delta-${segment.key}`}
               style={[
                 styles.deltaBadge,
-                { left: segment.x - 39, top: segment.y + 10 },
+                { left: segment.x - 31, top: segment.y + 14 },
               ]}
             >
               <AppText
@@ -936,7 +973,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     paddingVertical: spacing.xs,
     position: "absolute",
-    width: 78,
+    width: 62,
   },
   deltaBadgeLabel: {
     fontSize: fontSizes.sm,
@@ -1019,9 +1056,10 @@ const styles = StyleSheet.create({
     width: 56,
   },
   lineTickLabel: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.md,
+    fontWeight: "600",
     left: 0,
-    lineHeight: lineHeights.sm,
+    lineHeight: lineHeights.md,
     position: "absolute",
     textAlign: "right",
     width: LINE_Y_AXIS_WIDTH - 8,
@@ -1229,6 +1267,15 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     flexDirection: "row",
     padding: spacing.lg,
+  },
+  zoomLabel: {
+    fontSize: fontSizes.xs,
+    fontWeight: "600",
+    left: LINE_Y_AXIS_WIDTH,
+    letterSpacing: 1.6,
+    lineHeight: lineHeights.xs,
+    position: "absolute",
+    top: 0,
   },
   title: {
     fontWeight: "700",
