@@ -128,7 +128,7 @@ export function DatePickerModal({
       <View style={styles.titleRow}>
         <View style={styles.titleGroup}>
           <CalendarGlyph />
-          <AppText style={styles.title} variant="cardTitle">
+          <AppText variant="titleSm">
             Choose a date
           </AppText>
         </View>
@@ -171,7 +171,7 @@ export function DatePickerModal({
             strokeWidth={1.9}
           />
         </Pressable>
-        <AppText style={styles.monthLabel}>
+        <AppText style={styles.monthLabel} variant="titleSm">
           {MONTH_NAMES[viewMonth]} {viewYear}
         </AppText>
         <Pressable
@@ -195,7 +195,7 @@ export function DatePickerModal({
 
       <View style={styles.weekdayRow}>
         {WEEKDAY_LABELS.map((label) => (
-          <AppText key={label} style={styles.weekdayLabel} variant="bodySmall">
+          <AppText key={label} style={styles.weekdayLabel} variant="labelStrong">
             {label}
           </AppText>
         ))}
@@ -225,7 +225,6 @@ export function DatePickerModal({
                   style={[
                     styles.dayLabel,
                     !inMonth && styles.dayLabelOutside,
-                    selected && styles.dayLabelSelected,
                   ]}
                 >
                   {day.getDate()}
@@ -299,9 +298,6 @@ const styles = StyleSheet.create({
   dayLabelOutside: {
     color: colors.textMuted,
   },
-  dayLabelSelected: {
-    fontWeight: "700",
-  },
   legendDot: {
     backgroundColor: colors.primary,
     borderRadius: radius.round,
@@ -325,10 +321,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   monthLabel: {
-    color: colors.textPrimary,
-    fontFamily: fonts.serif,
     fontSize: fontSizes.xxl,
-    fontWeight: "500",
     lineHeight: lineHeights.xxl,
   },
   monthRow: {
@@ -356,10 +349,6 @@ const styles = StyleSheet.create({
   selectedDate: {
     marginTop: spacing.md,
   },
-  title: {
-    fontSize: fontSizes.cardTitle - 4,
-    lineHeight: lineHeights.cardTitle - 4,
-  },
   titleGroup: {
     alignItems: "center",
     flexDirection: "row",
@@ -386,8 +375,6 @@ const styles = StyleSheet.create({
   },
   weekdayLabel: {
     flex: 1,
-    fontWeight: "600",
-    lineHeight: lineHeights.sm,
     textAlign: "center",
   },
   weekdayRow: {

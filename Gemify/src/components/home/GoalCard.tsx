@@ -56,11 +56,11 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           </View>
 
           <View style={styles.titleBlock}>
-            <AppText numberOfLines={2} style={styles.title} variant="title">
+            <AppText numberOfLines={2} variant="pill">
               {goal.title}
             </AppText>
 
-            <AppText color={accentColor} style={styles.milestone} variant="caption">
+            <AppText color={accentColor} style={styles.milestone} variant="micro">
               ⚑ Milestone: {goal.milestone}
             </AppText>
           </View>
@@ -77,7 +77,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
             <AppText
               color={colors.textSecondary}
               style={styles.taskCount}
-              variant="caption"
+              variant="micro"
             >
               {goal.completedTasks} of {goal.totalTasks} tasks completed
             </AppText>
@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     borderRadius: radius.md,
     borderWidth: 1,
-    height: 132,
     marginBottom: spacing.sm,
+    minHeight: 132,
     overflow: "hidden",
     position: "relative",
     ...shadows.softDark,
@@ -152,16 +152,8 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
 
-  title: {
-    fontSize: 20,
-    letterSpacing: -0.3,
-    lineHeight: 22,
-  },
-
   milestone: {
-    fontSize: 10,
-    lineHeight: 13,
-    marginTop: 7,
+    marginTop: spacing.xs,
   },
 
   bottomContent: {
@@ -176,8 +168,6 @@ const styles = StyleSheet.create({
   },
 
   taskCount: {
-    fontSize: 10,
-    lineHeight: 13,
     marginTop: spacing.sm,
   },
 });

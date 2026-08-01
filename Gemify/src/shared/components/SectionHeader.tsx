@@ -51,7 +51,7 @@ export function SectionHeader({
           ]}
         >
           {action.icon}
-          <AppText color={colors.primary} style={styles.actionLabel} variant="caption">
+          <AppText color={colors.primary} variant="captionStrong">
             {action.label}
           </AppText>
         </Pressable>
@@ -71,10 +71,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     minHeight: 40,
     paddingHorizontal: spacing.md,
-  },
-  actionLabel: {
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   row: {
     alignItems: "center",

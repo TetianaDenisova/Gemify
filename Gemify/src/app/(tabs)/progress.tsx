@@ -239,7 +239,11 @@ function FulfillmentChart({
               />
             ))}
           </Svg>
-          <AppText color={colors.textMuted} style={styles.zoomLabel}>
+          <AppText
+            color={colors.textMuted}
+            style={styles.zoomLabel}
+            variant="captionStrong"
+          >
             {`ZOOMED VIEW · ${domainLo}–${domainHi}%`}
           </AppText>
           {ticks.map((tick) => (
@@ -281,7 +285,7 @@ function FulfillmentChart({
                       ? colors.danger
                       : colors.accentViolet
                 }
-                style={styles.deltaBadgeLabel}
+                variant="labelStrong"
               >
                 {segment.label}
               </AppText>
@@ -738,7 +742,8 @@ export default function ProgressScreen() {
                     align="center"
                     color={active ? colors.textPrimary : colors.textMuted}
                     numberOfLines={1}
-                    style={[styles.tabLabel, compact && styles.tabLabelCompact]}
+                    style={compact && styles.tabLabelCompact}
+                    variant="controlLabel"
                   >
                     {tab.label}
                   </AppText>
@@ -756,7 +761,7 @@ export default function ProgressScreen() {
                 isPressed && pressed,
               ]}
             >
-              <AppText style={styles.rangeTriggerLabel} variant="pill">
+              <AppText variant="pill">
                 {selectedRange.label}
               </AppText>
               <View style={rangePickerOpen ? styles.chevronOpen : null}>
@@ -814,6 +819,7 @@ export default function ProgressScreen() {
                     styles.summaryValue,
                     compact && styles.summaryValueCompact,
                   ]}
+                  variant="stat"
                 >
                   {selectedRange.summary.percent}%
                 </AppText>
@@ -821,6 +827,7 @@ export default function ProgressScreen() {
                   align="center"
                   color={colors.textPrimary}
                   style={styles.summaryCaption}
+                  variant="body"
                 >
                   {selectedRange.summary.caption}
                 </AppText>
@@ -850,7 +857,7 @@ export default function ProgressScreen() {
                   />
                 </View>
               </View>
-              <AppText style={styles.overallValue}>{currentPercent}%</AppText>
+              <AppText variant="title">{currentPercent}%</AppText>
             </View>
           </>
         ) : null}
@@ -863,10 +870,18 @@ export default function ProgressScreen() {
           style={styles.forecastBackground}
         />
         <View style={styles.forecastCopy}>
-          <AppText color={colors.textPrimary} style={styles.forecastHeadline}>
+          <AppText
+            color={colors.textPrimary}
+            style={styles.forecastHeadline}
+            variant="bodySerif"
+          >
             {forecast.headline}
           </AppText>
-          <AppText color={colors.primary} style={styles.forecastDate}>
+          <AppText
+            color={colors.primary}
+            style={styles.forecastDate}
+            variant="cardTitle"
+          >
             {forecast.date}
           </AppText>
           <Badge
@@ -925,9 +940,11 @@ const styles = StyleSheet.create({
     height: CHART_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
     minWidth: 0,
   },
+  // Chart axis/point labels are a data-viz exception: token-sized, but kept
+  // as local styles because they are absolutely positioned over the SVG plot.
   chartPointLabel: {
     fontSize: fontSizes.lg,
-    fontWeight: "700",
+    fontWeight: "600",
     lineHeight: lineHeights.lg,
     position: "absolute",
     width: 56,
@@ -975,11 +992,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 62,
   },
-  deltaBadgeLabel: {
-    fontSize: fontSizes.sm,
-    fontWeight: "600",
-    lineHeight: lineHeights.sm,
-  },
   etaPill: {
     borderColor: colors.border,
     marginTop: spacing.md,
@@ -1003,16 +1015,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
   },
   forecastDate: {
-    fontFamily: fonts.serif,
-    fontSize: 30,
-    fontWeight: "500",
-    lineHeight: 38,
     marginTop: spacing.xs,
   },
   forecastHeadline: {
-    fontFamily: fonts.serif,
     fontSize: fontSizes.xxl,
-    lineHeight: lineHeights.xxl + 6,
+    lineHeight: lineHeights.xxxl,
   },
   fulfillmentCard: {
     borderColor: colors.accentVioletGlow,
@@ -1092,12 +1099,6 @@ const styles = StyleSheet.create({
     height: 14,
     overflow: "hidden",
   },
-  overallValue: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.cardTitle,
-    fontWeight: "700",
-    lineHeight: lineHeights.cardTitle,
-  },
   panelDivider: {
     alignSelf: "stretch",
     backgroundColor: colors.borderSoft,
@@ -1139,10 +1140,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  rangeTriggerLabel: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
-  },
   /** Serif pill/badge label, matching the pre-migration ETA/range pills. */
   serifPillLabel: {
     fontFamily: fonts.serif,
@@ -1151,8 +1148,6 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.sm,
   },
   summaryCaption: {
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.lg,
     marginTop: spacing.sm,
   },
   summaryPanel: {
@@ -1166,15 +1161,11 @@ const styles = StyleSheet.create({
     minWidth: 96,
   },
   summaryValue: {
-    fontFamily: fonts.serif,
-    fontSize: 44,
-    fontWeight: "500",
-    lineHeight: 54,
     marginTop: spacing.sm,
   },
   summaryValueCompact: {
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: fontSizes.screenTitle,
+    lineHeight: lineHeights.screenTitle,
   },
   tab: {
     alignItems: "center",
@@ -1195,11 +1186,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
-  },
-  tabLabel: {
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-    lineHeight: lineHeights.md,
   },
   tabLabelCompact: {
     fontSize: fontSizes.sm,
@@ -1243,9 +1229,6 @@ const styles = StyleSheet.create({
     width: 26,
   },
   timelineDate: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
     marginTop: spacing.sm,
   },
   timelineItem: {
@@ -1269,16 +1252,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   zoomLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: "600",
     left: LINE_Y_AXIS_WIDTH,
     letterSpacing: 1.6,
-    lineHeight: lineHeights.xs,
     position: "absolute",
     top: 0,
   },
   title: {
-    fontWeight: "700",
     textShadowColor: colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,

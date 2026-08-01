@@ -11,7 +11,7 @@ import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { ActionIcon, DayAction, TimeBlock } from "@/data/timeBlocks";
 import { AppText, Card, Checkbox, SparkIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, fonts, layout, lineHeights } from "@/theme/theme";
+import { fontSizes, layout, lineHeights, spacing } from "@/theme/theme";
 
 const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   meditate: colors.accentViolet,
@@ -118,7 +118,7 @@ function ActionRow({
         <AppText
           color={colors.textPrimary}
           style={compact && styles.actionTitleCompact}
-          variant="button"
+          variant="pill"
         >
           {action.title}
         </AppText>
@@ -174,19 +174,22 @@ export function TimeBlockCard({
           <AppText
             color={colors.accentViolet}
             style={[styles.sectionLabel, compact && styles.sectionLabelCompact]}
+            variant="sectionTitle"
           >
             {block.label.toUpperCase()}
           </AppText>
           <View style={styles.sectionDivider} />
           <AppText
             color={colors.primary}
-            style={[styles.sectionTime, compact && styles.sectionTimeCompact]}
+            style={compact && styles.sectionTimeCompact}
+            variant="controlLabel"
           >
             {block.time}
           </AppText>
           <AppText
             color={colors.textPrimary}
             style={[styles.sectionCount, compact && styles.sectionCountCompact]}
+            variant="pill"
           >
             {done} / {block.actions.length}
           </AppText>
@@ -207,7 +210,8 @@ export function TimeBlockCard({
               <SparkIcon color={colors.accentViolet} size={compact ? 15 : 18} />
               <AppText
                 color={colors.accentViolet}
-                style={[styles.identityText, compact && styles.identityTextCompact]}
+                style={compact && styles.identityTextCompact}
+                variant="eyebrow"
               >
                 {block.identity}
               </AppText>
@@ -221,6 +225,7 @@ export function TimeBlockCard({
             <AppText
               color={colors.primary}
               style={[styles.routineSubtitle, compact && styles.routineSubtitleCompact]}
+              variant="body"
             >
               {block.routineSubtitle}
             </AppText>
@@ -311,21 +316,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 9,
   },
-  identityText: {
-    fontSize: fontSizes.sm,
-    fontWeight: "700",
-    letterSpacing: 2.4,
-    lineHeight: lineHeights.sm,
-  },
   identityTextCompact: {
     fontSize: fontSizes.xs,
     letterSpacing: 1.8,
     lineHeight: lineHeights.xs,
   },
   routineSubtitle: {
-    fontSize: fontSizes.md,
-    lineHeight: 22,
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   routineSubtitleCompact: {
     fontSize: fontSizes.sm,
@@ -356,9 +353,6 @@ const styles = StyleSheet.create({
     width: 36,
   },
   sectionCount: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.xl,
-    lineHeight: lineHeights.lg,
     marginLeft: "auto",
   },
   sectionCountCompact: {
@@ -376,20 +370,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLabel: {
-    fontSize: fontSizes.lg,
-    fontWeight: "700",
-    letterSpacing: 2,
-    lineHeight: lineHeights.lg,
+    flexShrink: 1,
   },
   sectionLabelCompact: {
     fontSize: fontSizes.sm,
     letterSpacing: 1.6,
     lineHeight: lineHeights.sm,
-  },
-  sectionTime: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    lineHeight: lineHeights.lg,
   },
   sectionTimeCompact: {
     fontSize: fontSizes.sm,

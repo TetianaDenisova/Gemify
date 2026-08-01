@@ -29,9 +29,9 @@ import {
 import { colors } from "@/theme/colors";
 import {
   controls,
-  fonts,
   fontSizes,
   layout,
+  lineHeights,
   pressed,
   spacing,
   typography,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   },
   ideaTitleCompact: {
     fontSize: fontSizes.lg,
-    lineHeight: 22,
+    lineHeight: lineHeights.lg,
   },
   labelRow: {
     alignItems: "center",
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   metaSeparator: {
     color: colors.textMuted,
     fontSize: fontSizes.xl,
-    lineHeight: 22,
+    lineHeight: lineHeights.xl,
   },
   milestoneCard: {
     borderColor: colors.accentVioletGlow,
@@ -744,7 +744,6 @@ const styles = StyleSheet.create({
   scoreText: {
     ...typography.pill,
     color: colors.primary,
-    fontFamily: fonts.serif,
   },
   sectionHeader: {
     marginBottom: spacing.sm,

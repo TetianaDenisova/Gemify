@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
 
 import { colors } from "@/theme/colors";
-import { controls, radius, shadows } from "@/theme/theme";
+import { controls, radius, shadows, spacing } from "@/theme/theme";
+
+import { AppText } from "./AppText";
 
 export type IconButtonSize = keyof typeof controls.iconButton;
 
@@ -67,7 +68,11 @@ export function IconButton({
       >
         <View pointerEvents="none" style={styles.innerEdge} />
         {icon}
-        {label ? <Text style={styles.label}>{label}</Text> : null}
+        {label ? (
+          <AppText color={colors.primary} style={styles.label} variant="controlLabel">
+            {label}
+          </AppText>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -84,7 +89,7 @@ const styles = StyleSheet.create({
   },
   buttonWithLabel: {
     flexDirection: "row",
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.md,
   },
   disabled: {
     opacity: 0.38,
@@ -104,11 +109,7 @@ const styles = StyleSheet.create({
     margin: 2,
   },
   label: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 20,
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   pressed: {
     backgroundColor: colors.secondary,

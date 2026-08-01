@@ -17,7 +17,7 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, pressed, spacing } from "@/theme/theme";
+import { fonts, fontSizes, iconSizes, pressed, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/state_background.png");
 const CONTINUE_BUTTON = require("../../assets/state/continue-btn.png");
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   chipIcon: {
-    fontSize: 18,
+    fontSize: iconSizes.sm,
   },
   content: {
     alignItems: "center",
@@ -271,11 +271,11 @@ const styles = StyleSheet.create({
     width: "94%",
   },
   footnote: {
-    marginTop: 13,
+    marginTop: spacing.md,
   },
   headerSparkle: {
     color: colors.primaryBright,
-    fontSize: 24,
+    fontSize: iconSizes.md,
   },
   headingLine: {
     backgroundColor: colors.borderStrong,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
   inputSparkles: {
     color: colors.primaryBright,
-    fontSize: 24,
+    fontSize: iconSizes.md,
   },
   ornament: {
     alignItems: "center",
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   ornamentStar: {
     color: colors.primary,
-    fontSize: 10,
+    fontSize: fontSizes.xxs,
   },
   selectedPill: {
     flex: 1,

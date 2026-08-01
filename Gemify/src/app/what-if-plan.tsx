@@ -25,7 +25,7 @@ import {
   SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, radius, shadows, spacing } from "@/theme/theme";
+import { fontSizes, lineHeights, radius, shadows, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/create-goal/risk-plan-background.png");
 const RISK_IMAGE = require("../../assets/create-goal/risk-image.png");
@@ -72,10 +72,6 @@ const DEFAULT_PLANS: readonly RiskPlan[] = [
   },
 ] as const;
 
-function clamp(value: number, minimum: number, maximum: number) {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
 export default function WhatIfPlanScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -83,7 +79,6 @@ export default function WhatIfPlanScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const compact = width < 380;
   const verySmall = width < 340;
-  const titleSize = clamp(width * 0.085, compact ? 31 : 36, 54);
 
   return (
     <>
@@ -112,13 +107,7 @@ export default function WhatIfPlanScreen() {
           <AppText
             align="center"
             color={colors.primary}
-            style={[
-              styles.title,
-              {
-                fontSize: titleSize,
-                lineHeight: titleSize + 8,
-              },
-            ]}
+            style={styles.title}
             variant="screenTitle"
           >
             What If Plan
@@ -220,8 +209,8 @@ function AddRiskModal({
               </View>
               <AppText
                 color={colors.primary}
-                style={[styles.modalTitle, compact && styles.modalTitleCompact]}
-                variant="screenTitle"
+                style={styles.modalTitle}
+                variant="title"
               >
                 Add New Risk
               </AppText>
@@ -353,10 +342,8 @@ function ActionField({
         <View style={[styles.actionNumber, compact && styles.actionNumberCompact]}>
           <AppText
             color={colors.primary}
-            style={[
-              styles.actionNumberText,
-              compact && styles.actionNumberTextCompact,
-            ]}
+            style={compact && styles.actionNumberTextCompact}
+            variant="titleSm"
           >
             {number}
           </AppText>
@@ -399,7 +386,7 @@ function RiskCard({
           <AppText
             color="#FFFFFF"
             style={[styles.riskTitle, compact && styles.riskTitleCompact]}
-            variant="cardTitle"
+            variant="titleSm"
           >
             {plan.title}
           </AppText>
@@ -424,8 +411,8 @@ function RiskCard({
           </View>
           <AppText
             color={colors.primary}
-            style={[styles.planHeading, compact && styles.planHeadingCompact]}
-            variant="button"
+            style={styles.planHeading}
+            variant="pill"
           >
             My protection plan
           </AppText>
@@ -437,7 +424,11 @@ function RiskCard({
               <AppText color={colors.primary} style={styles.bullet}>
                 {"•"}
               </AppText>
-              <AppText style={[styles.bulletText, compact && styles.bulletTextCompact]}>
+              <AppText
+                color="rgba(255, 255, 255, 0.84)"
+                style={styles.bulletText}
+                variant="body"
+              >
                 {action}
               </AppText>
             </View>
@@ -484,26 +475,21 @@ const styles = StyleSheet.create({
     height: 38,
     width: 38,
   },
-  actionNumberText: {
-    fontFamily: fonts.serif,
-    fontSize: 27,
-    lineHeight: 31,
-  },
   actionNumberTextCompact: {
-    fontSize: 22,
-    lineHeight: 26,
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxl,
   },
   actionsHeader: {
-    marginTop: 29,
+    marginTop: spacing.xl,
     width: "100%",
   },
   actionsHint: {
     marginTop: spacing.xs,
   },
   bullet: {
-    fontSize: 22,
-    lineHeight: 28,
-    marginRight: 13,
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxl,
+    marginRight: spacing.md,
     marginTop: -1,
   },
   bulletList: {
@@ -515,14 +501,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   bulletText: {
-    color: "rgba(255, 255, 255, 0.84)",
     flex: 1,
-    fontSize: 18,
-    lineHeight: 27,
-  },
-  bulletTextCompact: {
-    fontSize: 13,
-    lineHeight: 19,
   },
   cancelButton: {
     alignSelf: "center",
@@ -548,11 +527,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "stretch",
     justifyContent: "center",
-    marginHorizontal: 28,
+    marginHorizontal: spacing.lg,
     width: 28,
   },
   dividerColumnCompact: {
-    marginHorizontal: 12,
+    marginHorizontal: spacing.sm,
     width: 22,
   },
   dividerLine: {
@@ -592,13 +571,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 70,
     justifyContent: "center",
-    marginRight: 19,
+    marginRight: spacing.md,
     width: 70,
     ...shadows.goldGlow,
   },
   modalIconRingCompact: {
     height: 54,
-    marginRight: 13,
+    marginRight: spacing.sm,
     width: 54,
   },
   modalPanel: {
@@ -606,15 +585,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.sheet,
     borderWidth: 1,
     paddingBottom: spacing.xl,
-    paddingHorizontal: 38,
-    paddingTop: 27,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
     width: "100%",
     ...shadows.goldGlow,
   },
   modalPanelCompact: {
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    paddingTop: 22,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
   },
   modalPanelShell: {
     backgroundColor: colors.transparent,
@@ -623,27 +602,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     flexShrink: 1,
-    fontWeight: "700",
-  },
-  modalTitleCompact: {
-    fontSize: 28,
-    lineHeight: 34,
   },
   modalTitleRow: {
     alignItems: "center",
     flex: 1,
     flexDirection: "row",
     minWidth: 0,
-    paddingRight: 14,
+    paddingRight: spacing.md,
   },
   planHeading: {
     flexShrink: 1,
-    fontWeight: "700",
     textTransform: "capitalize",
-  },
-  planHeadingCompact: {
-    fontSize: 15,
-    lineHeight: 20,
   },
   planHeadingRow: {
     alignItems: "center",
@@ -657,7 +626,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 42,
     justifyContent: "center",
-    marginRight: 11,
+    marginRight: spacing.sm,
     width: 42,
     ...shadows.goldGlow,
   },
@@ -672,8 +641,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   promptCompact: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.md,
     marginTop: spacing.sm,
   },
   riskCopy: {
@@ -712,8 +681,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   riskTitleCompact: {
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: fontSizes.xl,
+    lineHeight: lineHeights.xl,
     marginTop: spacing.sm,
   },
   submitButton: {
@@ -724,7 +693,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   title: {
-    fontWeight: "700",
     textShadowColor: "rgba(0, 0, 0, 0.45)",
     textShadowRadius: 6,
   },

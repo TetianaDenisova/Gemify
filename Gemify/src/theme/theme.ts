@@ -53,27 +53,42 @@ export const fonts = {
 } as const;
 
 export const fontSizes = {
+  xxs: 10,
   xs: 12,
   sm: 14,
   md: 16,
   lg: 17,
   xl: 20,
   xxl: 22,
+  xxxl: 26,
   cardTitle: 30,
   screenTitle: 36,
+  stat: 44,
   display: 56,
 } as const;
 
 export const lineHeights = {
+  xxs: 14,
   xs: 15,
   sm: 18,
   md: 20,
   lg: 24,
   xl: 26,
   xxl: 28,
+  xxxl: 32,
   cardTitle: 36,
   screenTitle: 42,
+  stat: 52,
   display: 66,
+} as const;
+
+/** Shared icon sizes — use these for SVG/text glyphs instead of ad-hoc numbers. */
+export const iconSizes = {
+  xs: 14,
+  sm: 18,
+  md: 22,
+  lg: 28,
+  xl: 34,
 } as const;
 
 export const typography = {
@@ -112,12 +127,28 @@ export const typography = {
     letterSpacing: 2.8,
     lineHeight: lineHeights.xxl,
   } satisfies TextStyle,
-  label: {
-    color: colors.primary,
+  /** Mid-size serif title — sheet/card headings between `pill` and `cardTitle`. */
+  titleSm: {
+    color: colors.textPrimary,
     fontFamily: fonts.serif,
-    fontSize: fontSizes.cardTitle,
+    fontSize: fontSizes.xxxl,
     fontWeight: "500",
-    lineHeight: 38,
+    lineHeight: lineHeights.xxxl,
+  } satisfies TextStyle,
+  /** Hero serif number/word — big stats and milestone numerals. */
+  stat: {
+    color: colors.textPrimary,
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.stat,
+    fontWeight: "500",
+    lineHeight: lineHeights.stat,
+  } satisfies TextStyle,
+  /** Field/category name (form labels, small headings above values). */
+  label: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    fontWeight: "500",
+    lineHeight: lineHeights.sm,
   } satisfies TextStyle,
   subtitle: {
     color: colors.textSecondary,
@@ -131,11 +162,20 @@ export const typography = {
     fontWeight: "400",
     lineHeight: 23,
   } satisfies TextStyle,
+  /** Hint/helper copy under forms — secondary, must not compete with body. */
   helper: {
     color: colors.textSecondary,
-    fontSize: fontSizes.xxl,
+    fontSize: fontSizes.md,
     fontWeight: "400",
-    lineHeight: 30,
+    lineHeight: lineHeights.lg,
+  } satisfies TextStyle,
+  /** Serif body copy (descriptions inside themed cards/sheets). */
+  bodySerif: {
+    color: colors.textSecondary,
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.md,
+    fontWeight: "400",
+    lineHeight: 23,
   } satisfies TextStyle,
   meta: {
     color: colors.textSecondary,
@@ -150,6 +190,28 @@ export const typography = {
     fontWeight: "500",
     lineHeight: 27,
   } satisfies TextStyle,
+  /** Label of the primary (gold gradient) CTA — same metrics, heavier weight. */
+  buttonPrimary: {
+    color: colors.textOnPrimary,
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.xxl,
+    fontWeight: "700",
+    lineHeight: 27,
+  } satisfies TextStyle,
+  /** Sans label on interactive controls (icon-button labels, segmented tabs). */
+  controlLabel: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.md,
+    fontWeight: "600",
+    lineHeight: lineHeights.md,
+  } satisfies TextStyle,
+  /** Emphasized small label (step titles, delta badges). */
+  labelStrong: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.sm,
+    fontWeight: "600",
+    lineHeight: lineHeights.sm,
+  } satisfies TextStyle,
   pill: {
     color: colors.textPrimary,
     fontFamily: fonts.serif,
@@ -157,17 +219,33 @@ export const typography = {
     fontWeight: "500",
     lineHeight: lineHeights.lg,
   } satisfies TextStyle,
+  /** Text typed inside AppInput fields. */
   input: {
     color: colors.textPrimary,
-    fontSize: 28,
+    fontSize: fontSizes.md,
     fontWeight: "400",
-    lineHeight: lineHeights.cardTitle,
+    lineHeight: 23,
   } satisfies TextStyle,
   caption: {
     color: colors.textMuted,
     fontSize: fontSizes.xs,
     fontWeight: "500",
     lineHeight: 16,
+  } satisfies TextStyle,
+  /** Emphasized caption (section-header action pills, tag labels). */
+  captionStrong: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: "700",
+    letterSpacing: 1,
+    lineHeight: 16,
+  } satisfies TextStyle,
+  /** Smallest metadata (tab-bar labels, tiny counters under cards). */
+  micro: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xxs,
+    fontWeight: "500",
+    lineHeight: lineHeights.xxs,
   } satisfies TextStyle,
   bodySmall: {
     color: colors.textSecondary,
@@ -287,6 +365,7 @@ export const theme = {
   fonts,
   fontSizes,
   gradients,
+  iconSizes,
   layout,
   lineHeights,
   pressed,

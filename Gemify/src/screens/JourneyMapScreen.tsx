@@ -46,7 +46,14 @@ import {
   IconButton,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, gradients, radius, shadows, spacing } from "@/theme/theme";
+import {
+  fontSizes,
+  gradients,
+  lineHeights,
+  radius,
+  shadows,
+  spacing,
+} from "@/theme/theme";
 
 type MilestoneModalProps = {
   milestone: JourneyMilestoneData | null;
@@ -397,10 +404,8 @@ function MilestoneModal({
               >
                 <AppText
                   color={colors.primary}
-                  style={[
-                    styles.modalNumberText,
-                    isCompact && styles.modalNumberTextCompact,
-                  ]}
+                  style={isCompact && styles.modalNumberTextCompact}
+                  variant="stat"
                 >
                   {milestone.id}
                 </AppText>
@@ -409,7 +414,6 @@ function MilestoneModal({
               <View style={styles.modalTitleBlock}>
                 <AppText
                   style={[
-                    styles.modalTitle,
                     isCompact && styles.modalTitleCompact,
                     isShort && styles.modalTitleShort,
                   ]}
@@ -423,6 +427,7 @@ function MilestoneModal({
                     styles.modalSubtitle,
                     isCompact && styles.modalSubtitleCompact,
                   ]}
+                  variant="bodySerif"
                 >
                   {milestone.subtitle}
                 </AppText>
@@ -471,15 +476,13 @@ function MilestoneModal({
                         styles.detailValue,
                         isCompact && styles.detailValueCompact,
                       ]}
-                      variant="pill"
+                      variant="titleSm"
                     >
                       {row.value}
                     </AppText>
                     <AppText
-                      style={[
-                        styles.description,
-                        isCompact && styles.descriptionCompact,
-                      ]}
+                      style={isCompact && styles.descriptionCompact}
+                      variant="bodySerif"
                     >
                       {row.description}
                     </AppText>
@@ -500,10 +503,6 @@ function MilestoneModal({
                 label="Go to Quests"
                 onPress={onOpenQuests}
                 size={isCompact ? "md" : "lg"}
-                textStyle={[
-                  styles.questButtonText,
-                  isCompact && styles.questButtonTextCompact,
-                ]}
               />
               <View pointerEvents="none" style={styles.questShimmerOverlay}>
                 <QuestButtonShimmer />
@@ -658,40 +657,28 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 29,
   },
-  modalNumberText: {
-    fontFamily: fonts.serif,
-    fontSize: 42,
-    lineHeight: 48,
-  },
   modalNumberTextCompact: {
-    fontSize: 34,
-    lineHeight: 39,
+    fontSize: fontSizes.screenTitle,
+    lineHeight: lineHeights.screenTitle,
   },
   modalTitleBlock: {
     flex: 1,
     marginLeft: 18,
   },
-  modalTitle: {
-    fontSize: 36,
-    lineHeight: 42,
-  },
   modalTitleCompact: {
-    fontSize: 25,
-    lineHeight: 30,
+    fontSize: fontSizes.xxxl,
+    lineHeight: lineHeights.xxxl,
   },
   modalTitleShort: {
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxl,
   },
   modalSubtitle: {
-    fontFamily: fonts.serif,
-    fontSize: 18,
-    lineHeight: 24,
-    marginTop: 3,
+    marginTop: spacing.xs,
   },
   modalSubtitleCompact: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
     marginTop: 0,
   },
   closeButton: {
@@ -747,29 +734,21 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
   },
   sectionLabelCompact: {
-    fontSize: 10,
+    fontSize: fontSizes.xxs,
     letterSpacing: 1.2,
-    lineHeight: 12,
+    lineHeight: lineHeights.xxs,
   },
   detailValue: {
-    fontSize: 24,
-    fontWeight: "600",
-    lineHeight: 30,
-    marginTop: 5,
+    marginTop: spacing.xs,
   },
   detailValueCompact: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
     marginTop: 2,
   },
-  description: {
-    fontFamily: fonts.serif,
-    lineHeight: 21,
-    marginTop: 4,
-  },
   descriptionCompact: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
     marginTop: 1,
   },
   questButtonWrap: {
@@ -779,15 +758,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     borderRadius: radius.md,
     overflow: "hidden",
-  },
-  questButtonText: {
-    fontSize: 28,
-    fontWeight: "600",
-    lineHeight: 34,
-  },
-  questButtonTextCompact: {
-    fontSize: 20,
-    lineHeight: 25,
   },
   shimmerClip: {
     ...StyleSheet.absoluteFill,

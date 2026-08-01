@@ -56,8 +56,8 @@ export function AppButton({
     <>
       <AppText
         color={variant === "primary" ? colors.textOnPrimary : colors.primary}
-        style={[variant === "primary" && styles.primaryText, textStyle]}
-        variant="button"
+        style={textStyle}
+        variant={variant === "primary" ? "buttonPrimary" : "button"}
       >
         {label}
       </AppText>
@@ -127,9 +127,6 @@ const styles = StyleSheet.create({
   },
   primaryShell: {
     ...shadows.goldGlow,
-  },
-  primaryText: {
-    fontWeight: "700",
   },
   secondary: {
     backgroundColor: colors.surfaceGlass,

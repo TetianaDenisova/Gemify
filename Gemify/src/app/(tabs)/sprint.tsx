@@ -272,8 +272,8 @@ export default function SprintScreen() {
             </View>
             <View style={[styles.arcCopy, compact && styles.arcCopyCompact]}>
               <AppText
-                style={[styles.arcTitle, compact && styles.arcTitleCompact]}
-                variant="cardTitle"
+                style={compact && styles.arcTitleCompact}
+                variant="titleSm"
               >
                 Build Unstoppable Discipline
               </AppText>
@@ -369,10 +369,6 @@ const styles = StyleSheet.create({
   arcSubtitle: {
     marginTop: spacing.sm,
     maxWidth: 260,
-  },
-  arcTitle: {
-    fontSize: 26,
-    lineHeight: 32,
   },
   arcTitleCompact: {
     fontSize: fontSizes.xxl,

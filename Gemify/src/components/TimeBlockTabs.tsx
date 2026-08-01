@@ -285,7 +285,6 @@ const styles = StyleSheet.create({
   },
   timeTabLabelActive: {
     color: colors.accentViolet,
-    fontWeight: "700",
   },
   timeTabLabelCompact: {
     fontSize: fontSizes.md,

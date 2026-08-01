@@ -61,13 +61,13 @@ function JourneyOverviewModal({
       <View style={styles.overviewGlow}>
         <View style={styles.overviewCard}>
           <View style={styles.overviewOrnament} />
-          <AppText align="center" style={styles.eyebrow} variant="eyebrow">
+          <AppText align="center" variant="eyebrow">
             YOUR PATH
           </AppText>
           <AppText align="center" style={styles.title} variant="title">
             The Journey
           </AppText>
-          <AppText align="center" style={styles.intro}>
+          <AppText align="center" style={styles.intro} variant="bodySmall">
             A living map of the person you are becoming. Each milestone turns
             focused action into lasting inner change.
           </AppText>
@@ -75,52 +75,40 @@ function JourneyOverviewModal({
           <View style={styles.divider} />
 
           <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber}>
+            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
               I
             </AppText>
             <View style={styles.stepCopy}>
-              <AppText
-                color={colors.textPrimary}
-                style={styles.stepTitle}
-                variant="bodySmall"
-              >
+              <AppText variant="labelStrong">
                 Follow the illuminated path
               </AppText>
-              <AppText style={styles.stepBody} variant="caption">
+              <AppText variant="caption">
                 Your glowing milestone is the chapter currently unfolding.
               </AppText>
             </View>
           </View>
           <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber}>
+            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
               II
             </AppText>
             <View style={styles.stepCopy}>
-              <AppText
-                color={colors.textPrimary}
-                style={styles.stepTitle}
-                variant="bodySmall"
-              >
+              <AppText variant="labelStrong">
                 Complete its quests
               </AppText>
-              <AppText style={styles.stepBody} variant="caption">
+              <AppText variant="caption">
                 Small, deliberate actions build progress within each chapter.
               </AppText>
             </View>
           </View>
           <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber}>
+            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
               III
             </AppText>
             <View style={styles.stepCopy}>
-              <AppText
-                color={colors.textPrimary}
-                style={styles.stepTitle}
-                variant="bodySmall"
-              >
+              <AppText variant="labelStrong">
                 Unlock what comes next
               </AppText>
-              <AppText style={styles.stepBody} variant="caption">
+              <AppText variant="caption">
                 Finish a milestone to reveal the next realm of your journey.
               </AppText>
             </View>
@@ -131,7 +119,6 @@ function JourneyOverviewModal({
             label={'Check "What If" Plan'}
             onPress={onOpenWhatIfPlan}
             style={styles.continueButton}
-            textStyle={styles.continueText}
             variant="secondary"
           />
         </View>
@@ -203,53 +190,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 6,
   },
-  eyebrow: {
-    fontSize: 9,
-    letterSpacing: 2.2,
-    lineHeight: 13,
-  },
   title: {
-    marginTop: 3,
+    marginTop: spacing.xs,
   },
   intro: {
-    marginTop: 9,
-    fontSize: 13,
-    lineHeight: 19,
+    marginTop: spacing.sm,
   },
   divider: {
     height: 1,
-    marginVertical: 20,
+    marginVertical: spacing.md,
     backgroundColor: colors.borderSoft,
   },
   stepRow: {
     flexDirection: "row",
-    marginBottom: 17,
+    marginBottom: spacing.md,
   },
   stepNumber: {
     width: 32,
     fontFamily: fonts.serif,
-    fontSize: 13,
-    lineHeight: 19,
   },
   stepCopy: {
     flex: 1,
   },
-  stepTitle: {
-    fontWeight: "600",
-    lineHeight: 19,
-  },
-  stepBody: {
-    marginTop: 2,
-    lineHeight: 17,
-  },
   continueButton: {
-    marginTop: 4,
-  },
-  continueText: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.35,
-    lineHeight: 18,
+    marginTop: spacing.xs,
   },
 });

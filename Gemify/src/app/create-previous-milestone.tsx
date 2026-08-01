@@ -19,7 +19,7 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { controls, spacing } from "@/theme/theme";
+import { controls, fontSizes, lineHeights, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/create-goal/entering.png");
 const BANNER = require("../../assets/create-goal/banner-create-milestone.png");
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   form: {
-    gap: 11,
+    gap: spacing.sm,
     marginTop: spacing.lg,
     width: "100%",
   },
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   titleCompact: {
-    fontSize: 23,
-    lineHeight: 29,
+    fontSize: fontSizes.xxxl,
+    lineHeight: lineHeights.xxxl,
   },
 });

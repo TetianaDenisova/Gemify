@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { colors } from "@/theme/colors";
-import { fontSizes, radius, spacing } from "@/theme/theme";
+import { radius, spacing, typography } from "@/theme/theme";
 
 import { AppText } from "./AppText";
 
@@ -47,7 +47,7 @@ export function AppInput({
   return (
     <View style={containerStyle}>
       {label ? (
-        <AppText color={colors.primary} style={styles.label} variant="subtitle">
+        <AppText color={colors.primary} style={styles.label} variant="label">
           {label}
         </AppText>
       ) : null}
@@ -116,10 +116,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   input: {
-    color: colors.textPrimary,
+    ...typography.input,
     flex: 1,
-    fontSize: fontSizes.md,
-    lineHeight: 23,
     outlineColor: colors.transparent,
     outlineWidth: 0,
     padding: 0,

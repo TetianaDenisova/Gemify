@@ -16,6 +16,9 @@ export type JourneyMilestoneLabelProps = {
   title: string;
 };
 
+// NOTE: This label renders inside the zoomable journey-map canvas, so its
+// font sizes are tuned to the board's coordinate space (relative to the 36px
+// badge) rather than the app type scale — an intentional exception.
 const BADGE_SIZE = 36;
 const CONNECTOR_WIDTH = 14;
 

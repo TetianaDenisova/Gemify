@@ -2,7 +2,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import { colors } from "@/theme/colors";
-import { fonts } from "@/theme/theme";
+import { fonts, fontSizes, lineHeights } from "@/theme/theme";
 
 import { AppText } from "./AppText";
 
@@ -106,8 +106,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   labelSmall: {
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.md,
   },
   meta: {
     marginTop: -2,

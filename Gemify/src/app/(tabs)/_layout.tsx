@@ -160,9 +160,7 @@ const styles = StyleSheet.create({
   },
 
   tabBarLabel: {
-    ...typography.caption,
-    fontSize: 11,
-    lineHeight: 14,
+    ...typography.micro,
     marginTop: 0,
   },
 

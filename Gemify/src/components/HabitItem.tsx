@@ -193,7 +193,7 @@ function HabitTitle({ compact, title }: { compact: boolean; title: string }) {
         }
       }}
       style={compact && styles.habitTitleCompact}
-      variant="button"
+      variant="pill"
     >
       {title}
     </AppText>
@@ -231,7 +231,7 @@ export function HabitItemHeader({
         <View style={[styles.habitDay, compact && styles.habitDayCompact]}>
           <AppText
             color={colors.primary}
-            style={[styles.dayCount, compact && styles.dayCountCompact]}
+            style={compact && styles.dayCountCompact}
             variant="pill"
           >
             Day {habit.day}
@@ -288,11 +288,10 @@ export function HabitProgress({
           >
             <AppText
               style={[
-                styles.dayLabel,
                 expanded && styles.dayLabelExpanded,
                 highlighted && styles.dayLabelHighlighted,
               ]}
-              variant="caption"
+              variant="captionStrong"
             >
               {expanded ? day : day.toUpperCase()}
             </AppText>
@@ -393,9 +392,6 @@ const styles = StyleSheet.create({
     top: 40,
     width: 30,
   },
-  dayCount: {
-    fontWeight: "700",
-  },
   dayCountCompact: {
     fontSize: fontSizes.md,
     lineHeight: lineHeights.md,
@@ -416,9 +412,6 @@ const styles = StyleSheet.create({
   },
   dayDotMissed: {
     borderColor: colors.textMuted,
-  },
-  dayLabel: {
-    fontWeight: "800",
   },
   dayLabelExpanded: {
     ...typography.pill,
@@ -513,7 +506,7 @@ const styles = StyleSheet.create({
   },
   habitTitleCompact: {
     fontSize: fontSizes.lg,
-    lineHeight: 22,
+    lineHeight: lineHeights.lg,
   },
   habitTop: {
     alignItems: "center",

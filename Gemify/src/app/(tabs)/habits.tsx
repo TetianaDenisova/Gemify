@@ -590,11 +590,11 @@ const styles = StyleSheet.create({
   },
   detailTextCompact: {
     fontSize: fontSizes.sm,
-    lineHeight: 20,
+    lineHeight: lineHeights.md,
   },
   detailTitleCompact: {
     fontSize: fontSizes.lg,
-    lineHeight: 22,
+    lineHeight: lineHeights.lg,
   },
   group: {
     borderTopColor: colors.borderSoft,
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   },
   groupTitleCompact: {
     fontSize: fontSizes.xl,
-    lineHeight: 25,
+    lineHeight: lineHeights.xl,
   },
   groupTitleRow: {
     alignItems: "center",
@@ -738,7 +738,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   title: {
-    fontWeight: "700",
     textShadowColor: colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,

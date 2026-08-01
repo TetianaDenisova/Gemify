@@ -13,7 +13,7 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { spacing } from "@/theme/theme";
+import { fontSizes, lineHeights, spacing } from "@/theme/theme";
 
 const DREAM_NAME_MAX_LENGTH = 60;
 const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
@@ -122,8 +122,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   titleCompact: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: fontSizes.cardTitle,
+    lineHeight: lineHeights.cardTitle,
   },
   topContent: {
     alignItems: "center",
