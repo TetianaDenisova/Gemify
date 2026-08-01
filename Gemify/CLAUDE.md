@@ -42,15 +42,21 @@ The tab bar icon for Habits is hand-drawn SVG (star + sparkles); others use imag
 
 ### Theme and styling
 Centralized design tokens in `src/theme/`:
-- `colors.ts` — primary/secondary, background, surface, borders, glass, text tones. Dark theme, gold accents.
-- `theme.ts` — spacing, radius, shadows, typography scales
+- `colors.ts` — primary/secondary, background, surface (surfaceCard/surfaceDeep), border tiers (borderFaint/border/borderStrong/borderSoft/divider), text tones. Dark theme, gold accents; violet accents via `accentViolet`/`accentVioletStrong`.
+- `theme.ts` — spacing, radius (incl. `card`/`sheet`), shadows, typography roles (incl. `eyebrow`/`bodySmall`), `layout` (compactBreakpoint, contentMaxWidth, screenPaddingH, tabBar sizes), `pressed`, gradients (incl. `cta`)
 - All components import from `@/theme/*` — no inline color/size literals
 
 **Glass effect:** Surfaces use `colors.surfaceGlass` (frosted glass via `expo-glass-effect`) with soft borders and shadows.
 
-### Components
-- `src/components/home/` — HomeHeader, GoalCard, GoalProgressBar, CurrentFocusCard
-- `src/components/` — JourneyRing (milestone visual), JourneyMapScroll (zoomable canvas), JourneyMilestoneLabel, MilestoneRing, NavigationHeader
+### Shared component system
+`src/shared/components/` (barrel: `@/shared/components`) holds the app-wide UI primitives — use these instead of hand-rolling:
+- `ScreenScaffold` (background/keyboard/scroll/tab-clearance wrapper for every screen), `ScreenHeader` (left button · title/subtitle · right button; `asStackHeader` for stack screens), `IconButton`, `AppButton` (primary gold-gradient CTA / secondary / ghost), `AppText` (all text — variants map to theme typography), `AppInput`, `Card` (default/glass/strong), `ProgressRing`, `ProgressBar`, `Checkbox`, `Chip`, `Badge`, `ListItem`, `SectionHeader`, `AppModal` (center/sheet), `HintRow`, and shared SVG icons (`BackIcon`, `ChevronIcon`, `CheckIcon`, `CloseIcon`, `PlusIcon`, `SparkIcon`, `ArrowRightIcon`, `BulbIcon`).
+- Never render raw `<Text>` in screens — use `AppText` with a variant.
+
+### Feature components
+- `src/components/home/` — HomeHeader, GoalCard, TodayProgressCard
+- `src/components/` — JourneyMapScroll (zoomable canvas), JourneyMilestone(+Label), JourneyMapControls, TimeBlockCard/Tabs, HabitItem, DatePickerModal
+- Feature components consume the shared layer internally; keep them in `src/components/`, not `src/shared/`.
 - All styled with exported `StyleSheet` objects; no CSS or styled-components
 
 ### Current state

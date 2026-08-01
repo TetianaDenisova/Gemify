@@ -5,7 +5,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
+import { layout, radius, shadows, spacing, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
@@ -142,7 +142,7 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
-    height: 72,
+    height: layout.tabBarHeight,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     borderTopWidth: 1,

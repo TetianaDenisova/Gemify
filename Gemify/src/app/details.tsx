@@ -1,19 +1,21 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { NavigationHeader } from "@/components/NavigationHeader";
+import { AppText, ScreenHeader } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { spacing, typography } from "@/theme/theme";
+import { spacing } from "@/theme/theme";
 
 export default function DetailsScreen() {
   return (
     <>
-      <NavigationHeader />
+      <ScreenHeader asStackHeader />
       <View style={styles.container}>
-        <Text style={styles.title}>Stack screen</Text>
-        <Text style={styles.body}>
+        <AppText align="center" style={styles.title} variant="title">
+          Stack screen
+        </AppText>
+        <AppText align="center" style={styles.body}>
           This page sits outside the tab group, so it opens above the tabs and
           uses the shared navigation header.
-        </Text>
+        </AppText>
       </View>
     </>
   );
@@ -21,9 +23,7 @@ export default function DetailsScreen() {
 
 const styles = StyleSheet.create({
   body: {
-    ...typography.body,
     maxWidth: 340,
-    textAlign: "center",
   },
   container: {
     alignItems: "center",
@@ -33,9 +33,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   title: {
-    ...typography.title,
-    letterSpacing: 0,
     marginBottom: spacing.sm,
-    textAlign: "center",
   },
 });

@@ -6,6 +6,8 @@ export const radius = {
   sm: 8,
   md: 16,
   lg: 24,
+  card: 20,
+  sheet: 28,
   round: 999,
 } as const;
 
@@ -15,6 +17,22 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+} as const;
+
+/** Screen-level layout constants shared by every screen scaffold. */
+export const layout = {
+  /** Below this window width screens switch to their compact layout. */
+  compactBreakpoint: 560,
+  /** Max readable width for screen content on tablets/web. */
+  contentMaxWidth: 820,
+  /** Horizontal screen padding (collapses to spacing.md when compact). */
+  screenPaddingH: 22,
+  /** Height of the floating tab bar in (tabs)/_layout. */
+  tabBarHeight: 72,
+  /** Bottom clearance so scroll content is not hidden behind the tab bar. */
+  tabBarClearance: 72 + spacing.sm * 2,
+  /** Minimum touch target for interactive elements. */
+  minTouchTarget: 44,
 } as const;
 
 const fantasySerif = Platform.select({
@@ -151,6 +169,20 @@ export const typography = {
     fontWeight: "500",
     lineHeight: 16,
   } satisfies TextStyle,
+  bodySmall: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    fontWeight: "400",
+    lineHeight: lineHeights.md,
+  } satisfies TextStyle,
+  eyebrow: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 2,
+    lineHeight: 18,
+    textTransform: "uppercase",
+  } satisfies TextStyle,
 } as const;
 
 export const controls = {
@@ -192,8 +224,9 @@ export const controls = {
     paddingHorizontal: 24,
   },
   iconButton: {
-    sm: 56,
-    md: 68,
+    sm: 48,
+    md: 56,
+    lg: 68,
   },
   iconFrame: {
     sm: 88,
@@ -208,8 +241,15 @@ export const controls = {
   surface: {
     borderRadius: 22,
     cardRadius: 20,
+    cardPadding: 20,
   },
 } as const;
+
+/** Standard feedback style for pressed Pressables. */
+export const pressed = {
+  opacity: 0.72,
+  transform: [{ scale: 0.98 }],
+} satisfies ViewStyle;
 
 export const shadows = {
   goldGlow: {
@@ -231,6 +271,7 @@ export const shadows = {
 export const gradients = {
   background: [colors.background, colors.backgroundSoft, colors.secondaryDark],
   primary: [colors.primary, colors.primarySoft, colors.primaryDark],
+  cta: [colors.primaryBright, colors.primary, colors.primarySoft],
   surface: [colors.surface, colors.backgroundSoft],
   shimmer: [
     colors.transparent,
@@ -246,7 +287,9 @@ export const theme = {
   fonts,
   fontSizes,
   gradients,
+  layout,
   lineHeights,
+  pressed,
   radius,
   shadows,
   spacing,

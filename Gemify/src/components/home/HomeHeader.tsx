@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { spacing, typography } from "@/theme/theme";
+import { spacing } from "@/theme/theme";
 
 interface HomeHeaderProps {
   greeting: string;
@@ -14,11 +15,18 @@ export function HomeHeader({ greeting, subtitle }: HomeHeaderProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.greeting}>
+      <AppText variant="screenTitle">
         {greetingText}
-        {hasSpark ? <Text style={styles.spark}> ✦</Text> : null}
-      </Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+        {hasSpark ? (
+          <AppText color={colors.primary} variant="screenTitle">
+            {" "}
+            ✦
+          </AppText>
+        ) : null}
+      </AppText>
+      <AppText color={colors.primary} style={styles.subtitle} variant="subtitle">
+        {subtitle}
+      </AppText>
     </View>
   );
 }
@@ -28,19 +36,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
-  greeting: {
-    ...typography.screenTitle,
-    fontSize: 34,
-    lineHeight: 42,
-  },
-  spark: {
-    color: colors.primary,
-  },
   subtitle: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: "400",
-    lineHeight: 21,
     marginTop: spacing.sm,
   },
 });

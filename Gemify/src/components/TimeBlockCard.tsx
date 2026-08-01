@@ -1,7 +1,5 @@
 import {
-  Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   type StyleProp,
@@ -11,48 +9,17 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { ActionIcon, DayAction, TimeBlock } from "@/data/timeBlocks";
+import { AppText, Card, Checkbox, SparkIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, lineHeights, shadows, typography } from "@/theme/theme";
-
-const PURPLE = "#C79BFF";
-const PURPLE_STRONG = "#B46AFF";
-
-/** Below this width the roomy card layout overflows, so switch to the phone scale. */
-const COMPACT_BREAKPOINT = 560;
-
-function SparkIcon({ color = PURPLE, size = 18 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M12 2.5 13.9 9 20.5 12 13.9 15 12 21.5 10.1 15 3.5 12 10.1 9 12 2.5Z"
-        fill={color}
-      />
-    </Svg>
-  );
-}
-
-function CheckMark() {
-  return (
-    <Svg height={16} viewBox="0 0 24 24" width={16}>
-      <Path
-        d="m5 12.5 4.3 4.2 9.4-9.6"
-        fill="none"
-        stroke={PURPLE_STRONG}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.6}
-      />
-    </Svg>
-  );
-}
+import { fontSizes, fonts, layout, lineHeights } from "@/theme/theme";
 
 const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
-  meditate: "#C77DFF",
+  meditate: colors.accentViolet,
   nourish: colors.primary,
-  move: "#C77DFF",
-  water: "#C77DFF",
-  intention: "#C77DFF",
-  focus: "#C77DFF",
+  move: colors.accentViolet,
+  water: colors.accentViolet,
+  intention: colors.accentViolet,
+  focus: colors.accentViolet,
 };
 
 function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number }) {
@@ -148,28 +115,31 @@ function ActionRow({
         <ActionIconArt icon={action.icon} size={compact ? 28 : 36} />
       </View>
       <View style={styles.actionCopy}>
-        <Text style={[styles.actionTitle, compact && styles.actionTitleCompact]}>
+        <AppText
+          color={colors.textPrimary}
+          style={compact && styles.actionTitleCompact}
+          variant="button"
+        >
           {action.title}
-        </Text>
-        <Text style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}>
+        </AppText>
+        <AppText
+          style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}
+          variant="subtitle"
+        >
           {action.subtitle}
-        </Text>
+        </AppText>
       </View>
-      <Pressable
-        accessibilityLabel={action.done ? `Mark ${action.title} incomplete` : `Mark ${action.title} complete`}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: action.done }}
-        hitSlop={10}
+      <Checkbox
+        accessibilityLabel={
+          action.done
+            ? `Mark ${action.title} incomplete`
+            : `Mark ${action.title} complete`
+        }
+        checked={action.done}
         onPress={onToggle}
-        style={({ pressed }) => [
-          styles.checkbox,
-          compact && styles.checkboxCompact,
-          action.done && styles.checkboxDone,
-          pressed && styles.pressed,
-        ]}
-      >
-        {action.done ? <CheckMark /> : null}
-      </Pressable>
+        shape="circle"
+        size={compact ? 32 : 38}
+      />
     </View>
   );
 }
@@ -191,7 +161,7 @@ export function TimeBlockCard({
   style,
 }: TimeBlockCardProps) {
   const { width } = useWindowDimensions();
-  const compact = width < COMPACT_BREAKPOINT;
+  const compact = width < layout.compactBreakpoint;
   const done = block.actions.filter((action) => action.done).length;
 
   return (
@@ -199,36 +169,61 @@ export function TimeBlockCard({
       {showHeader ? (
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionBadge, compact && styles.sectionBadgeCompact]}>
-            <BlockIconArt color={PURPLE} icon={block.icon} size={compact ? 17 : 20} />
+            <BlockIconArt color={colors.accentViolet} icon={block.icon} size={compact ? 17 : 20} />
           </View>
-          <Text style={[styles.sectionLabel, compact && styles.sectionLabelCompact]}>
+          <AppText
+            color={colors.accentViolet}
+            style={[styles.sectionLabel, compact && styles.sectionLabelCompact]}
+          >
             {block.label.toUpperCase()}
-          </Text>
+          </AppText>
           <View style={styles.sectionDivider} />
-          <Text style={[styles.sectionTime, compact && styles.sectionTimeCompact]}>
+          <AppText
+            color={colors.primary}
+            style={[styles.sectionTime, compact && styles.sectionTimeCompact]}
+          >
             {block.time}
-          </Text>
-          <Text style={[styles.sectionCount, compact && styles.sectionCountCompact]}>
+          </AppText>
+          <AppText
+            color={colors.textPrimary}
+            style={[styles.sectionCount, compact && styles.sectionCountCompact]}
+          >
             {done} / {block.actions.length}
-          </Text>
+          </AppText>
         </View>
       ) : null}
 
-      <View style={[styles.card, compact && styles.cardCompact, !showHeader && styles.cardNoHeader]}>
+      <Card
+        style={[
+          styles.card,
+          compact && styles.cardCompact,
+          !showHeader && styles.cardNoHeader,
+        ]}
+        variant="default"
+      >
         {showIntro ? (
           <>
             <View style={styles.identityRow}>
-              <SparkIcon size={compact ? 15 : 18} />
-              <Text style={[styles.identityText, compact && styles.identityTextCompact]}>
+              <SparkIcon color={colors.accentViolet} size={compact ? 15 : 18} />
+              <AppText
+                color={colors.accentViolet}
+                style={[styles.identityText, compact && styles.identityTextCompact]}
+              >
                 {block.identity}
-              </Text>
+              </AppText>
             </View>
-            <Text style={[styles.routineTitle, compact && styles.routineTitleCompact]}>
+            <AppText
+              style={[styles.routineTitle, compact && styles.routineTitleCompact]}
+              variant="cardTitle"
+            >
               {block.routineTitle}
-            </Text>
-            <Text style={[styles.routineSubtitle, compact && styles.routineSubtitleCompact]}>
+            </AppText>
+            <AppText
+              color={colors.primary}
+              style={[styles.routineSubtitle, compact && styles.routineSubtitleCompact]}
+            >
               {block.routineSubtitle}
-            </Text>
+            </AppText>
           </>
         ) : null}
 
@@ -243,7 +238,7 @@ export function TimeBlockCard({
             />
           ))}
         </View>
-      </View>
+      </Card>
     </View>
   );
 }
@@ -274,7 +269,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     alignItems: "center",
-    borderBottomColor: "rgba(246, 232, 200, 0.09)",
+    borderBottomColor: colors.divider,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 18,
@@ -290,8 +285,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   actionSubtitle: {
-    ...typography.subtitle,
-    color: colors.textSecondary,
     marginTop: 3,
   },
   actionSubtitleCompact: {
@@ -299,51 +292,19 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.sm,
     marginTop: 2,
   },
-  actionTitle: {
-    ...typography.button,
-    color: colors.textPrimary,
-  },
   actionTitleCompact: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
   },
   card: {
-    backgroundColor: "rgba(6, 11, 26, 0.9)",
-    borderColor: "rgba(199, 155, 255, 0.22)",
-    borderRadius: 22,
-    borderWidth: 1,
+    borderColor: colors.accentVioletGlow,
     marginTop: 18,
-    padding: 24,
-    ...shadows.softDark,
   },
   cardCompact: {
-    borderRadius: 18,
     marginTop: 14,
-    padding: 18,
   },
   cardNoHeader: {
     marginTop: 0,
-  },
-  checkbox: {
-    alignItems: "center",
-    borderColor: "#5C6273",
-    borderRadius: 19,
-    borderWidth: 1.6,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
-  },
-  checkboxCompact: {
-    borderRadius: 16,
-    height: 32,
-    width: 32,
-  },
-  checkboxDone: {
-    borderColor: PURPLE_STRONG,
-    shadowColor: PURPLE_STRONG,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
   },
   identityRow: {
     alignItems: "center",
@@ -351,7 +312,6 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   identityText: {
-    color: PURPLE,
     fontSize: fontSizes.sm,
     fontWeight: "700",
     letterSpacing: 2.4,
@@ -362,12 +322,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     lineHeight: lineHeights.xs,
   },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
   routineSubtitle: {
-    color: colors.primary,
     fontSize: fontSizes.md,
     lineHeight: 22,
     marginTop: 6,
@@ -378,7 +333,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   routineTitle: {
-    ...typography.cardTitle,
     marginTop: 14,
   },
   routineTitleCompact: {
@@ -389,7 +343,7 @@ const styles = StyleSheet.create({
   sectionBadge: {
     alignItems: "center",
     backgroundColor: "rgba(24, 14, 42, 0.7)",
-    borderColor: "rgba(199, 155, 255, 0.4)",
+    borderColor: colors.accentVioletGlow,
     borderRadius: 22,
     borderWidth: 1,
     height: 44,
@@ -402,8 +356,7 @@ const styles = StyleSheet.create({
     width: 36,
   },
   sectionCount: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
+    fontFamily: fonts.serif,
     fontSize: fontSizes.xl,
     lineHeight: lineHeights.lg,
     marginLeft: "auto",
@@ -413,7 +366,7 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.md,
   },
   sectionDivider: {
-    backgroundColor: "rgba(246, 232, 200, 0.2)",
+    backgroundColor: colors.borderSoft,
     height: 20,
     width: 1,
   },
@@ -423,7 +376,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLabel: {
-    color: PURPLE,
     fontSize: fontSizes.lg,
     fontWeight: "700",
     letterSpacing: 2,
@@ -435,7 +387,6 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.sm,
   },
   sectionTime: {
-    color: colors.primary,
     fontSize: fontSizes.lg,
     fontWeight: "600",
     lineHeight: lineHeights.lg,

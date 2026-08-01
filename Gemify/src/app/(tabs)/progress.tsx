@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import {
@@ -17,22 +9,25 @@ import {
   type StatIconKey,
   type TimelineIconKey,
 } from "@/data/progressData";
+import {
+  AppText,
+  Badge,
+  Card,
+  ChevronIcon,
+  IconButton,
+  ListItem,
+  ScreenScaffold,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
   fonts,
+  layout,
   lineHeights,
   radius,
   shadows,
   spacing,
-  typography,
 } from "@/theme/theme";
-
-/** Below this width the roomy layout overflows, so switch to the phone scale. */
-const COMPACT_BREAKPOINT = 560;
-
-/** Floating tab bar height (72) plus its bottom margin and a small gap. */
-const FOOTER_BOTTOM_OFFSET = 72 + spacing.sm * 2;
 
 const BAR_MAX_HEIGHT = 150;
 const BAR_MIN_HEIGHT = 52;
@@ -52,14 +47,6 @@ function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: stri
         fill={color}
       />
       <Path d="M19 15c.4 2 1 2.6 3 3-2 .4-2.6 1-3 3-.4-2-1-2.6-3-3 2-.4 2.6-1 3-3Z" fill={color} opacity={0.7} />
-    </Svg>
-  );
-}
-
-function ChevronDown({ color = colors.textSecondary, size = 18 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path d="m6 9 6 6 6-6" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} />
     </Svg>
   );
 }
@@ -227,9 +214,8 @@ function StatGlyph({ color = colors.primary, icon, size = 30 }: { color?: string
 }
 
 export default function ProgressScreen() {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const compact = width < COMPACT_BREAKPOINT;
+  const compact = width < layout.compactBreakpoint;
 
   const { forecast } = progressContent;
   const [goalKey, setGoalKey] = useState(progressContent.goals[0].key);
@@ -240,202 +226,238 @@ export default function ProgressScreen() {
     progressContent.goals[0];
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingBottom: insets.bottom + FOOTER_BOTTOM_OFFSET + 40,
-            paddingTop: Math.max(insets.top + 10, 20),
-          },
-          compact && styles.contentCompact,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <View style={styles.headerTitleRow}>
-              <Text style={styles.headerTitle}>{progressContent.title}</Text>
-              <SparkleGlyph />
-            </View>
-            <Text style={styles.headerSubtitle}>{progressContent.subtitle}</Text>
+    <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          <View style={styles.headerTitleRow}>
+            <AppText variant="screenTitle">{progressContent.title}</AppText>
+            <SparkleGlyph />
           </View>
-          <Pressable
-            accessibilityLabel="More options"
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          <AppText
+            color={colors.primarySoft}
+            style={styles.headerSubtitle}
+            variant="subtitle"
           >
-            <DotsGlyph />
-          </Pressable>
+            {progressContent.subtitle}
+          </AppText>
+        </View>
+        <IconButton
+          accessibilityLabel="More options"
+          icon={<DotsGlyph />}
+          onPress={() => {}}
+          size="sm"
+        />
+      </View>
+
+      <Card padded={false} style={styles.goalPicker} variant="glass">
+        <ListItem
+          accessibilityLabel="Choose goal"
+          last
+          leading={<SparkleGlyph size={18} />}
+          onPress={() => setGoalPickerOpen((open) => !open)}
+          style={styles.goalPickerRow}
+          title={selectedGoal.label}
+          trailing={<ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />}
+        />
+        {goalPickerOpen
+          ? progressContent.goals
+              .filter((goal) => goal.key !== selectedGoal.key)
+              .map((goal) => (
+                <ListItem
+                  key={goal.key}
+                  last
+                  onPress={() => {
+                    setGoalKey(goal.key);
+                    setGoalPickerOpen(false);
+                  }}
+                  style={styles.goalOption}
+                  title={goal.label}
+                  titleColor={colors.textSecondary}
+                />
+              ))
+          : null}
+      </Card>
+
+      <Card style={styles.forecastCard} variant="glass">
+        <View style={styles.forecastArt}>
+          <ForecastArt height={compact ? 200 : 260} width={compact ? 154 : 200} />
         </View>
 
-        <View style={styles.goalPicker}>
-          <Pressable
-            accessibilityLabel="Choose goal"
-            accessibilityRole="button"
-            onPress={() => setGoalPickerOpen((open) => !open)}
-            style={({ pressed }) => [styles.goalPickerRow, pressed && styles.pressed]}
-          >
-            <SparkleGlyph size={18} />
-            <Text style={styles.goalPickerLabel}>{selectedGoal.label}</Text>
-            <ChevronDown />
-          </Pressable>
-          {goalPickerOpen
-            ? progressContent.goals
-                .filter((goal) => goal.key !== selectedGoal.key)
-                .map((goal) => (
-                  <Pressable
-                    key={goal.key}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setGoalKey(goal.key);
-                      setGoalPickerOpen(false);
-                    }}
-                    style={({ pressed }) => [styles.goalOption, pressed && styles.pressed]}
+        <AppText variant="cardTitle">{forecast.headline}</AppText>
+        <AppText style={styles.forecastSubline} variant="body">
+          {forecast.subline}
+        </AppText>
+
+        <View style={[styles.forecastDateRow, compact && styles.forecastDateRowCompact]}>
+          <View style={styles.forecastCalendarFrame}>
+            <CalendarGlyph size={compact ? 52 : 64} />
+          </View>
+          <View style={styles.forecastDateCopy}>
+            <AppText color={colors.textPrimary} variant="body">
+              {forecast.dateIntro}
+            </AppText>
+            <AppText
+              color={colors.primary}
+              style={[styles.forecastDate, compact && styles.forecastDateCompact]}
+              variant="cardTitle"
+            >
+              {forecast.date}
+            </AppText>
+            <Badge
+              color={colors.primary}
+              icon={<ClockGlyph size={15} />}
+              label={forecast.eta}
+              style={styles.etaPill}
+              textStyle={styles.serifPillLabel}
+            />
+          </View>
+        </View>
+
+        <View style={styles.timelineHeader}>
+          <View style={styles.timelineTitleRow}>
+            <ClockGlyph size={20} />
+            <AppText style={styles.timelineTitle} variant="cardTitle">
+              {progressContent.timelineTitle}
+            </AppText>
+          </View>
+          <Badge
+            color={colors.textPrimary}
+            icon={<ChevronIcon color={colors.textSecondary} size={15} strokeWidth={1.8} />}
+            label={selectedGoal.label}
+            style={styles.rangePill}
+            textStyle={styles.serifPillLabel}
+          />
+        </View>
+        <AppText style={styles.timelineSubtitle} variant="body">
+          {progressContent.timelineSubtitle}
+        </AppText>
+
+        <ScrollView
+          contentContainerStyle={styles.timelineTrack}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {progressContent.moments.map((moment, index) => {
+            const tint = accentTints[progressAccentLayout.moments[moment.key] ?? "gold"];
+
+            return (
+              <View key={moment.key} style={styles.timelineItemGroup}>
+                {index > 0 ? <View style={styles.timelineConnector} /> : null}
+                <View style={[styles.timelineItem, moment.locked && styles.timelineItemLocked]}>
+                  <View style={styles.timelineBadgeSlot}>
+                    {moment.locked ? <LockGlyph color={tint.main} /> : null}
+                  </View>
+                  <View
+                    style={[
+                      styles.timelineCircle,
+                      { borderColor: tint.main, shadowColor: tint.main },
+                      moment.locked && styles.timelineCircleLocked,
+                    ]}
                   >
-                    <Text style={styles.goalOptionLabel}>{goal.label}</Text>
-                  </Pressable>
-                ))
-            : null}
-        </View>
-
-        <View style={styles.forecastCard}>
-          <View style={styles.forecastArt}>
-            <ForecastArt height={compact ? 200 : 260} width={compact ? 154 : 200} />
-          </View>
-
-          <Text style={styles.forecastHeadline}>{forecast.headline}</Text>
-          <Text style={styles.forecastSubline}>{forecast.subline}</Text>
-
-          <View style={[styles.forecastDateRow, compact && styles.forecastDateRowCompact]}>
-            <View style={styles.forecastCalendarFrame}>
-              <CalendarGlyph size={compact ? 52 : 64} />
-            </View>
-            <View style={styles.forecastDateCopy}>
-              <Text style={styles.forecastDateIntro}>{forecast.dateIntro}</Text>
-              <Text style={[styles.forecastDate, compact && styles.forecastDateCompact]}>
-                {forecast.date}
-              </Text>
-              <View style={styles.etaPill}>
-                <ClockGlyph size={15} />
-                <Text style={styles.etaPillLabel}>{forecast.eta}</Text>
+                    <TimelineGlyph color={tint.main} icon={moment.icon} />
+                  </View>
+                  <AppText style={styles.timelineDate} variant="pill">
+                    {moment.date}
+                  </AppText>
+                  <AppText
+                    align="center"
+                    color={colors.textSecondary}
+                    style={styles.timelineLabel}
+                    variant="caption"
+                  >
+                    {moment.label}
+                  </AppText>
+                </View>
               </View>
-            </View>
-          </View>
+            );
+          })}
+        </ScrollView>
+      </Card>
 
-          <View style={styles.timelineHeader}>
-            <View style={styles.timelineTitleRow}>
-              <ClockGlyph size={20} />
-              <Text style={styles.timelineTitle}>{progressContent.timelineTitle}</Text>
-            </View>
-            <View style={styles.rangePill}>
-              <Text style={styles.rangePillLabel}>{selectedGoal.label}</Text>
-              <ChevronDown size={15} />
-            </View>
+      <Card style={styles.fulfillmentCard} variant="glass">
+        <View style={styles.timelineHeader}>
+          <View style={styles.timelineTitleRow}>
+            <StatGlyph icon="check" size={22} />
+            <AppText style={styles.timelineTitle} variant="cardTitle">
+              {progressContent.fulfillmentTitle}
+            </AppText>
           </View>
-          <Text style={styles.timelineSubtitle}>{progressContent.timelineSubtitle}</Text>
+          <Badge
+            color={colors.textPrimary}
+            icon={<ChevronIcon color={colors.textSecondary} size={15} strokeWidth={1.8} />}
+            label={progressContent.rangeLabel}
+            style={styles.rangePill}
+            textStyle={styles.serifPillLabel}
+          />
+        </View>
+        <AppText style={styles.timelineSubtitle} variant="body">
+          {progressContent.fulfillmentSubtitle}
+        </AppText>
 
-          <ScrollView
-            contentContainerStyle={styles.timelineTrack}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {progressContent.moments.map((moment, index) => {
-              const tint = accentTints[progressAccentLayout.moments[moment.key] ?? "gold"];
+        <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
+          <View style={styles.chartBars}>
+            {progressContent.week.map((day) => {
+              const tint = accentTints[progressAccentLayout.bars[day.key] ?? "violet"];
+              const barHeight =
+                BAR_MIN_HEIGHT + (day.percent / 100) * (BAR_MAX_HEIGHT - BAR_MIN_HEIGHT);
 
               return (
-                <View key={moment.key} style={styles.timelineItemGroup}>
-                  {index > 0 ? <View style={styles.timelineConnector} /> : null}
-                  <View style={[styles.timelineItem, moment.locked && styles.timelineItemLocked]}>
-                    <View style={styles.timelineBadgeSlot}>
-                      {moment.locked ? <LockGlyph color={tint.main} /> : null}
-                    </View>
+                <View key={day.key} style={styles.chartColumn}>
+                  <AppText color={tint.main} style={styles.chartPercent} variant="pill">
+                    {day.percent}%
+                  </AppText>
+                  <View
+                    style={[
+                      styles.chartCapsule,
+                      { borderColor: tint.glow, height: barHeight },
+                    ]}
+                  >
                     <View
                       style={[
-                        styles.timelineCircle,
-                        { borderColor: tint.main, shadowColor: tint.main },
-                        moment.locked && styles.timelineCircleLocked,
+                        styles.chartFill,
+                        {
+                          backgroundColor: tint.main,
+                          height: barHeight - 24,
+                          shadowColor: tint.main,
+                        },
                       ]}
-                    >
-                      <TimelineGlyph color={tint.main} icon={moment.icon} />
-                    </View>
-                    <Text style={styles.timelineDate}>{moment.date}</Text>
-                    <Text style={styles.timelineLabel}>{moment.label}</Text>
+                    />
                   </View>
+                  <AppText color={colors.textSecondary} variant="caption">
+                    {day.day}
+                  </AppText>
                 </View>
               );
             })}
-          </ScrollView>
-        </View>
-
-        <View style={styles.fulfillmentCard}>
-          <View style={styles.timelineHeader}>
-            <View style={styles.timelineTitleRow}>
-              <StatGlyph icon="check" size={22} />
-              <Text style={styles.timelineTitle}>{progressContent.fulfillmentTitle}</Text>
-            </View>
-            <View style={styles.rangePill}>
-              <Text style={styles.rangePillLabel}>{progressContent.rangeLabel}</Text>
-              <ChevronDown size={15} />
-            </View>
           </View>
-          <Text style={styles.timelineSubtitle}>{progressContent.fulfillmentSubtitle}</Text>
-
-          <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
-            <View style={styles.chartBars}>
-              {progressContent.week.map((day) => {
-                const tint = accentTints[progressAccentLayout.bars[day.key] ?? "violet"];
-                const barHeight =
-                  BAR_MIN_HEIGHT + (day.percent / 100) * (BAR_MAX_HEIGHT - BAR_MIN_HEIGHT);
-
-                return (
-                  <View key={day.key} style={styles.chartColumn}>
-                    <Text style={[styles.chartPercent, { color: tint.main }]}>
-                      {day.percent}%
-                    </Text>
-                    <View
-                      style={[
-                        styles.chartCapsule,
-                        { borderColor: tint.glow, height: barHeight },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.chartFill,
-                          {
-                            backgroundColor: tint.main,
-                            height: barHeight - 24,
-                            shadowColor: tint.main,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartDay}>{day.day}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={[styles.chartDivider, compact && styles.chartDividerCompact]} />
-            <View style={styles.chartAverage}>
-              <Text style={styles.chartAverageLabel}>{progressContent.averageLabel}</Text>
-              <Text style={styles.chartAverageValue}>{progressContent.averagePercent}%</Text>
-            </View>
+          <View style={[styles.chartDivider, compact && styles.chartDividerCompact]} />
+          <View style={styles.chartAverage}>
+            <AppText style={styles.chartAverageLabel} variant="subtitle">
+              {progressContent.averageLabel}
+            </AppText>
+            <AppText color={colors.primary} style={styles.chartAverageValue}>
+              {progressContent.averagePercent}%
+            </AppText>
           </View>
         </View>
+      </Card>
 
-        <View style={styles.statsCard}>
-          {progressContent.stats.map((stat) => (
-            <View key={stat.key} style={styles.statItem}>
-              <StatGlyph icon={stat.icon} />
-              <View style={styles.statCopy}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <Text style={styles.statValue}>{stat.value}</Text>
-              </View>
+      <Card style={styles.statsCard} variant="glass">
+        {progressContent.stats.map((stat) => (
+          <View key={stat.key} style={styles.statItem}>
+            <StatGlyph icon={stat.icon} />
+            <View style={styles.statCopy}>
+              <AppText color={colors.primarySoft} variant="caption">
+                {stat.label}
+              </AppText>
+              <AppText color={colors.primary} style={styles.statValue}>
+                {stat.value}
+              </AppText>
             </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
+          </View>
+        ))}
+      </Card>
+    </ScreenScaffold>
   );
 }
 
@@ -446,13 +468,11 @@ const styles = StyleSheet.create({
     minWidth: 108,
   },
   chartAverageLabel: {
-    ...typography.subtitle,
     color: colors.textPrimary,
     fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
   },
   chartAverageValue: {
-    color: colors.primary,
     fontFamily: fonts.serif,
     fontSize: 44,
     fontWeight: "500",
@@ -470,18 +490,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.round,
     borderWidth: 1.5,
     justifyContent: "flex-end",
-    paddingBottom: 4,
+    paddingBottom: spacing.xs,
     width: 24,
   },
   chartColumn: {
     alignItems: "center",
     flex: 1,
     gap: spacing.sm,
-  },
-  chartDay: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontSize: 13,
   },
   chartDivider: {
     alignSelf: "stretch",
@@ -500,9 +515,7 @@ const styles = StyleSheet.create({
     width: 14,
   },
   chartPercent: {
-    fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
-    fontWeight: "500",
     lineHeight: lineHeights.lg,
   },
   chartRow: {
@@ -513,32 +526,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   content: {
-    alignSelf: "center",
     gap: spacing.md,
-    maxWidth: 820,
-    paddingHorizontal: 22,
-    width: "100%",
-  },
-  contentCompact: {
-    paddingHorizontal: spacing.md,
   },
   etaPill: {
-    alignItems: "center",
-    alignSelf: "flex-start",
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
     marginTop: spacing.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  etaPillLabel: {
-    color: colors.primary,
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
   },
   forecastArt: {
     bottom: 0,
@@ -559,17 +551,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
   },
   forecastCard: {
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
     overflow: "hidden",
-    padding: spacing.lg,
-    ...shadows.softDark,
   },
   forecastDate: {
-    ...typography.cardTitle,
-    color: colors.primary,
     marginTop: spacing.xs,
   },
   forecastDateCompact: {
@@ -580,10 +564,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  forecastDateIntro: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
   forecastDateRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -593,48 +573,22 @@ const styles = StyleSheet.create({
   forecastDateRowCompact: {
     gap: spacing.md,
   },
-  forecastHeadline: {
-    ...typography.cardTitle,
-  },
   forecastSubline: {
-    ...typography.body,
     marginTop: spacing.xs,
   },
   fulfillmentCard: {
-    backgroundColor: colors.surfaceGlass,
     borderColor: colors.accentVioletGlow,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    padding: spacing.lg,
-    ...shadows.softDark,
   },
   goalOption: {
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-  },
-  goalOptionLabel: {
-    ...typography.pill,
-    color: colors.textSecondary,
   },
   goalPicker: {
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    borderWidth: 1,
     overflow: "hidden",
   },
-  goalPickerLabel: {
-    ...typography.pill,
-    flex: 1,
-  },
   goalPickerRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: 16,
   },
   header: {
     alignItems: "flex-start",
@@ -646,53 +600,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerSubtitle: {
-    color: colors.primarySoft,
-    fontSize: fontSizes.md,
-    lineHeight: 22,
     marginTop: spacing.xs,
-  },
-  headerTitle: {
-    ...typography.screenTitle,
   },
   headerTitleRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
   },
-  iconButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(4, 8, 18, 0.72)",
-    borderColor: colors.borderSoft,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 46,
-    justifyContent: "center",
-    width: 46,
-  },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
   rangePill: {
-    alignItems: "center",
-    backgroundColor: "rgba(4, 8, 18, 0.6)",
     borderColor: colors.borderSoft,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flexDirection: "row-reverse",
   },
-  rangePillLabel: {
-    color: colors.textPrimary,
+  /** Serif pill/badge label, matching the pre-migration ETA/range pills. */
+  serifPillLabel: {
     fontFamily: fonts.serif,
     fontSize: fontSizes.sm,
+    fontWeight: "400",
     lineHeight: lineHeights.sm,
-  },
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
   },
   statCopy: {
     minWidth: 0,
@@ -704,13 +628,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     minWidth: 150,
   },
-  statLabel: {
-    ...typography.caption,
-    color: colors.primarySoft,
-    fontSize: 13,
-  },
   statValue: {
-    color: colors.primary,
     fontFamily: fonts.serif,
     fontSize: fontSizes.xxl,
     fontWeight: "500",
@@ -718,16 +636,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statsCard: {
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.lg,
-    borderWidth: 1,
     columnGap: spacing.lg,
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: spacing.lg,
     rowGap: spacing.md,
-    ...shadows.softDark,
   },
   timelineBadgeSlot: {
     alignItems: "center",
@@ -737,7 +649,7 @@ const styles = StyleSheet.create({
   },
   timelineCircle: {
     alignItems: "center",
-    backgroundColor: "rgba(4, 8, 18, 0.6)",
+    backgroundColor: colors.surfaceDeep,
     borderRadius: radius.round,
     borderWidth: 1.5,
     height: 64,
@@ -759,8 +671,6 @@ const styles = StyleSheet.create({
     width: 26,
   },
   timelineDate: {
-    color: colors.textPrimary,
-    fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
     marginTop: spacing.sm,
@@ -783,19 +693,12 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   timelineLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 17,
     marginTop: spacing.xs,
-    textAlign: "center",
   },
   timelineSubtitle: {
-    ...typography.body,
     marginTop: spacing.xs,
   },
   timelineTitle: {
-    ...typography.cardTitle,
     fontSize: fontSizes.xxl + 2,
     lineHeight: lineHeights.xxl + 4,
   },

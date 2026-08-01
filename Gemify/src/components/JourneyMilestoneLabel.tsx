@@ -1,9 +1,10 @@
 import type { StyleProp, ViewStyle } from "react-native";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
 
+import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { shadows, typography } from "@/theme/theme";
+import { fonts, shadows } from "@/theme/theme";
 
 export type JourneyMilestoneLabelSide = "left" | "right";
 
@@ -17,12 +18,6 @@ export type JourneyMilestoneLabelProps = {
 
 const BADGE_SIZE = 36;
 const CONNECTOR_WIDTH = 14;
-const FANTASY_SERIF = Platform.select({
-  android: "serif",
-  default: "serif",
-  ios: "Georgia",
-  web: "Georgia, 'Times New Roman', serif",
-});
 
 function GoldenConnector() {
   return (
@@ -83,7 +78,7 @@ export function JourneyMilestoneLabel({
 
       <View style={styles.badge}>
         <View pointerEvents="none" style={styles.badgeInnerRing} />
-        <Text style={styles.badgeText}>{displayNumber}</Text>
+        <AppText style={styles.badgeText}>{displayNumber}</AppText>
       </View>
 
       <View
@@ -92,12 +87,12 @@ export function JourneyMilestoneLabel({
           isLeft ? styles.textBlockLeft : styles.textBlockRight,
         ]}
       >
-        <Text numberOfLines={1} style={styles.title}>
+        <AppText numberOfLines={1} style={styles.title}>
           {title}
-        </Text>
-        <Text numberOfLines={1} style={styles.subtitle}>
+        </AppText>
+        <AppText numberOfLines={1} style={styles.subtitle} variant="caption">
           {subtitle}
-        </Text>
+        </AppText>
       </View>
     </View>
   );
@@ -141,7 +136,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: colors.primary,
-    fontFamily: FANTASY_SERIF,
+    fontFamily: fonts.serif,
     fontSize: 17,
     fontWeight: "600",
     lineHeight: 21,
@@ -162,7 +157,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.primarySoft,
-    fontFamily: FANTASY_SERIF,
+    fontFamily: fonts.serif,
     fontSize: 15,
     fontWeight: "500",
     letterSpacing: 0.15,
@@ -173,9 +168,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   subtitle: {
-    ...typography.caption,
     marginTop: 1,
-    color: colors.textMuted,
     fontSize: 11,
     fontWeight: "300",
     letterSpacing: 0.1,

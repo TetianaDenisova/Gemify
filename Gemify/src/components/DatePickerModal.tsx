@@ -1,13 +1,23 @@
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
+import {
+  AppButton,
+  AppModal,
+  AppText,
+  ChevronIcon,
+  CloseIcon,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, fonts, lineHeights, radius, spacing, typography } from "@/theme/theme";
-
-const PURPLE = "#C79BFF";
-const PURPLE_FILL = "#8A55D6";
-const PURPLE_BORDER = "rgba(199, 155, 255, 0.6)";
+import {
+  fontSizes,
+  fonts,
+  lineHeights,
+  pressed,
+  radius,
+  spacing,
+} from "@/theme/theme";
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const MONTH_NAMES = [
@@ -81,35 +91,6 @@ function CalendarGlyph({ size = 22 }: { size?: number }) {
   );
 }
 
-function ChevronIcon({ direction }: { direction: "left" | "right" }) {
-  return (
-    <Svg height={22} viewBox="0 0 24 24" width={22}>
-      <Path
-        d={direction === "left" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6"}
-        fill="none"
-        stroke={colors.textPrimary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <Svg height={20} viewBox="0 0 24 24" width={20}>
-      <Path
-        d="m6 6 12 12M18 6 6 18"
-        fill="none"
-        stroke={colors.textSecondary}
-        strokeLinecap="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
-
 type DatePickerModalProps = {
   initialDate: Date;
   onClose: () => void;
@@ -138,129 +119,154 @@ export function DatePickerModal({
   const weeks = buildWeeks(viewYear, viewMonth);
 
   return (
-    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
-      <Pressable accessibilityLabel="Dismiss calendar" onPress={onClose} style={styles.overlay}>
-        <Pressable onPress={() => {}} style={styles.card}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleGroup}>
-              <CalendarGlyph />
-              <Text style={styles.title}>Choose a date</Text>
-            </View>
-            <Pressable
-              accessibilityLabel="Close calendar"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={onClose}
-              style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
-            >
-              <CloseIcon />
-            </Pressable>
-          </View>
-
-          <Text style={styles.selectedDate}>{formatDayTitle(pendingDate)}</Text>
-          <Text style={styles.selectedCaption}>Selected date</Text>
-
-          <View style={styles.monthRow}>
-            <Pressable
-              accessibilityLabel="Previous month"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => shiftMonth(-1)}
-              style={({ pressed }) => [styles.monthArrow, pressed && styles.pressed]}
-            >
-              <ChevronIcon direction="left" />
-            </Pressable>
-            <Text style={styles.monthLabel}>
-              {MONTH_NAMES[viewMonth]} {viewYear}
-            </Text>
-            <Pressable
-              accessibilityLabel="Next month"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => shiftMonth(1)}
-              style={({ pressed }) => [styles.monthArrow, pressed && styles.pressed]}
-            >
-              <ChevronIcon direction="right" />
-            </Pressable>
-          </View>
-
-          <View style={styles.weekdayRow}>
-            {WEEKDAY_LABELS.map((label) => (
-              <Text key={label} style={styles.weekdayLabel}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
-          {weeks.map((week) => (
-            <View key={week[0].toISOString()} style={styles.weekRow}>
-              {week.map((day) => {
-                const inMonth = day.getMonth() === viewMonth;
-                const selected = isSameDay(day, pendingDate);
-                const isToday = isSameDay(day, today);
-                return (
-                  <Pressable
-                    accessibilityLabel={formatDayTitle(day)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    key={day.toISOString()}
-                    onPress={() => setPendingDate(day)}
-                    style={({ pressed }) => [
-                      styles.dayCell,
-                      isToday && !selected && styles.dayCellToday,
-                      selected && styles.dayCellSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayLabel,
-                        !inMonth && styles.dayLabelOutside,
-                        selected && styles.dayLabelSelected,
-                      ]}
-                    >
-                      {day.getDate()}
-                    </Text>
-                    {isToday && !selected ? <View style={styles.todayDot} /> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-
-          <View style={styles.legendRow}>
-            <View style={styles.legendDot} />
-            <Text style={styles.legendLabel}>Today</Text>
-          </View>
-
-          <Pressable
-            accessibilityLabel="Select date"
-            accessibilityRole="button"
-            onPress={() => onSelect(pendingDate)}
-            style={({ pressed }) => [styles.selectButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.selectButtonLabel}>Select</Text>
-          </Pressable>
+    <AppModal
+      onClose={onClose}
+      panelStyle={styles.card}
+      variant="center"
+      visible={visible}
+    >
+      <View style={styles.titleRow}>
+        <View style={styles.titleGroup}>
+          <CalendarGlyph />
+          <AppText style={styles.title} variant="cardTitle">
+            Choose a date
+          </AppText>
+        </View>
+        <Pressable
+          accessibilityLabel="Close calendar"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onClose}
+          style={({ pressed: isPressed }) => [
+            styles.closeButton,
+            isPressed && pressed,
+          ]}
+        >
+          <CloseIcon color={colors.textSecondary} strokeWidth={1.9} />
         </Pressable>
-      </Pressable>
-    </Modal>
+      </View>
+
+      <AppText style={styles.selectedDate} variant="cardTitle">
+        {formatDayTitle(pendingDate)}
+      </AppText>
+      <AppText style={styles.selectedCaption} variant="meta">
+        Selected date
+      </AppText>
+
+      <View style={styles.monthRow}>
+        <Pressable
+          accessibilityLabel="Previous month"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => shiftMonth(-1)}
+          style={({ pressed: isPressed }) => [
+            styles.monthArrow,
+            isPressed && pressed,
+          ]}
+        >
+          <ChevronIcon
+            color={colors.textPrimary}
+            direction="left"
+            size={22}
+            strokeWidth={1.9}
+          />
+        </Pressable>
+        <AppText style={styles.monthLabel}>
+          {MONTH_NAMES[viewMonth]} {viewYear}
+        </AppText>
+        <Pressable
+          accessibilityLabel="Next month"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => shiftMonth(1)}
+          style={({ pressed: isPressed }) => [
+            styles.monthArrow,
+            isPressed && pressed,
+          ]}
+        >
+          <ChevronIcon
+            color={colors.textPrimary}
+            direction="right"
+            size={22}
+            strokeWidth={1.9}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.weekdayRow}>
+        {WEEKDAY_LABELS.map((label) => (
+          <AppText key={label} style={styles.weekdayLabel} variant="bodySmall">
+            {label}
+          </AppText>
+        ))}
+      </View>
+
+      {weeks.map((week) => (
+        <View key={week[0].toISOString()} style={styles.weekRow}>
+          {week.map((day) => {
+            const inMonth = day.getMonth() === viewMonth;
+            const selected = isSameDay(day, pendingDate);
+            const isToday = isSameDay(day, today);
+            return (
+              <Pressable
+                accessibilityLabel={formatDayTitle(day)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                key={day.toISOString()}
+                onPress={() => setPendingDate(day)}
+                style={({ pressed: isPressed }) => [
+                  styles.dayCell,
+                  isToday && !selected && styles.dayCellToday,
+                  selected && styles.dayCellSelected,
+                  isPressed && pressed,
+                ]}
+              >
+                <AppText
+                  style={[
+                    styles.dayLabel,
+                    !inMonth && styles.dayLabelOutside,
+                    selected && styles.dayLabelSelected,
+                  ]}
+                >
+                  {day.getDate()}
+                </AppText>
+                {isToday && !selected ? <View style={styles.todayDot} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+
+      <View style={styles.legendRow}>
+        <View style={styles.legendDot} />
+        <AppText style={styles.legendLabel} variant="bodySmall">
+          Today
+        </AppText>
+      </View>
+
+      <AppButton
+        accessibilityLabel="Select date"
+        label="Select"
+        onPress={() => onSelect(pendingDate)}
+        style={styles.selectButton}
+        textStyle={styles.selectButtonLabel}
+        variant="secondary"
+      />
+    </AppModal>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "rgba(9, 13, 28, 0.98)",
-    borderColor: PURPLE_BORDER,
-    borderRadius: radius.lg,
+    borderColor: colors.accentVioletGlow,
     borderWidth: 1.5,
     maxWidth: 420,
-    padding: spacing.lg,
-    shadowColor: PURPLE,
+    alignSelf: "center",
+    shadowColor: colors.accentViolet,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
     elevation: 12,
-    width: "100%",
   },
   closeButton: {
     alignItems: "center",
@@ -278,11 +284,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dayCellSelected: {
-    backgroundColor: PURPLE_FILL,
+    backgroundColor: colors.accentVioletStrong,
     borderColor: colors.primary,
   },
   dayCellToday: {
-    borderColor: "rgba(245, 184, 75, 0.7)",
+    borderColor: colors.borderStrong,
   },
   dayLabel: {
     color: colors.textPrimary,
@@ -303,8 +309,6 @@ const styles = StyleSheet.create({
     width: 7,
   },
   legendLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
   },
   legendRow: {
@@ -333,47 +337,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: spacing.lg,
   },
-  overlay: {
-    alignItems: "center",
-    backgroundColor: colors.overlayDark,
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
   selectButton: {
-    alignItems: "center",
-    backgroundColor: PURPLE_FILL,
-    borderColor: "rgba(199, 155, 255, 0.9)",
-    borderRadius: radius.md,
-    borderWidth: 1,
-    height: 56,
-    justifyContent: "center",
+    backgroundColor: colors.accentVioletStrong,
+    borderColor: colors.accentViolet,
     marginTop: spacing.lg,
-    shadowColor: PURPLE,
+    shadowColor: colors.accentViolet,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 14,
     elevation: 8,
   },
   selectButtonLabel: {
-    ...typography.button,
+    color: colors.textPrimary,
   },
   selectedCaption: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.md,
     marginTop: spacing.xs,
   },
   selectedDate: {
-    ...typography.cardTitle,
     marginTop: spacing.md,
   },
   title: {
-    ...typography.cardTitle,
     fontSize: fontSizes.cardTitle - 4,
     lineHeight: lineHeights.cardTitle - 4,
   },
@@ -387,15 +370,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  /** Small gold marker under the day number in the "today" cell (legend match). */
+  todayDot: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.round,
+    bottom: 5,
+    height: 5,
+    position: "absolute",
+    width: 5,
+  },
   weekRow: {
     flexDirection: "row",
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
   weekdayLabel: {
-    color: colors.textSecondary,
     flex: 1,
-    fontSize: fontSizes.sm,
     fontWeight: "600",
     lineHeight: lineHeights.sm,
     textAlign: "center",

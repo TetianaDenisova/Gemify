@@ -1,25 +1,43 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
 import { useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { type HabitCompletion, HabitItemRow } from "@/components/HabitItem";
+import {
+  AppText,
+  Checkbox,
+  ChevronIcon,
+  IconButton,
+  PlusIcon,
+  ScreenScaffold,
+  SparkIcon,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { controls, fontSizes, lineHeights, spacing, typography } from "@/theme/theme";
+import {
+  fontSizes,
+  layout,
+  lineHeights,
+  pressed,
+  radius,
+  shadows,
+  spacing,
+} from "@/theme/theme";
 
 const ACTIVE_DAY_INDEX = 2;
 
-/** Below this width the full-size layout overflows, so switch to the phone scale. */
-const COMPACT_BREAKPOINT = 620;
+/** Bespoke deep-night gradient behind the habits board. */
+const HABITS_BACKGROUND = [
+  "#020713",
+  "rgba(3, 8, 19, 0.97)",
+  "rgba(3, 8, 19, 0.92)",
+  "rgba(3, 8, 19, 0.98)",
+] as const;
 
 type Completion = HabitCompletion;
 
@@ -52,11 +70,11 @@ const habitGroups: readonly HabitGroup[] = [
   {
     count: "2 habits",
     icon: "book",
-    tint: "#B46AFF",
+    tint: colors.accentVioletStrong,
     title: "Growth Mindset",
     habits: [
       {
-        accent: "#B46AFF",
+        accent: colors.accentVioletStrong,
         day: 10,
         details: [
           {
@@ -85,7 +103,7 @@ const habitGroups: readonly HabitGroup[] = [
         title: "Read 20 minutes",
       },
       {
-        accent: "#A36EFF",
+        accent: colors.accentVioletStrong,
         day: 6,
         details: [
           {
@@ -197,46 +215,17 @@ function MenuIcon() {
   );
 }
 
-function PlusIcon({ size = 30 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M12 4.5v15M4.5 12h15"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.75}
-      />
-    </Svg>
-  );
-}
-
-function ChevronIcon({ expanded = false }: { expanded?: boolean }) {
-  return (
-    <Svg height={25} viewBox="0 0 24 24" width={25}>
-      <Path
-        d={expanded ? "m7 14 5-5 5 5" : "m7 10 5 5 5-5"}
-        fill="none"
-        stroke="#F0CA89"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.2}
-      />
-    </Svg>
-  );
-}
-
 function DetailIcon({ icon, size = 58 }: { icon: HabitDetailSection["icon"]; size?: number }) {
   if (icon === "feather") {
     return (
       <Svg height={size} viewBox="0 0 64 64" width={size}>
         <Circle cx={32} cy={32} fill="#160B2C" r={29} />
-        <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
+        <Circle cx={32} cy={32} fill={colors.accentVioletStrong} opacity={0.18} r={23} />
         <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
         <Path
           d="M46 15C32 17 21 27.5 18 47c11.5-2 22.5-12.5 28-32Z"
           fill="#EBC3FF"
-          stroke="#B46AFF"
+          stroke={colors.accentVioletStrong}
           strokeLinejoin="round"
           strokeWidth={1.8}
         />
@@ -255,7 +244,7 @@ function DetailIcon({ icon, size = 58 }: { icon: HabitDetailSection["icon"]; siz
     return (
       <Svg height={size} viewBox="0 0 64 64" width={size}>
         <Circle cx={32} cy={32} fill="#160B2C" r={29} />
-        <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
+        <Circle cx={32} cy={32} fill={colors.accentVioletStrong} opacity={0.18} r={23} />
         <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
         <Path
           d="M32 14 47 20v13.4c0 9.9-6.1 16.1-15 20.2-8.9-4.1-15-10.3-15-20.2V20l15-6Z"
@@ -279,7 +268,7 @@ function DetailIcon({ icon, size = 58 }: { icon: HabitDetailSection["icon"]; siz
   return (
     <Svg height={size} viewBox="0 0 64 64" width={size}>
       <Circle cx={32} cy={32} fill="#160B2C" r={29} />
-      <Circle cx={32} cy={32} fill="#B46AFF" opacity={0.18} r={23} />
+      <Circle cx={32} cy={32} fill={colors.accentVioletStrong} opacity={0.18} r={23} />
       <Circle cx={32} cy={32} fill="none" r={27} stroke={colors.primary} strokeWidth={1.4} />
       <Path
         d="M16 40h32M20 36c3.8-9 8-13 12-13s8.2 4 12 13"
@@ -303,25 +292,9 @@ function HeaderOrnament({ compact }: { compact: boolean }) {
   return (
     <View style={styles.ornamentRow} pointerEvents="none">
       <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
-      <Svg height={compact ? 24 : 32} viewBox="0 0 32 32" width={compact ? 24 : 32}>
-        <Path
-          d="M16 1.8c2.6 8.1 6.1 11.6 14.2 14.2C22.1 18.6 18.6 22.1 16 30.2 13.4 22.1 9.9 18.6 1.8 16 9.9 13.4 13.4 9.9 16 1.8Z"
-          fill={colors.primary}
-        />
-      </Svg>
+      <SparkIcon size={compact ? 24 : 32} />
       <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
     </View>
-  );
-}
-
-function TodaySparkle({ size = 20 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 32 32" width={size}>
-      <Path
-        d="M16 1.8c2.6 8.1 6.1 11.6 14.2 14.2C22.1 18.6 18.6 22.1 16 30.2 13.4 22.1 9.9 18.6 1.8 16 9.9 13.4 13.4 9.9 16 1.8Z"
-        fill={colors.primary}
-      />
-    </Svg>
   );
 }
 
@@ -336,19 +309,30 @@ function TodayBar({ compact }: { compact: boolean }) {
   return (
     <View style={[styles.todayBar, compact && styles.todayBarCompact]}>
       <View style={[styles.todayLabelRow, compact && styles.todayLabelRowCompact]}>
-        <TodaySparkle size={compact ? 16 : 20} />
-        <Text style={[styles.todayLabel, compact && styles.todayLabelCompact]}>Today</Text>
+        <SparkIcon size={compact ? 16 : 20} />
+        <AppText
+          color={colors.primary}
+          style={[styles.todayLabel, compact && styles.todayLabelCompact]}
+          variant="pill"
+        >
+          Today
+        </AppText>
       </View>
       <View style={styles.todayDivider} />
-      <Text
+      <AppText
         numberOfLines={1}
         style={[styles.todayDate, compact && styles.todayDateCompact]}
+        variant="subtitle"
       >
         {dateLabel}
-      </Text>
-      <Text style={[styles.todayCount, compact && styles.todayCountCompact]}>
+      </AppText>
+      <AppText
+        color={colors.textMuted}
+        style={compact && styles.todayCountCompact}
+        variant="subtitle"
+      >
         {totalHabits} habits
-      </Text>
+      </AppText>
     </View>
   );
 }
@@ -395,14 +379,6 @@ function GroupIcon({ icon, tint }: { icon: HabitGroup["icon"]; tint: string }) {
   );
 }
 
-function DetailCheckbox() {
-  return (
-    <View style={styles.detailCheckbox}>
-      <View style={styles.detailCheckboxGlow} />
-    </View>
-  );
-}
-
 function HabitDetailSectionView({
   compact,
   section,
@@ -416,13 +392,23 @@ function HabitDetailSectionView({
         <DetailIcon icon={section.icon} size={compact ? 44 : 58} />
       </View>
       <View style={styles.detailCopy}>
-        <Text style={[styles.detailTitle, compact && styles.detailTitleCompact]}>
+        <AppText
+          color={colors.primary}
+          style={compact && styles.detailTitleCompact}
+          variant="pill"
+        >
           {section.title}
-        </Text>
+        </AppText>
         {section.rows.map((row) => (
           <View key={row} style={[styles.detailRow, compact && styles.detailRowCompact]}>
-            <DetailCheckbox />
-            <Text style={[styles.detailText, compact && styles.detailTextCompact]}>{row}</Text>
+            <Checkbox checked={false} shape="square" />
+            <AppText
+              color={colors.textSecondary}
+              style={[styles.detailText, compact && styles.detailTextCompact]}
+              variant="body"
+            >
+              {row}
+            </AppText>
           </View>
         ))}
       </View>
@@ -446,12 +432,12 @@ function HabitRow({
       accessibilityRole="button"
       accessibilityState={{ expanded }}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ pressed: isPressed }) => [
         styles.habitRow,
         compact && styles.habitRowCompact,
         expanded && styles.habitRowExpanded,
         expanded && compact && styles.habitRowExpandedCompact,
-        pressed && styles.pressed,
+        isPressed && pressed,
       ]}
     >
       <HabitItemRow
@@ -476,15 +462,20 @@ function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }
     <View style={[styles.groupHeader, compact && styles.groupHeaderCompact]}>
       <View style={[styles.groupTitleRow, compact && styles.groupTitleRowCompact]}>
         <GroupIcon icon={group.icon} tint={group.tint} />
-        <Text
+        <AppText
           numberOfLines={1}
           style={[styles.groupTitle, compact && styles.groupTitleCompact]}
+          variant="button"
         >
           {group.title}
-        </Text>
-        <Text style={[styles.groupCount, compact && styles.groupCountCompact]}>
+        </AppText>
+        <AppText
+          color={colors.textMuted}
+          style={[styles.groupCount, compact && styles.groupCountCompact]}
+          variant="subtitle"
+        >
           {group.count}
-        </Text>
+        </AppText>
       </View>
       {group.habits.length === 0 ? <ChevronIcon /> : null}
     </View>
@@ -493,9 +484,8 @@ function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }
 
 export default function HabitsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const compact = width < COMPACT_BREAKPOINT;
+  const compact = width < layout.compactBreakpoint;
   const [expandedHabit, setExpandedHabit] = useState<string | null>(null);
 
   function handleHabitPress(title: string) {
@@ -503,119 +493,60 @@ export default function HabitsScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <LinearGradient
-        colors={[
-          "#020713",
-          "rgba(3, 8, 19, 0.97)",
-          "rgba(3, 8, 19, 0.92)",
-          "rgba(3, 8, 19, 0.98)",
-        ]}
-        locations={[0, 0.44, 0.74, 1]}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingBottom: Math.max(insets.bottom + 140, 168),
-            paddingTop: Math.max(insets.top + 28, 38),
-          },
-          compact && styles.contentCompact,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.header, compact && styles.headerCompact]}>
-          <Pressable
-            accessibilityLabel="Open menu"
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.headerButton,
-              compact && styles.headerButtonCompact,
-              pressed && styles.pressed,
-            ]}
+    <ScreenScaffold backgroundGradient={HABITS_BACKGROUND} tabClearance topInset>
+      <View style={[styles.header, compact && styles.headerCompact]}>
+        <IconButton
+          accessibilityLabel="Open menu"
+          icon={<MenuIcon />}
+          onPress={() => {}}
+          size={compact ? "sm" : "md"}
+        />
+        <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
+          <AppText
+            align="center"
+            color={colors.primary}
+            numberOfLines={1}
+            style={[styles.title, compact && styles.titleCompact]}
+            variant="screenTitle"
           >
-            <MenuIcon />
-          </Pressable>
-          <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
-            <Text
-              numberOfLines={1}
-              style={[styles.title, compact && styles.titleCompact]}
-            >
-              My Habits
-            </Text>
-            <HeaderOrnament compact={compact} />
+            My Habits
+          </AppText>
+          <HeaderOrnament compact={compact} />
+        </View>
+        <IconButton
+          accessibilityLabel="Add habit"
+          icon={<PlusIcon size={compact ? 26 : 30} />}
+          onPress={() => router.push("/create-habit")}
+          size={compact ? "sm" : "md"}
+        />
+      </View>
+
+      <TodayBar compact={compact} />
+
+      <View style={styles.groups}>
+        {habitGroups.map((group) => (
+          <View key={group.title} style={styles.group}>
+            <GroupHeader compact={compact} group={group} />
+            {group.habits.map((habit) => (
+              <HabitRow
+                compact={compact}
+                expanded={expandedHabit === habit.title}
+                habit={habit}
+                key={habit.title}
+                onPress={() => handleHabitPress(habit.title)}
+              />
+            ))}
           </View>
-          <Pressable
-            accessibilityLabel="Add habit"
-            accessibilityRole="button"
-            onPress={() => router.push("/create-habit")}
-            style={({ pressed }) => [
-              styles.headerButton,
-              compact && styles.headerButtonCompact,
-              pressed && styles.pressed,
-            ]}
-          >
-            <PlusIcon size={compact ? 26 : 30} />
-          </Pressable>
-        </View>
-
-        <TodayBar compact={compact} />
-
-        <View style={styles.groups}>
-          {habitGroups.map((group) => (
-            <View key={group.title} style={styles.group}>
-              <GroupHeader compact={compact} group={group} />
-              {group.habits.map((habit) => (
-                <HabitRow
-                  compact={compact}
-                  expanded={expandedHabit === habit.title}
-                  habit={habit}
-                  key={habit.title}
-                  onPress={() => handleHabitPress(habit.title)}
-                />
-              ))}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
+        ))}
+      </View>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    alignSelf: "center",
-    maxWidth: 820,
-    paddingHorizontal: 34,
-    width: "100%",
-  },
-  contentCompact: {
-    paddingHorizontal: spacing.md,
-  },
-  detailCheckbox: {
-    alignItems: "center",
-    borderColor: colors.primary,
-    borderRadius: 5,
-    borderWidth: 1.4,
-    height: 25,
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    width: 25,
-  },
-  detailCheckboxGlow: {
-    backgroundColor: "rgba(245, 184, 75, 0.12)",
-    borderRadius: 3,
-    height: 17,
-    width: 17,
-  },
   detailCopy: {
     flex: 1,
-    gap: 14,
+    gap: spacing.md,
     minWidth: 0,
   },
   detailIconFrame: {
@@ -624,55 +555,49 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 70,
   },
-  detailPanel: {
-    borderTopColor: "rgba(246, 232, 200, 0.18)",
-    borderTopWidth: 1,
-    marginTop: 26,
-  },
   detailIconFrameCompact: {
     height: 52,
     width: 52,
   },
+  detailPanel: {
+    borderTopColor: colors.borderSoft,
+    borderTopWidth: 1,
+    marginTop: spacing.lg,
+  },
   detailRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 18,
+    gap: spacing.md,
   },
   detailRowCompact: {
     gap: 12,
   },
   detailSection: {
-    borderBottomColor: "rgba(246, 232, 200, 0.14)",
+    borderBottomColor: colors.borderSoft,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 22,
+    gap: spacing.lg,
     paddingHorizontal: 12,
-    paddingVertical: 24,
+    paddingVertical: spacing.lg,
   },
   detailSectionCompact: {
-    gap: 14,
+    gap: spacing.md,
     paddingHorizontal: 2,
     paddingVertical: 18,
   },
   detailText: {
-    ...typography.body,
-    color: "#D6C8BC",
     flex: 1,
   },
   detailTextCompact: {
     fontSize: fontSizes.sm,
     lineHeight: 20,
   },
-  detailTitle: {
-    ...typography.pill,
-    color: colors.primary,
-  },
   detailTitleCompact: {
     fontSize: fontSizes.lg,
     lineHeight: 22,
   },
   group: {
-    borderTopColor: "rgba(246, 232, 200, 0.14)",
+    borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
   },
   groupHeader: {
@@ -687,8 +612,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   groupTitle: {
-    ...typography.button,
-    color: colors.textPrimary,
     flexShrink: 1,
   },
   groupTitleCompact: {
@@ -703,11 +626,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   groupTitleRowCompact: {
-    gap: 9,
+    gap: spacing.sm,
   },
   groupCount: {
-    ...typography.subtitle,
-    color: "#8E929E",
     marginLeft: 7,
   },
   groupCountCompact: {
@@ -716,13 +637,13 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   groups: {
-    marginTop: 18,
+    marginTop: spacing.md,
   },
   todayBar: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 16,
-    marginTop: 26,
+    gap: spacing.md,
+    marginTop: spacing.lg,
     paddingHorizontal: 12,
   },
   todayBarCompact: {
@@ -730,17 +651,11 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingHorizontal: 2,
   },
-  todayCount: {
-    ...typography.subtitle,
-    color: "#8E929E",
-  },
   todayCountCompact: {
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
   },
   todayDate: {
-    ...typography.subtitle,
-    color: "#C9CDD8",
     flex: 1,
   },
   todayDateCompact: {
@@ -748,13 +663,11 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.sm,
   },
   todayDivider: {
-    backgroundColor: "rgba(246, 232, 200, 0.24)",
+    backgroundColor: colors.borderSoft,
     height: 22,
     width: 1,
   },
   todayLabel: {
-    ...typography.pill,
-    color: colors.primary,
     letterSpacing: 1.6,
     textTransform: "uppercase",
   },
@@ -772,14 +685,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   habitRow: {
-    borderTopColor: "rgba(246, 232, 200, 0.12)",
+    borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
     paddingBottom: 23,
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: spacing.md,
   },
   habitRowCompact: {
-    paddingBottom: 16,
+    paddingBottom: spacing.md,
     paddingHorizontal: 2,
     paddingTop: 14,
   },
@@ -787,15 +700,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   habitRowExpanded: {
-    backgroundColor: "rgba(5, 9, 22, 0.84)",
-    borderColor: "rgba(245, 184, 75, 0.48)",
-    borderRadius: 18,
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: spacing.md,
     marginTop: 6,
-    paddingHorizontal: 22,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
+    paddingHorizontal: spacing.lg,
+    ...shadows.goldGlow,
     shadowOpacity: 0.18,
     shadowRadius: 18,
   },
@@ -804,25 +716,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 92,
-  },
-  headerButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(10, 13, 26, 0.72)",
-    borderColor: "rgba(240, 202, 137, 0.35)",
-    borderRadius: 22,
-    borderWidth: 1.2,
-    height: controls.iconButton.md,
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    width: controls.iconButton.md,
-  },
-  headerButtonCompact: {
-    borderRadius: 16,
-    height: controls.iconButton.sm,
-    width: controls.iconButton.sm,
   },
   headerCompact: {
     minHeight: 72,
@@ -844,21 +737,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 5,
   },
-  pressed: {
-    opacity: 0.74,
-    transform: [{ scale: 0.98 }],
-  },
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
-    overflow: "hidden",
-  },
   title: {
-    ...typography.screenTitle,
-    color: "#F7D99B",
     fontWeight: "700",
-    textAlign: "center",
-    textShadowColor: "rgba(245, 184, 75, 0.42)",
+    textShadowColor: colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
   },
@@ -867,7 +748,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   titleBlockCompact: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
   },
   titleCompact: {
     fontSize: fontSizes.cardTitle,

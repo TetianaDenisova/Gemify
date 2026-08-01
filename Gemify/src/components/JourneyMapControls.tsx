@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
-import { NavigationHeader } from "@/components/NavigationHeader";
+import {
+  AppButton,
+  AppModal,
+  AppText,
+  ScreenHeader,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
+import { fonts, radius, shadows, spacing } from "@/theme/theme";
 
 function SparklesIcon() {
   return (
@@ -49,82 +48,95 @@ function JourneyOverviewModal({
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onClose}
-      presentationStyle="overFullScreen"
-      statusBarTranslucent
-      transparent
+    <AppModal
+      onClose={onClose}
+      panelStyle={[
+        styles.modalPanel,
+        { paddingBottom: Math.max(insets.bottom + 16, 30) },
+      ]}
+      showHandle={false}
+      variant="sheet"
       visible={visible}
     >
-      <View
-        style={[
-          styles.modalRoot,
-          { paddingBottom: Math.max(insets.bottom + 16, 30) },
-        ]}
-      >
-        <Pressable
-          accessibilityLabel="Close journey overview"
-          accessibilityRole="button"
-          onPress={onClose}
-          style={styles.backdrop}
-        />
+      <View style={styles.overviewGlow}>
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewOrnament} />
+          <AppText align="center" style={styles.eyebrow} variant="eyebrow">
+            YOUR PATH
+          </AppText>
+          <AppText align="center" style={styles.title} variant="title">
+            The Journey
+          </AppText>
+          <AppText align="center" style={styles.intro}>
+            A living map of the person you are becoming. Each milestone turns
+            focused action into lasting inner change.
+          </AppText>
 
-        <View style={styles.overviewGlow}>
-          <View style={styles.overviewCard}>
-            <View style={styles.overviewOrnament} />
-            <Text style={styles.eyebrow}>YOUR PATH</Text>
-            <Text style={styles.title}>The Journey</Text>
-            <Text style={styles.intro}>
-              A living map of the person you are becoming. Each milestone turns
-              focused action into lasting inner change.
-            </Text>
+          <View style={styles.divider} />
 
-            <View style={styles.divider} />
-
-            <View style={styles.stepRow}>
-              <Text style={styles.stepNumber}>I</Text>
-              <View style={styles.stepCopy}>
-                <Text style={styles.stepTitle}>Follow the illuminated path</Text>
-                <Text style={styles.stepBody}>
-                  Your glowing milestone is the chapter currently unfolding.
-                </Text>
-              </View>
+          <View style={styles.stepRow}>
+            <AppText color={colors.primary} style={styles.stepNumber}>
+              I
+            </AppText>
+            <View style={styles.stepCopy}>
+              <AppText
+                color={colors.textPrimary}
+                style={styles.stepTitle}
+                variant="bodySmall"
+              >
+                Follow the illuminated path
+              </AppText>
+              <AppText style={styles.stepBody} variant="caption">
+                Your glowing milestone is the chapter currently unfolding.
+              </AppText>
             </View>
-            <View style={styles.stepRow}>
-              <Text style={styles.stepNumber}>II</Text>
-              <View style={styles.stepCopy}>
-                <Text style={styles.stepTitle}>Complete its quests</Text>
-                <Text style={styles.stepBody}>
-                  Small, deliberate actions build progress within each chapter.
-                </Text>
-              </View>
-            </View>
-            <View style={styles.stepRow}>
-              <Text style={styles.stepNumber}>III</Text>
-              <View style={styles.stepCopy}>
-                <Text style={styles.stepTitle}>Unlock what comes next</Text>
-                <Text style={styles.stepBody}>
-                  Finish a milestone to reveal the next realm of your journey.
-                </Text>
-              </View>
-            </View>
-
-            <Pressable
-              accessibilityLabel="Check What If Plan"
-              accessibilityRole="button"
-              onPress={onOpenWhatIfPlan}
-              style={({ pressed }) => [
-                styles.continueButton,
-                pressed && styles.continueButtonPressed,
-              ]}
-            >
-              <Text style={styles.continueText}>Check "What If" Plan</Text>
-            </Pressable>
           </View>
+          <View style={styles.stepRow}>
+            <AppText color={colors.primary} style={styles.stepNumber}>
+              II
+            </AppText>
+            <View style={styles.stepCopy}>
+              <AppText
+                color={colors.textPrimary}
+                style={styles.stepTitle}
+                variant="bodySmall"
+              >
+                Complete its quests
+              </AppText>
+              <AppText style={styles.stepBody} variant="caption">
+                Small, deliberate actions build progress within each chapter.
+              </AppText>
+            </View>
+          </View>
+          <View style={styles.stepRow}>
+            <AppText color={colors.primary} style={styles.stepNumber}>
+              III
+            </AppText>
+            <View style={styles.stepCopy}>
+              <AppText
+                color={colors.textPrimary}
+                style={styles.stepTitle}
+                variant="bodySmall"
+              >
+                Unlock what comes next
+              </AppText>
+              <AppText style={styles.stepBody} variant="caption">
+                Finish a milestone to reveal the next realm of your journey.
+              </AppText>
+            </View>
+          </View>
+
+          <AppButton
+            accessibilityLabel="Check What If Plan"
+            label={'Check "What If" Plan'}
+            onPress={onOpenWhatIfPlan}
+            style={styles.continueButton}
+            textStyle={styles.continueText}
+            variant="secondary"
+          />
         </View>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 
@@ -139,7 +151,8 @@ export function JourneyMapControls() {
 
   return (
     <>
-      <NavigationHeader
+      <ScreenHeader
+        asStackHeader
         rightAction={{
           accessibilityLabel: "Open journey overview",
           icon: <SparklesIcon />,
@@ -157,17 +170,13 @@ export function JourneyMapControls() {
 }
 
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: "flex-end",
-    paddingTop: 80,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.overlayDark,
+  modalPanel: {
+    backgroundColor: colors.transparent,
+    borderWidth: 0,
+    padding: 0,
+    paddingHorizontal: spacing.md,
   },
   overviewGlow: {
-    marginHorizontal: 16,
     borderRadius: radius.lg,
     backgroundColor: colors.backgroundSoft,
     ...shadows.softDark,
@@ -195,26 +204,17 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   eyebrow: {
-    ...typography.caption,
-    color: colors.primary,
     fontSize: 9,
-    fontWeight: "700",
     letterSpacing: 2.2,
     lineHeight: 13,
-    textAlign: "center",
   },
   title: {
-    ...typography.title,
     marginTop: 3,
-    textAlign: "center",
   },
   intro: {
-    ...typography.body,
     marginTop: 9,
-    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
-    textAlign: "center",
   },
   divider: {
     height: 1,
@@ -227,8 +227,7 @@ const styles = StyleSheet.create({
   },
   stepNumber: {
     width: 32,
-    color: colors.primary,
-    fontFamily: "serif",
+    fontFamily: fonts.serif,
     fontSize: 13,
     lineHeight: 19,
   },
@@ -236,36 +235,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
     fontWeight: "600",
     lineHeight: 19,
   },
   stepBody: {
-    ...typography.caption,
     marginTop: 2,
-    color: colors.textMuted,
-    fontSize: 12,
     lineHeight: 17,
   },
   continueButton: {
-    minHeight: 50,
     marginTop: 4,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surfaceGlass,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  continueButtonPressed: {
-    backgroundColor: colors.secondary,
-    transform: [{ scale: 0.99 }],
   },
   continueText: {
-    color: colors.primary,
+    fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.35,
+    lineHeight: 18,
   },
 });

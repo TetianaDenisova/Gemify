@@ -1,36 +1,45 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import type { ReactNode } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import {
+  AppText,
+  BackIcon,
+  Badge,
+  Card,
+  Checkbox,
+  ChevronIcon,
+  ListItem,
+  ProgressBar,
+  ProgressRing,
+  ScreenHeader,
+  ScreenScaffold,
+  SparkIcon,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
+  layout,
   lineHeights,
+  pressed,
   radius,
   shadows,
   spacing,
-  typography,
 } from "@/theme/theme";
 
-/** Below this width the roomy layout overflows, so switch to the phone scale. */
-const COMPACT_BREAKPOINT = 560;
+/** Extra scroll clearance so content can rise above the fixed weekly footer card. */
+const FOOTER_CARD_CLEARANCE = 160;
 
-/** Floating tab bar height (72) plus its bottom margin and a small gap. */
-const FOOTER_BOTTOM_OFFSET = 72 + spacing.sm * 2;
-
-/** Saturated violet used by the arc ring and quest accents (softer than colors.accentViolet). */
-const arcViolet = "#9B4DFF";
+/** Bespoke night-sky gradient behind the sprint board. */
+const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
 
 const PORTAL_ART_SOURCE = require("../../../assets/sprint-door-icon.png");
 
@@ -67,7 +76,7 @@ const quests: readonly Quest[] = [
     ],
   },
   {
-    accent: "#A552FF",
+    accent: colors.accentVioletStrong,
     done: 2,
     icon: "target",
     subtitle: "Becoming consistent in small daily actions.",
@@ -76,7 +85,7 @@ const quests: readonly Quest[] = [
     tasks: [],
   },
   {
-    accent: "#884DFF",
+    accent: colors.accentVioletStrong,
     done: 1,
     icon: "book",
     subtitle: "Training focus and inner control.",
@@ -86,49 +95,11 @@ const quests: readonly Quest[] = [
   },
 ];
 
-function BackIcon() {
-  return (
-    <Svg height={22} viewBox="0 0 24 24" width={22}>
-      <Path
-        d="M15 5 8 12l7 7M9 12h10"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-      />
-    </Svg>
-  );
-}
-
 function CalendarIcon({ color = colors.primarySoft, size = 16 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
       <Rect fill="none" height={15} rx={2.4} stroke={color} strokeWidth={1.7} width={17} x={3.5} y={5.5} />
       <Path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function ChevronIcon({ direction = "down", color = colors.primary, size = 18 }: { color?: string; direction?: "down" | "left" | "right" | "up"; size?: number }) {
-  const path = {
-    down: "m7 9 5 5 5-5",
-    left: "m15 6-6 6 6 6",
-    right: "m9 6 6 6-6 6",
-    up: "m7 15 5-5 5 5",
-  }[direction];
-
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path d={path} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} />
-    </Svg>
-  );
-}
-
-function SparkIcon({ color = colors.primary, size = 24 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 32 32" width={size}>
-      <Path d="M16 2.5c2.4 7.4 6.1 11.1 13.5 13.5C22.1 18.4 18.4 22.1 16 29.5 13.6 22.1 9.9 18.4 2.5 16 9.9 13.6 13.6 9.9 16 2.5Z" fill={color} />
     </Svg>
   );
 }
@@ -179,121 +150,53 @@ function QuestIcon({ accent, icon }: { accent: string; icon: Quest["icon"] }) {
   );
 }
 
-function ProgressRing({
-  color = colors.primary,
-  meta,
-  progress,
-  size = 92,
-  value,
-}: {
-  color?: string;
-  meta?: string;
-  progress: number;
-  size?: number;
-  value: string;
-}) {
-  const strokeWidth = 5;
-  const small = size < 80;
-  const radiusValue = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radiusValue;
-  const dashOffset = circumference * (1 - progress / 100);
-
-  return (
-    <View style={[styles.progressRing, { height: size, width: size }]}>
-      <Svg height={size} viewBox={`0 0 ${size} ${size}`} width={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="rgba(6, 8, 18, 0.9)"
-          r={radiusValue}
-          stroke={colors.borderSoft}
-          strokeWidth={strokeWidth}
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="none"
-          r={radiusValue}
-          stroke={color}
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          strokeWidth={strokeWidth}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={styles.ringCenter}>
-        <Text style={[styles.ringValue, small && styles.ringValueSmall]}>{value}</Text>
-        {meta ? <Text style={styles.ringMeta}>{meta}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
-function HeaderButton({ children, label, onPress }: { children: ReactNode; label: string; onPress?: () => void }) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
-function SectionLabel({ title }: { title: string }) {
-  return <Text style={styles.sectionLabel}>{title}</Text>;
-}
-
 function TaskRow({ task }: { task: QuestTask }) {
   return (
-    <View style={styles.taskRow}>
-      <View style={[styles.taskCheck, task.done && styles.taskCheckDone]}>
-        {task.done ? <PathCheck /> : null}
-      </View>
-      <Text numberOfLines={2} style={styles.taskTitle}>{task.title}</Text>
-      <View style={styles.taskDate}>
-        <CalendarIcon color={colors.textMuted} size={14} />
-        <Text style={styles.taskDateText}>{task.date}</Text>
-      </View>
-    </View>
-  );
-}
-
-function PathCheck() {
-  return (
-    <Svg height={14} viewBox="0 0 24 24" width={14}>
-      <Path d="m6 12 4 4 8-9" fill="none" stroke={colors.background} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} />
-    </Svg>
+    <ListItem
+      leading={<Checkbox checked={task.done} size={20} />}
+      minHeight={40}
+      title={task.title}
+      trailing={
+        <View style={styles.taskDate}>
+          <CalendarIcon color={colors.textMuted} size={14} />
+          <AppText variant="caption">{task.date}</AppText>
+        </View>
+      }
+    />
   );
 }
 
 function QuestCard({ expanded, quest }: { expanded?: boolean; quest: Quest }) {
   return (
-    <View style={[styles.questCard, expanded && styles.questCardExpanded]}>
+    <Card
+      padded={false}
+      style={[styles.questCard, expanded && styles.questCardExpanded]}
+    >
       <View style={styles.questHeader}>
         <View style={[styles.questIconFrame, { borderColor: `${quest.accent}80`, shadowColor: quest.accent }]}>
           <QuestIcon accent={quest.accent} icon={quest.icon} />
         </View>
         <View style={styles.questCopy}>
-          <Text numberOfLines={1} style={styles.questTitle}>{quest.title}</Text>
-          <Text numberOfLines={1} style={styles.questSubtitle}>{quest.subtitle}</Text>
+          <AppText numberOfLines={1} variant="pill">{quest.title}</AppText>
+          <AppText color={colors.textSecondary} numberOfLines={1} variant="caption">
+            {quest.subtitle}
+          </AppText>
         </View>
-        <Text style={styles.questCount}>{quest.done} / {quest.total} tasks</Text>
+        <AppText color={colors.textPrimary} variant="bodySmall">{quest.done} / {quest.total} tasks</AppText>
         <ChevronIcon direction={expanded ? "up" : "down"} />
       </View>
 
       {expanded ? (
         <View style={styles.taskList}>
-          <Text style={styles.miniLabel}>TASKS</Text>
+          <AppText color={colors.primarySoft} style={styles.miniLabel} variant="eyebrow">
+            TASKS
+          </AppText>
           {quest.tasks.map((task) => (
             <TaskRow key={task.title} task={task} />
           ))}
         </View>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -301,9 +204,9 @@ function SkyDust() {
   return (
     <Svg height="100%" pointerEvents="none" style={StyleSheet.absoluteFill} width="100%">
       <Circle cx="14%" cy="9%" fill="#F8C56D" opacity={0.25} r={1.2} />
-      <Circle cx="78%" cy="13%" fill="#B56DFF" opacity={0.28} r={1.6} />
+      <Circle cx="78%" cy="13%" fill={colors.accentVioletStrong} opacity={0.28} r={1.6} />
       <Circle cx="87%" cy="30%" fill="#F8C56D" opacity={0.18} r={1.1} />
-      <Circle cx="22%" cy="44%" fill="#B56DFF" opacity={0.18} r={1.3} />
+      <Circle cx="22%" cy="44%" fill={colors.accentVioletStrong} opacity={0.18} r={1.3} />
       <Circle cx="67%" cy="58%" fill="#F8C56D" opacity={0.2} r={1.2} />
     </Svg>
   );
@@ -313,57 +216,57 @@ export default function SprintScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const compact = width < COMPACT_BREAKPOINT;
+  const compact = width < layout.compactBreakpoint;
 
   return (
     <View style={styles.screen}>
-      <LinearGradient
-        colors={["#02050D", "#060716", "#080617", "#030712"]}
-        locations={[0, 0.35, 0.72, 1]}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
-      <SkyDust />
-
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingBottom: insets.bottom + FOOTER_BOTTOM_OFFSET + 160,
-            paddingTop: Math.max(insets.top + 10, 20),
-          },
-          compact && styles.contentCompact,
-        ]}
-        showsVerticalScrollIndicator={false}
+      <ScreenScaffold
+        backgroundGradient={SPRINT_BACKGROUND}
+        contentStyle={{
+          paddingBottom:
+            insets.bottom + layout.tabBarClearance + FOOTER_CARD_CLEARANCE,
+        }}
+        tabClearance
+        topInset
       >
-        <View style={styles.header}>
-          <HeaderButton
-            label="Back"
-            onPress={() => {
+        <SkyDust />
+        <ScreenHeader
+          leftAction={{
+            accessibilityLabel: "Back",
+            icon: <BackIcon />,
+            onPress: () => {
               if (router.canGoBack()) {
                 router.back();
               }
-            }}
-          >
-            <BackIcon />
-          </HeaderButton>
-          <View style={styles.headerTitleBlock}>
-            <Text style={[styles.title, compact && styles.titleCompact]}>Weekly Plan</Text>
-            <Text style={styles.subtitle}>Your commitments for this week.</Text>
-          </View>
-          <HeaderButton label="Weekly focus">
-            <SparkIcon size={22} />
-          </HeaderButton>
-        </View>
+            },
+          }}
+          rightAction={{
+            accessibilityLabel: "Weekly focus",
+            icon: <SparkIcon size={22} />,
+            onPress: () => {},
+          }}
+          style={styles.header}
+          subtitle="Your commitments for this week."
+          title="Weekly Plan"
+        />
 
-        <Pressable accessibilityRole="button" style={({ pressed }) => [styles.datePill, compact && styles.datePillCompact, pressed && styles.pressed]}>
-          <ChevronIcon direction="left" />
-          <CalendarIcon />
-          <Text style={styles.dateText}>May 18 - May 24, 2025</Text>
-          <ChevronIcon direction="right" />
-        </Pressable>
+        <Badge
+          color={colors.border}
+          icon={
+            <>
+              <ChevronIcon direction="left" />
+              <CalendarIcon />
+              <AppText color={colors.primary} variant="bodySmall">
+                May 18 - May 24, 2025
+              </AppText>
+              <ChevronIcon direction="right" />
+            </>
+          }
+          label=""
+          style={[styles.datePill, compact && styles.datePillCompact]}
+        />
 
-        <View style={[styles.arcCard, compact && styles.arcCardCompact]}>
+        <Card style={styles.arcCard}>
           <LinearGradient
             colors={["rgba(245, 184, 75, 0.06)", "rgba(126, 58, 205, 0.03)", "rgba(3, 8, 18, 0)"]}
             pointerEvents="none"
@@ -374,61 +277,73 @@ export default function SprintScreen() {
               <FlameIcon size={compact ? 56 : 72} />
             </View>
             <View style={[styles.arcCopy, compact && styles.arcCopyCompact]}>
-              <Text style={[styles.arcTitle, compact && styles.arcTitleCompact]}>Build Unstoppable Discipline</Text>
-              <Text style={styles.arcSubtitle}>Proving to myself that I can do hard things.</Text>
+              <AppText
+                style={[styles.arcTitle, compact && styles.arcTitleCompact]}
+                variant="cardTitle"
+              >
+                Build Unstoppable Discipline
+              </AppText>
+              <AppText style={styles.arcSubtitle} variant="bodySmall">
+                Proving to myself that I can do hard things.
+              </AppText>
             </View>
             <View style={[styles.arcProgress, compact && styles.arcProgressCompact]}>
               <ProgressRing
-                color={arcViolet}
+                backgroundColor={colors.surfaceDeep}
+                color={colors.accentVioletStrong}
                 meta="5 / 7 tasks"
-                progress={72}
                 size={compact ? 78 : 92}
-                value="72%"
+                value={72}
               />
-              <Text style={styles.thisWeek}>This week</Text>
+              <AppText color={colors.primary} variant="caption">This week</AppText>
             </View>
           </View>
 
           <View style={styles.questSectionTitle}>
             <SparkIcon color={colors.accentViolet} size={14} />
-            <Text style={styles.questLabel}>QUESTS</Text>
+            <AppText color={colors.accentViolet} variant="eyebrow">QUESTS</AppText>
           </View>
           <QuestCard expanded quest={quests[0]} />
           {quests.slice(1).map((quest) => (
             <QuestCard key={quest.title} quest={quest} />
           ))}
 
-          <Pressable accessibilityRole="button" style={({ pressed }) => [styles.viewAllButton, pressed && styles.pressed]}>
-            <Text style={styles.viewAllText}>View all quests</Text>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed: isPressed }) => [styles.viewAllButton, isPressed && pressed]}
+          >
+            <AppText color={colors.primary} variant="bodySmall">View all quests</AppText>
             <ChevronIcon />
           </Pressable>
-        </View>
-
-      </ScrollView>
+        </Card>
+      </ScreenScaffold>
 
       <View
         pointerEvents="box-none"
         style={[
           styles.fixedFooter,
           compact && styles.fixedFooterCompact,
-          { bottom: insets.bottom + FOOTER_BOTTOM_OFFSET },
+          { bottom: insets.bottom + layout.tabBarClearance },
         ]}
       >
-        <View style={styles.weeklyCard}>
+        <Card style={styles.weeklyCard}>
           <Image contentFit="cover" source={PORTAL_ART_SOURCE} style={styles.portalArt} />
           <View style={styles.weeklyCopy}>
-            <Text style={styles.weeklyText}>You&apos;re showing up for your future.</Text>
-            <Text style={styles.weeklyTextMuted}>Keep going, your future self is proud.</Text>
-            <View style={styles.weeklyBarTrack}>
-              <View style={styles.weeklyBarFill} />
-              <View style={styles.weeklyBarSpark} />
-            </View>
+            <AppText color={colors.textPrimary} variant="bodySmall">
+              You&apos;re showing up for your future.
+            </AppText>
+            <AppText variant="bodySmall">Keep going, your future self is proud.</AppText>
+            <ProgressBar glow style={styles.weeklyBar} value={72} />
           </View>
           <View style={styles.weeklyPercent}>
-            <ProgressRing progress={64} size={72} value="64%" />
-            <Text style={styles.percentMeta}>18 / 24 days</Text>
+            <ProgressRing
+              backgroundColor={colors.surfaceDeep}
+              size={72}
+              value={64}
+            />
+            <AppText color={colors.textSecondary} variant="caption">18 / 24 days</AppText>
           </View>
-        </View>
+        </Card>
       </View>
     </View>
   );
@@ -436,16 +351,10 @@ export default function SprintScreen() {
 
 const styles = StyleSheet.create({
   arcCard: {
-    backgroundColor: "rgba(4, 8, 18, 0.74)",
+    backgroundColor: colors.surfaceDeep,
     borderColor: colors.borderSoft,
-    borderRadius: 20,
-    borderWidth: 1,
     marginBottom: spacing.sm,
     overflow: "hidden",
-    padding: spacing.md,
-  },
-  arcCardCompact: {
-    padding: 12,
   },
   arcCopy: {
     flex: 1,
@@ -464,15 +373,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   arcSubtitle: {
-    ...typography.subtitle,
-    color: colors.textSecondary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.md,
     marginTop: spacing.sm,
     maxWidth: 260,
   },
   arcTitle: {
-    ...typography.cardTitle,
     fontSize: 26,
     lineHeight: 32,
   },
@@ -490,43 +394,23 @@ const styles = StyleSheet.create({
   arcTopCompact: {
     gap: 10,
   },
-  content: {
-    alignSelf: "center",
-    maxWidth: 820,
-    paddingHorizontal: 22,
-    width: "100%",
-  },
-  contentCompact: {
-    paddingHorizontal: spacing.md,
-  },
   datePill: {
-    alignItems: "center",
     alignSelf: "center",
-    backgroundColor: "rgba(8, 9, 22, 0.86)",
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    flexDirection: "row",
     gap: spacing.sm,
-    height: 40,
     justifyContent: "center",
     marginBottom: spacing.md,
+    minHeight: 40,
     minWidth: 280,
     paddingHorizontal: spacing.md,
   },
   datePillCompact: {
     minWidth: 0,
   },
-  dateText: {
-    color: colors.primary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
   fixedFooter: {
     alignSelf: "center",
     left: 0,
-    maxWidth: 820,
-    paddingHorizontal: 22,
+    maxWidth: layout.contentMaxWidth,
+    paddingHorizontal: layout.screenPaddingH,
     position: "absolute",
     right: 0,
     width: "100%",
@@ -545,40 +429,11 @@ const styles = StyleSheet.create({
     width: 72,
   },
   header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
     marginBottom: spacing.sm,
-  },
-  headerButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(4, 8, 18, 0.72)",
-    borderColor: "rgba(245, 184, 75, 0.28)",
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    width: 44,
-  },
-  headerTitleBlock: {
-    alignItems: "center",
-    flex: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 0,
   },
   miniLabel: {
-    ...typography.caption,
-    color: colors.primarySoft,
-    fontWeight: "700",
-    letterSpacing: 1.4,
     marginBottom: 2,
-  },
-  percentMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
   portalArt: {
     borderColor: colors.borderSoft,
@@ -588,41 +443,25 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: 96,
   },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
-  progressRing: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   questCard: {
-    backgroundColor: "rgba(5, 8, 18, 0.72)",
-    borderColor: "rgba(246, 232, 200, 0.16)",
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderSoft,
     marginTop: 12,
     overflow: "hidden",
   },
   questCardExpanded: {
-    backgroundColor: "rgba(5, 8, 18, 0.88)",
+    backgroundColor: colors.surfaceCard,
   },
   questCopy: {
     flex: 1,
     minWidth: 0,
   },
-  questCount: {
-    ...typography.subtitle,
-    color: colors.textPrimary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
   questHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 10,
+    gap: spacing.sm,
     minHeight: 64,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.md,
   },
   questIconFrame: {
     alignItems: "center",
@@ -636,82 +475,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     width: 48,
   },
-  questLabel: {
-    ...typography.caption,
-    color: colors.accentViolet,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-  },
   questSectionTitle: {
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
     marginBottom: 2,
   },
-  questSubtitle: {
-    ...typography.subtitle,
-    fontSize: fontSizes.xs,
-    lineHeight: lineHeights.xs,
-  },
-  questTitle: {
-    ...typography.pill,
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
-  },
-  ringCenter: {
-    alignItems: "center",
-    position: "absolute",
-  },
-  ringMeta: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    lineHeight: 14,
-  },
-  ringValue: {
-    color: colors.primary,
-    fontFamily: "serif",
-    fontSize: 24,
-    lineHeight: 28,
-  },
-  ringValueSmall: {
-    fontSize: 19,
-    lineHeight: 23,
-  },
   screen: {
-    backgroundColor: colors.background,
     flex: 1,
-    overflow: "hidden",
-  },
-  sectionLabel: {
-    ...typography.caption,
-    color: colors.accentViolet,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    lineHeight: 18,
-    marginBottom: spacing.sm,
-    marginLeft: 2,
-    marginTop: 2,
-  },
-  subtitle: {
-    color: colors.primary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.md,
-    marginTop: 2,
-    textAlign: "center",
-  },
-  taskCheck: {
-    alignItems: "center",
-    borderColor: colors.textMuted,
-    borderRadius: radius.round,
-    borderWidth: 1.3,
-    height: 20,
-    justifyContent: "center",
-    width: 20,
-  },
-  taskCheckDone: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   taskDate: {
     alignItems: "center",
@@ -720,45 +491,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     minWidth: 70,
   },
-  taskDateText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
   taskList: {
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-  },
-  taskRow: {
-    alignItems: "center",
-    borderBottomColor: "rgba(246, 232, 200, 0.07)",
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 40,
-  },
-  taskTitle: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
-  thisWeek: {
-    ...typography.caption,
-    color: colors.primary,
-  },
-  title: {
-    ...typography.screenTitle,
-    color: colors.primary,
-    textAlign: "center",
-    textShadowColor: "rgba(245, 184, 75, 0.28)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  titleCompact: {
-    fontSize: 32,
-    lineHeight: 38,
   },
   viewAllButton: {
     alignItems: "center",
@@ -769,49 +506,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: spacing.xs,
   },
-  viewAllText: {
-    color: colors.primary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
-  weeklyBarFill: {
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-    height: 5,
-    width: "72%",
-  },
-  weeklyBarSpark: {
-    backgroundColor: "#FFF0BF",
-    borderRadius: 5,
-    height: 10,
-    left: "71%",
-    position: "absolute",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    top: -2.5,
-    width: 10,
-  },
-  weeklyBarTrack: {
-    backgroundColor: colors.borderSoft,
-    borderRadius: 3,
-    height: 5,
+  weeklyBar: {
     marginTop: 13,
-    overflow: "visible",
-    width: "100%",
   },
   weeklyCard: {
     alignItems: "center",
-    backgroundColor: "#060914",
-    borderColor: "rgba(245, 184, 75, 0.28)",
-    borderRadius: 20,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
     marginBottom: spacing.xs,
     overflow: "hidden",
-    padding: spacing.md,
     ...shadows.goldGlow,
     shadowOpacity: 0.12,
   },
@@ -822,15 +525,5 @@ const styles = StyleSheet.create({
   weeklyPercent: {
     alignItems: "center",
     gap: spacing.xs,
-  },
-  weeklyText: {
-    color: colors.textPrimary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.md,
-  },
-  weeklyTextMuted: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.md,
   },
 });

@@ -3,18 +3,39 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { HabitItemCard } from "@/components/HabitItem";
+import {
+  AppButton,
+  AppText,
+  BackIcon,
+  Badge,
+  Card,
+  Checkbox,
+  ChevronIcon,
+  ListItem,
+  PlusIcon,
+  ProgressRing,
+  ScreenHeader,
+  ScreenScaffold,
+  SectionHeader,
+  SparkIcon,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { controls, radius, shadows, spacing, typography } from "@/theme/theme";
+import {
+  controls,
+  fonts,
+  fontSizes,
+  layout,
+  pressed,
+  spacing,
+  typography,
+} from "@/theme/theme";
 
 const QUEST_HEADER_SOURCE = require("../../../assets/quest-header.png");
 
@@ -63,21 +84,6 @@ const identity: Quest = {
   title: "Confident Communicator",
 };
 
-function BackIcon() {
-  return (
-    <Svg height={28} viewBox="0 0 24 24" width={28}>
-      <Path
-        d="M15 5 8 12l7 7M9 12h10"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-      />
-    </Svg>
-  );
-}
-
 function MoreIcon({ color = colors.primary }: { color?: string }) {
   return (
     <Svg height={22} viewBox="0 0 24 24" width={22}>
@@ -88,27 +94,7 @@ function MoreIcon({ color = colors.primary }: { color?: string }) {
   );
 }
 
-function PlusIcon({
-  color = "#E889FF",
-  size = 22,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M12 5v14M5 12h14"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.8}
-      />
-    </Svg>
-  );
-}
-
-function CalendarIcon({ color = "#E6B66D" }: { color?: string }) {
+function CalendarIcon({ color = colors.primary }: { color?: string }) {
   return (
     <Svg height={22} viewBox="0 0 24 24" width={22}>
       <Rect
@@ -140,55 +126,17 @@ function ClockIcon() {
         cy={12}
         fill="none"
         r={8}
-        stroke="#B8A68C"
+        stroke={colors.textSecondary}
         strokeWidth={1.6}
       />
       <Path
         d="M12 8v5l3 2"
         fill="none"
-        stroke="#B8A68C"
+        stroke={colors.textSecondary}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.6}
       />
-    </Svg>
-  );
-}
-
-function ChevronDownIcon({ color = colors.textPrimary }: { color?: string }) {
-  return (
-    <Svg height={22} viewBox="0 0 24 24" width={22}>
-      <Path
-        d="m6 9 6 6 6-6"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-      />
-    </Svg>
-  );
-}
-
-function CheckIcon({ color = colors.primary }: { color?: string }) {
-  return (
-    <Svg height={18} viewBox="0 0 24 24" width={18}>
-      <Path
-        d="m5 12 4 4L19 6"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </Svg>
-  );
-}
-
-function SparkleIcon({ color = "#E889FF", size = 30 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 48 48" width={size}>
-      <Path d="M24 4 29 19 44 24 29 29 24 44 19 29 4 24 19 19 24 4Z" fill={color} />
     </Svg>
   );
 }
@@ -305,56 +253,8 @@ function QuestIcon({ color, icon, size = 58 }: { color: string; icon: Quest["ico
   );
 }
 
-function ProgressRing({
-  color,
-  progress,
-  size,
-  showLabel = false,
-}: {
-  color: string;
-  progress: number;
-  size: number;
-    showLabel?: boolean;
-}) {
-  const strokeWidth = size >= 88 ? 5 : 4;
-  const radiusValue = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radiusValue;
-  const dashOffset = circumference * (1 - progress / 100);
-
-  return (
-    <View style={[styles.progressRing, { height: size, width: size }]}>
-      <Svg height={size} viewBox={`0 0 ${size} ${size}`} width={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="rgba(4, 8, 18, 0.72)"
-          r={radiusValue}
-          stroke="rgba(246, 232, 200, 0.16)"
-          strokeWidth={strokeWidth}
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          fill="none"
-          r={radiusValue}
-          stroke={color}
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          strokeLinecap="round"
-          strokeWidth={strokeWidth}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <Text style={[styles.ringValue, size < 86 && styles.ringValueSmall]}>
-        {progress}%
-      </Text>
-      {showLabel ? <Text style={styles.ringLabel}>COMPLETE</Text> : null}
-    </View>
-  );
-}
-
 function PillButton({
-  color = "#E889FF",
+  color = colors.accentViolet,
   label,
   minWidth,
 }: {
@@ -365,46 +265,27 @@ function PillButton({
   return (
     <Pressable
       accessibilityRole="button"
-      style={({ pressed }) => [
+      style={({ pressed: isPressed }) => [
         styles.pillButton,
         { borderColor: color, minWidth },
-        pressed && styles.subtlePressed,
+        isPressed && pressed,
       ]}
     >
-      <Text style={[styles.pillButtonText, { color }]}>{label}</Text>
+      <AppText color={color} variant="pill">
+        {label}
+      </AppText>
     </Pressable>
   );
 }
 
-function GradientAction({
-  label,
-  tone = "purple",
-}: {
-  label: string;
-  tone?: "pink" | "purple";
-}) {
-  const accent = tone === "pink" ? "#FF5FA7" : "#E889FF";
-
+function GradientAction({ label }: { label: string }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.gradientActionShell,
-        { borderColor: accent },
-        pressed && styles.subtlePressed,
-      ]}
-    >
-      <LinearGradient
-        colors={[
-          tone === "pink" ? "rgba(255, 95, 167, 0.48)" : "rgba(176, 69, 255, 0.58)",
-          "rgba(30, 15, 74, 0.9)",
-        ]}
-        style={styles.gradientAction}
-      >
-        <SparkleIcon color="#FFD68A" size={22} />
-        <Text style={styles.gradientActionText}>{label}</Text>
-      </LinearGradient>
-    </Pressable>
+    <AppButton
+      icon={<SparkIcon color={colors.textOnPrimary} size={22} />}
+      label={label}
+      onPress={() => {}}
+      variant="primary"
+    />
   );
 }
 
@@ -428,38 +309,38 @@ function IdeaRow({
       <View style={styles.ideaIconFrame}>
         <IdeaIcon icon={idea.icon} />
       </View>
-      <Text
+      <AppText
         numberOfLines={2}
         style={[styles.ideaTitle, compact && styles.ideaTitleCompact]}
+        variant="button"
       >
         {idea.title}
-      </Text>
-      <View style={[styles.scorePill, compact && styles.scorePillCompact]}>
-        <Text style={styles.scoreText}>{idea.score}</Text>
-      </View>
+      </AppText>
+      <Badge
+        label={String(idea.score)}
+        style={[styles.scorePill, compact && styles.scorePillCompact]}
+        textStyle={styles.scoreText}
+      />
       <PillButton label="Approve" minWidth={compact ? 84 : 126} />
     </View>
   );
 }
 
-function TaskRow({ compact, task }: { compact: boolean; task: QuestTask }) {
+function TaskRow({ task }: { task: QuestTask }) {
   return (
-    <View style={styles.taskRow}>
-      <View style={[styles.checkbox, task.done && styles.checkboxDone]}>
-        {task.done ? <CheckIcon /> : null}
-      </View>
-      <View style={styles.taskCopy}>
-        <Text style={styles.taskTitle}>{task.title}</Text>
-        <Text style={styles.taskFrequency}>{task.frequency}</Text>
-      </View>
-      <DragHandle />
-    </View>
+    <ListItem
+      leading={<Checkbox checked={task.done} shape="circle" size={36} />}
+      style={styles.taskRow}
+      subtitle={task.frequency}
+      title={task.title}
+      trailing={<DragHandle />}
+    />
   );
 }
 
 function ActiveQuestCard({ compact }: { compact: boolean }) {
   return (
-    <View style={styles.activeQuestCard}>
+    <Card style={styles.activeQuestCard} variant="strong">
       <View
         style={[
           styles.activeQuestHeader,
@@ -467,38 +348,46 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
         ]}
       >
         <View style={styles.activeQuestProgressRing}>
-          <ProgressRing color={colors.primary} progress={67} size={74} />
+          <ProgressRing
+            backgroundColor={colors.surfaceDeep}
+            color={colors.primary}
+            size={74}
+            strokeWidth={4}
+            value={67}
+          />
         </View>
         <View style={styles.activeQuestCopy}>
-          <Text style={styles.activeQuestTitle}>Morning routine mastery</Text>
+          <AppText variant="cardTitle">Morning routine mastery</AppText>
           <View style={styles.questMetaRow}>
             <View style={styles.metaItem}>
               <ClockIcon />
-              <Text style={styles.questMetaText}>2 / 3 tasks</Text>
+              <AppText variant="meta">2 / 3 tasks</AppText>
             </View>
-            <Text style={styles.metaSeparator}>|</Text>
+            <AppText style={styles.metaSeparator}>|</AppText>
             <View style={styles.metaItem}>
-              <CalendarIcon color="#B8A68C" />
-              <Text style={styles.questMetaText}>7 days active</Text>
+              <CalendarIcon color={colors.textSecondary} />
+              <AppText variant="meta">7 days active</AppText>
             </View>
           </View>
         </View>
         <PillButton label="Add to sprint" minWidth={compact ? 84 : 126} />
       </View>
 
-      <View style={styles.taskList}>
+      <Card padded={false} style={styles.taskList}>
         {questTasks.map((task) => (
-          <TaskRow compact={compact} key={task.title} task={task} />
+          <TaskRow key={task.title} task={task} />
         ))}
         <Pressable
           accessibilityRole="button"
-          style={({ pressed }) => [styles.addTaskButton, pressed && styles.subtlePressed]}
+          style={({ pressed: isPressed }) => [styles.addTaskButton, isPressed && pressed]}
         >
-          <PlusIcon size={24} />
-          <Text style={styles.addTaskText}>Add Task</Text>
+          <PlusIcon color={colors.accentViolet} size={24} />
+          <AppText color={colors.accentViolet} variant="button">
+            Add Task
+          </AppText>
         </Pressable>
-      </View>
-    </View>
+      </Card>
+    </Card>
   );
 }
 
@@ -514,161 +403,153 @@ const dummyHabit = {
 
 function IdentityRow() {
   return (
-    <View style={styles.identityCard}>
+    <Card style={styles.identityCard}>
       <View style={[styles.largeIconFrame, styles.identityIconFrame]}>
         <QuestIcon color={identity.color} icon={identity.icon} />
       </View>
       <View style={styles.identityCopy}>
-        <Text style={styles.identityTitle}>{identity.title}</Text>
-        <Text style={styles.identitySubtitle}>{identity.subtitle}</Text>
-        <Text style={styles.identityMeta}>{identity.meta}</Text>
+        <AppText variant="cardTitle">{identity.title}</AppText>
+        <AppText style={styles.identitySubtitle} variant="subtitle">
+          {identity.subtitle}
+        </AppText>
+        <AppText style={styles.identityMeta} variant="meta">
+          {identity.meta}
+        </AppText>
       </View>
-      <ProgressRing color={identity.color} progress={identity.progress} size={86} />
-      <ChevronDownIcon color="#FFE2A3" />
-    </View>
+      <ProgressRing
+        backgroundColor={colors.surfaceDeep}
+        color={identity.color}
+        size={86}
+        strokeWidth={4}
+        value={identity.progress}
+      />
+      <ChevronIcon direction="down" size={22} />
+    </Card>
   );
 }
 
 export default function MilestoneQuestsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const isNarrow = width < 560;
+  const isNarrow = width < layout.compactBreakpoint;
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingBottom: Math.max(insets.bottom + 112, 132),
-            paddingTop: Math.max(insets.top + 12, 22),
+    <ScreenScaffold tabClearance topInset>
+      <ScreenHeader
+        buttonSize="md"
+        leftAction={{
+          accessibilityLabel: "Back",
+          icon: <BackIcon />,
+          onPress: () => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.push("/journey-map");
           },
-          isNarrow && styles.contentNarrow,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Back"
-            accessibilityRole="button"
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-                return;
-              }
-              router.push("/journey-map");
-            }}
-            style={({ pressed }) => [styles.headerIconButton, pressed && styles.subtlePressed]}
-          >
-            <BackIcon />
-          </Pressable>
-          <Text style={styles.headerTitle}>Milestone Quests</Text>
-          <Pressable
-            accessibilityLabel="More options"
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.headerIconButton, pressed && styles.subtlePressed]}
-          >
-            <MoreIcon />
-          </Pressable>
-        </View>
+        }}
+        rightAction={{
+          accessibilityLabel: "More options",
+          icon: <MoreIcon />,
+          onPress: () => {},
+        }}
+        style={styles.header}
+        title="Milestone Quests"
+      />
 
-        <View style={styles.milestoneCard}>
-          <Image contentFit="cover" source={QUEST_HEADER_SOURCE} style={styles.heroImage} />
-          <LinearGradient
-            colors={[
-              "rgba(4, 7, 17, 0.98)",
-              "rgba(4, 7, 17, 0.78)",
-              "rgba(4, 7, 17, 0.24)",
-            ]}
-            end={{ x: 1, y: 0.5 }}
-            start={{ x: 0, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
+      <Card padded={false} style={styles.milestoneCard}>
+        <Image contentFit="cover" source={QUEST_HEADER_SOURCE} style={styles.heroImage} />
+        <LinearGradient
+          colors={[
+            "rgba(4, 7, 17, 0.98)",
+            "rgba(4, 7, 17, 0.78)",
+            "rgba(4, 7, 17, 0.24)",
+          ]}
+          end={{ x: 1, y: 0.5 }}
+          start={{ x: 0, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.92)"]}
+          style={styles.heroBottomShade}
+        />
+        <View style={styles.milestoneCopy}>
+          <View style={styles.labelRow}>
+            <PlusIcon color={colors.accentViolet} size={18} />
+            <AppText color={colors.accentViolet} variant="eyebrow">
+              CURRENT MILESTONE
+            </AppText>
+          </View>
+          <AppText variant="cardTitle">Build Unstoppable Discipline</AppText>
+          <View style={styles.metaItem}>
+            <CalendarIcon />
+            <AppText color={colors.primary} variant="meta">
+              18 days in progress
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.milestoneProgress}>
+          <ProgressRing
+            backgroundColor={colors.surfaceDeep}
+            color={colors.primary}
+            meta="COMPLETE"
+            size={116}
+            strokeWidth={5}
+            value={72}
           />
-          <LinearGradient
-            colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.92)"]}
-            style={styles.heroBottomShade}
-          />
-          <View style={styles.milestoneCopy}>
-            <View style={styles.labelRow}>
-              <PlusIcon size={18} />
-              <Text style={styles.panelLabel}>CURRENT MILESTONE</Text>
-            </View>
-            <Text style={styles.milestoneTitle}>Build Unstoppable Discipline</Text>
-            <View style={styles.metaItem}>
-              <CalendarIcon />
-              <Text style={styles.milestoneMetaText}>18 days in progress</Text>
-            </View>
-          </View>
-          <View style={styles.milestoneProgress}>
-            <ProgressRing color={colors.primary} progress={72} showLabel size={116} />
-          </View>
         </View>
+      </Card>
 
-        <View style={styles.ideaPanel}>
-          <Text style={styles.panelLabel}>IDEAS THAT CAN HELP ACHIEVE</Text>
-          <View style={styles.sparkle}>
-            <SparkleIcon />
-          </View>
-          <View style={styles.ideaList}>
-            {ideas.map((idea, index) => (
-              <IdeaRow
-                compact={isNarrow}
-                idea={idea}
-                index={index}
-                key={idea.title}
-              />
-            ))}
-          </View>
+      <Card style={styles.ideaPanel}>
+        <AppText color={colors.accentViolet} variant="eyebrow">
+          IDEAS THAT CAN HELP ACHIEVE
+        </AppText>
+        <View style={styles.sparkle}>
+          <SparkIcon color={colors.accentViolet} size={30} />
         </View>
+        <Card padded={false} style={styles.ideaList}>
+          {ideas.map((idea, index) => (
+            <IdeaRow
+              compact={isNarrow}
+              idea={idea}
+              index={index}
+              key={idea.title}
+            />
+          ))}
+        </Card>
+      </Card>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>QUESTS</Text>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.addQuestButton, pressed && styles.subtlePressed]}
-          >
-            <PlusIcon size={24} />
-            <Text style={styles.addQuestText}>Add Quest</Text>
-          </Pressable>
-        </View>
+      <SectionHeader
+        action={{
+          icon: <PlusIcon />,
+          label: "Add Quest",
+          onPress: () => {},
+        }}
+        style={styles.sectionHeader}
+        title="QUESTS"
+      />
 
-        <ActiveQuestCard compact={isNarrow} />
+      <ActiveQuestCard compact={isNarrow} />
 
-        <View style={[styles.sectionHeader, styles.habitSectionHeader]}>
-          <View style={styles.habitHeadingRow}>
-            <Text style={[styles.sectionTitle]}>
-              HABITS
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/create-habit")}
-            style={({ pressed }) => [styles.addQuestButton, pressed && styles.subtlePressed]}
-          >
-            <PlusIcon size={24} />
-            <Text style={styles.addQuestText}>Add Habit</Text>
-          </Pressable>
-        </View>
+      <SectionHeader
+        action={{
+          icon: <PlusIcon />,
+          label: "Add Habit",
+          onPress: () => router.push("/create-habit"),
+        }}
+        style={[styles.sectionHeader, styles.habitSectionHeader]}
+        title="HABITS"
+      />
 
-        <HabitItemCard habit={dummyHabit} />
-      </ScrollView>
-    </View>
+      <HabitItemCard habit={dummyHabit} />
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   activeQuestCard: {
-    backgroundColor: "rgba(4, 10, 23, 0.92)",
-    borderColor: "rgba(245, 184, 75, 0.82)",
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 14,
+    marginBottom: spacing.md,
     overflow: "hidden",
-    padding: 20,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
   },
   activeQuestCopy: {
     flex: 1,
@@ -687,68 +568,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 90,
   },
-  activeQuestSubtitle: {
-    ...typography.body,
-    color: "#BDAE9A",
-    marginTop: 8,
-    maxWidth: 440,
-  },
-  activeQuestTitle: {
-    ...typography.cardTitle,
-  },
-  addIdentityButton: {
-    borderColor: "rgba(255, 95, 167, 0.45)",
-  },
-  addIdentityText: {
-    color: identity.color,
-  },
-  addQuestButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(22, 13, 40, 0.84)",
-    borderColor: "rgba(232, 137, 255, 0.36)",
-    borderRadius: controls.button.section.borderRadius,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-    height: controls.button.section.height,
-    justifyContent: "center",
-    minWidth: controls.button.section.minWidth,
-    paddingHorizontal: controls.button.section.paddingHorizontal,
-  },
-  addQuestText: {
-    ...typography.button,
-    color: "#E1A0FF",
-  },
   addTaskButton: {
     alignItems: "center",
     flexDirection: "row",
     gap: 12,
     height: 58,
-    paddingHorizontal: 18,
-  },
-  addTaskText: {
-    ...typography.button,
-    color: "#E1A0FF",
-  },
-  checkbox: {
-    alignItems: "center",
-    borderColor: "#B8A68C",
-    borderRadius: 18,
-    borderWidth: 1.4,
-    height: 36,
-    justifyContent: "center",
-    width: 36,
-  },
-  checkboxDone: {
-    borderColor: colors.primary,
-  },
-  content: {
-    alignSelf: "center",
-    maxWidth: 920,
-    paddingHorizontal: 22,
-    width: "100%",
-  },
-  contentNarrow: {
     paddingHorizontal: spacing.md,
   },
   dragDot: {
@@ -765,67 +589,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 5,
   },
-  gradientAction: {
-    alignItems: "center",
-    borderRadius: 10,
-    flexDirection: "row",
-    gap: 12,
-    height: "100%",
-    justifyContent: "center",
-    paddingHorizontal: 22,
-    width: "100%",
-  },
-  gradientActionShell: {
-    borderRadius: 11,
-    borderWidth: 1,
-    height: 86,
-    minWidth: 172,
-    overflow: "hidden",
-    shadowColor: "#E889FF",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-  },
-  gradientActionText: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: "serif",
-    fontSize: 22,
-    lineHeight: 27,
-    maxWidth: 104,
-    textAlign: "center",
-  },
-  habitHeadingRow: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    minWidth: 260,
-  },
   habitSectionHeader: {
     marginTop: 28,
-    paddingHorizontal: 34,
+    paddingHorizontal: spacing.xl,
   },
   header: {
-    alignItems: "center",
-    flexDirection: "row",
-    height: 68,
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  headerIconButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(4, 8, 18, 0.72)",
-    borderColor: "rgba(245, 184, 75, 0.48)",
-    borderRadius: 28,
-    borderWidth: 1,
-    height: 56,
-    justifyContent: "center",
-    width: 56,
-  },
-  headerTitle: {
-    ...typography.screenTitle,
-    flex: 1,
-    textAlign: "center",
+    marginBottom: spacing.sm,
+    paddingHorizontal: 0,
   },
   heroBottomShade: {
     bottom: 0,
@@ -839,15 +609,11 @@ const styles = StyleSheet.create({
   },
   identityCard: {
     alignItems: "center",
-    backgroundColor: "rgba(5, 13, 29, 0.9)",
     borderColor: "rgba(255, 95, 167, 0.2)",
-    borderRadius: 20,
-    borderWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 22,
+    gap: spacing.lg,
     minHeight: 116,
-    padding: 18,
   },
   identityCopy: {
     flex: 1,
@@ -857,26 +623,14 @@ const styles = StyleSheet.create({
     shadowColor: identity.color,
   },
   identityMeta: {
-    ...typography.meta,
-    color: "#B8A68C",
-    marginTop: 8,
-  },
-  identitySectionTitle: {
-    color: identity.color,
+    marginTop: spacing.sm,
   },
   identitySubtitle: {
-    ...typography.subtitle,
-    color: "#B8A68C",
-    marginTop: 4,
-  },
-  identityTitle: {
-    ...typography.cardTitle,
-    fontSize: 28,
-    lineHeight: 34,
+    marginTop: spacing.xs,
   },
   ideaIconFrame: {
     alignItems: "center",
-    borderColor: "rgba(232, 137, 255, 0.6)",
+    borderColor: colors.accentVioletGlow,
     borderRadius: 28,
     borderWidth: 1,
     height: 56,
@@ -884,53 +638,44 @@ const styles = StyleSheet.create({
     width: 56,
   },
   ideaList: {
-    backgroundColor: "rgba(4, 10, 23, 0.7)",
-    borderColor: "rgba(246, 232, 200, 0.08)",
-    borderRadius: 20,
-    borderWidth: 1,
-    marginTop: 18,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.divider,
+    marginTop: spacing.md,
     overflow: "hidden",
   },
   ideaPanel: {
-    backgroundColor: "rgba(8, 11, 27, 0.9)",
-    borderColor: "rgba(232, 137, 255, 0.24)",
-    borderRadius: 22,
-    borderWidth: 1,
-    marginTop: 16,
-    padding: 24,
+    borderColor: colors.accentVioletGlow,
+    marginTop: spacing.md,
+    padding: spacing.lg,
   },
   ideaRow: {
     alignItems: "center",
-    borderBottomColor: "rgba(246, 232, 200, 0.08)",
+    borderBottomColor: colors.divider,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: 22,
+    gap: spacing.lg,
     minHeight: 70,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.md,
   },
   ideaRowCompact: {
-    gap: 10,
-    paddingHorizontal: 10,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   ideaTitle: {
-    color: colors.textPrimary,
     flex: 1,
-    fontFamily: "serif",
-    fontSize: 24,
-    lineHeight: 31,
   },
   ideaTitleCompact: {
-    fontSize: 17,
+    fontSize: fontSizes.lg,
     lineHeight: 22,
   },
   labelRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
+    gap: spacing.sm,
   },
   largeIconFrame: {
     alignItems: "center",
-    backgroundColor: "rgba(5, 10, 24, 0.8)",
+    backgroundColor: colors.surfaceDeep,
     borderColor: colors.primary,
     borderRadius: 48,
     borderWidth: 1,
@@ -948,54 +693,29 @@ const styles = StyleSheet.create({
   metaItem: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 10,
+    gap: spacing.sm,
   },
   metaSeparator: {
-    color: "#6F5E4F",
-    fontSize: 20,
+    color: colors.textMuted,
+    fontSize: fontSizes.xl,
     lineHeight: 22,
   },
   milestoneCard: {
-    borderColor: "rgba(232, 137, 255, 0.24)",
-    borderRadius: 20,
-    borderWidth: 1,
+    borderColor: colors.accentVioletGlow,
     minHeight: 184,
     overflow: "hidden",
     padding: 28,
   },
   milestoneCopy: {
-    gap: 22,
+    gap: spacing.lg,
     maxWidth: "66%",
     zIndex: 1,
-  },
-  milestoneMetaText: {
-    color: "#E6B66D",
-    fontSize: 19,
-    lineHeight: 24,
   },
   milestoneProgress: {
     position: "absolute",
     right: 28,
     top: 28,
     zIndex: 2,
-  },
-  milestoneTitle: {
-    ...typography.cardTitle,
-    fontSize: 31,
-    lineHeight: 38,
-  },
-  panelLabel: {
-    color: "#E889FF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 2.6,
-    lineHeight: 21,
-  },
-  panelSubcopy: {
-    color: "#C6B8A8",
-    fontSize: 17,
-    lineHeight: 24,
-    marginTop: 6,
   },
   pillButton: {
     alignItems: "center",
@@ -1006,49 +726,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: controls.button.pill.paddingHorizontal,
   },
-  pillButtonText: {
-    ...typography.pill,
-  },
-  progressRing: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   questMetaRow: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 14,
-    marginTop: 16,
-  },
-  questMetaText: {
-    color: "#B8A68C",
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  ringLabel: {
-    color: colors.textPrimary,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 15,
-    marginTop: 44,
-    position: "absolute",
-  },
-  ringValue: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
-    fontSize: 36,
-    lineHeight: 41,
-    position: "absolute",
-  },
-  ringValueSmall: {
-    fontSize: 22,
-    lineHeight: 27,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
   scorePill: {
-    alignItems: "center",
-    borderColor: colors.primary,
-    borderRadius: radius.round,
-    borderWidth: 1,
     height: 42,
     justifyContent: "center",
     minWidth: 92,
@@ -1057,85 +742,27 @@ const styles = StyleSheet.create({
     minWidth: 58,
   },
   scoreText: {
+    ...typography.pill,
     color: colors.primary,
-    fontFamily: "serif",
-    fontSize: 21,
-    lineHeight: 26,
-  },
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
+    fontFamily: fonts.serif,
   },
   sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    marginTop: 18,
-    paddingHorizontal: 10,
-  },
-  sectionTitle: {
-    ...typography.sectionTitle,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   sparkle: {
     position: "absolute",
     right: 30,
     top: 28,
   },
-  statusDot: {
-    backgroundColor: colors.primary,
-    borderRadius: 5,
-    height: 10,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    width: 10,
-  },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 9,
-  },
-  statusText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 18,
-  },
-  subtlePressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
-  taskCopy: {
-    flex: 1,
-    paddingLeft: 4,
-  },
-  taskFrequency: {
-    color: "#B8A68C",
-    fontSize: 15,
-    lineHeight: 19,
-    marginTop: 2,
-  },
   taskList: {
-    backgroundColor: "rgba(3, 9, 22, 0.72)",
-    borderColor: "rgba(246, 232, 200, 0.08)",
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 22,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.divider,
+    marginTop: spacing.lg,
     overflow: "hidden",
   },
   taskRow: {
-    alignItems: "center",
-    borderBottomColor: "rgba(246, 232, 200, 0.08)",
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: 18,
-    minHeight: controls.row.task,
-    paddingHorizontal: 16,
-  },
-  taskTitle: {
-    ...typography.button,
-    color: colors.textPrimary,
+    paddingHorizontal: spacing.md,
   },
 });

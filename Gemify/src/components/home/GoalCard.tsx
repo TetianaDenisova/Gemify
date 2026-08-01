@@ -1,14 +1,12 @@
 import { Image } from "expo-image";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import type { Goal, ThemeColor } from "@/data/homeData";
 import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
+import { AppText, ProgressBar, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
-
-import { GoalProgressBar } from "./GoalProgressBar";
-import { GoalProgressRing } from "./GoalProgressRing";
+import { pressed, radius, shadows, spacing } from "@/theme/theme";
 
 interface GoalCardProps {
   goal: Goal;
@@ -36,7 +34,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
     <Pressable
       accessibilityRole="button"
       onPress={() => onPress?.(goal)}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
     >
       <Image
         source={goalImages[goal.imageKey]}
@@ -58,31 +56,40 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           </View>
 
           <View style={styles.titleBlock}>
-            <Text style={styles.title} numberOfLines={2}>
+            <AppText numberOfLines={2} style={styles.title} variant="title">
               {goal.title}
-            </Text>
+            </AppText>
 
-            <Text style={[styles.milestone, { color: accentColor }]}>
+            <AppText color={accentColor} style={styles.milestone} variant="caption">
               ⚑ Milestone: {goal.milestone}
-            </Text>
+            </AppText>
           </View>
         </View>
 
         <View style={styles.bottomContent}>
           <View style={styles.progressContent}>
-            <GoalProgressBar
-              progressPercent={goal.progressPercent}
-              themeColor={goal.themeColor}
+            <ProgressBar
+              color={accentColor}
+              height={3}
+              value={goal.progressPercent}
             />
 
-            <Text style={styles.taskCount}>
+            <AppText
+              color={colors.textSecondary}
+              style={styles.taskCount}
+              variant="caption"
+            >
               {goal.completedTasks} of {goal.totalTasks} tasks completed
-            </Text>
+            </AppText>
           </View>
 
-          <GoalProgressRing
-            progressPercent={goal.progressPercent}
-            themeColor={goal.themeColor}
+          <ProgressRing
+            backgroundColor={colors.surfaceGlass}
+            color={accentColor}
+            labelColor={accentColor}
+            size={48}
+            strokeWidth={2}
+            value={goal.progressPercent}
           />
         </View>
       </View>
@@ -106,10 +113,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     ...shadows.softDark,
-  },
-
-  cardPressed: {
-    opacity: 0.9,
   },
 
   darkOverlay: {
@@ -150,12 +153,6 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    ...typography.title,
-    fontFamily: Platform.select({
-      ios: "Georgia",
-      android: "serif",
-      default: "serif",
-    }),
     fontSize: 20,
     letterSpacing: -0.3,
     lineHeight: 22,
@@ -163,7 +160,6 @@ const styles = StyleSheet.create({
 
   milestone: {
     fontSize: 10,
-    fontWeight: "500",
     lineHeight: 13,
     marginTop: 7,
   },
@@ -180,10 +176,8 @@ const styles = StyleSheet.create({
   },
 
   taskCount: {
-    ...typography.caption,
-    color: colors.textSecondary,
     fontSize: 10,
     lineHeight: 13,
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
 });

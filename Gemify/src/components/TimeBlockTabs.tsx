@@ -3,7 +3,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   type StyleProp,
@@ -12,28 +11,9 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import type { BlockIcon, TimeBlock } from "@/data/timeBlocks";
+import { AppText, ChevronIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, lineHeights, radius } from "@/theme/theme";
-
-/** Below this width the roomy tab layout overflows, so switch to the phone scale. */
-const COMPACT_BREAKPOINT = 560;
-
-const PURPLE = "#C79BFF";
-
-function ChevronIcon({ direction, size = 24 }: { direction: "left" | "right"; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d={direction === "left" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6"}
-        fill="none"
-        stroke="#C6B8A8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
+import { fontSizes, layout, lineHeights, pressed, radius } from "@/theme/theme";
 
 export function BlockIconArt({ color, icon, size = 22 }: { color: string; icon: BlockIcon; size?: number }) {
   const stroke = { fill: "none" as const, stroke: color, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -97,29 +77,30 @@ function TimeTab({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ pressed: isPressed }) => [
         styles.timeTab,
         compact && styles.timeTabCompact,
         active && styles.timeTabActive,
         active && compact && styles.timeTabActiveCompact,
-        pressed && styles.pressed,
+        isPressed && pressed,
       ]}
     >
       <BlockIconArt
-        color={active ? "#E6B4FF" : "rgba(246, 232, 200, 0.68)"}
+        color={active ? colors.accentViolet : colors.textSecondary}
         icon={block.icon}
         size={compact ? 22 : 28}
       />
-      <Text
+      <AppText
+        color={colors.textSecondary}
         numberOfLines={1}
         style={[
-          styles.timeTabLabel,
           compact && styles.timeTabLabelCompact,
           active && styles.timeTabLabelActive,
         ]}
+        variant="pill"
       >
         {block.label}
-      </Text>
+      </AppText>
     </Pressable>
   );
 }
@@ -133,7 +114,7 @@ type TimeBlockTabsProps = {
 
 export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockTabsProps) {
   const { width } = useWindowDimensions();
-  const compact = width < COMPACT_BREAKPOINT;
+  const compact = width < layout.compactBreakpoint;
 
   const scrollRef = useRef<ScrollView>(null);
   const tabLayoutsRef = useRef<Record<string, { width: number; x: number }>>({});
@@ -141,12 +122,12 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
 
   // Slide the strip so the selected tab is centered in the viewport.
   function centerTab(key: string) {
-    const layout = tabLayoutsRef.current[key];
+    const layoutRect = tabLayoutsRef.current[key];
     const viewportWidth = viewportWidthRef.current;
-    if (!layout || viewportWidth === 0) return;
+    if (!layoutRect || viewportWidth === 0) return;
     scrollRef.current?.scrollTo({
       animated: true,
-      x: Math.max(0, layout.x + layout.width / 2 - viewportWidth / 2),
+      x: Math.max(0, layoutRect.x + layoutRect.width / 2 - viewportWidth / 2),
     });
   }
 
@@ -167,13 +148,18 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => shiftActive(-1)}
-        style={({ pressed }) => [
+        style={({ pressed: isPressed }) => [
           styles.tabsArrow,
           compact && styles.tabsArrowCompact,
-          pressed && styles.pressed,
+          isPressed && pressed,
         ]}
       >
-        <ChevronIcon direction="left" size={compact ? 20 : 24} />
+        <ChevronIcon
+          color={colors.textSecondary}
+          direction="left"
+          size={compact ? 20 : 24}
+          strokeWidth={1.9}
+        />
       </Pressable>
       <ScrollView
         contentContainerStyle={[styles.tabsContent, compact && styles.tabsContentCompact]}
@@ -213,23 +199,24 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => shiftActive(1)}
-        style={({ pressed }) => [
+        style={({ pressed: isPressed }) => [
           styles.tabsArrow,
           compact && styles.tabsArrowCompact,
-          pressed && styles.pressed,
+          isPressed && pressed,
         ]}
       >
-        <ChevronIcon direction="right" size={compact ? 20 : 24} />
+        <ChevronIcon
+          color={colors.textSecondary}
+          direction="right"
+          size={compact ? 20 : 24}
+          strokeWidth={1.9}
+        />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
   tabsArrow: {
     alignItems: "center",
     height: 48,
@@ -252,8 +239,8 @@ const styles = StyleSheet.create({
   },
   tabsRow: {
     alignItems: "center",
-    backgroundColor: "rgba(5, 9, 20, 0.7)",
-    borderColor: "rgba(246, 232, 200, 0.16)",
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderSoft,
     borderRadius: radius.round,
     borderWidth: 1,
     flexDirection: "row",
@@ -277,7 +264,7 @@ const styles = StyleSheet.create({
   },
   timeTabActive: {
     backgroundColor: "rgba(90, 55, 140, 0.28)",
-    borderColor: "rgba(199, 155, 255, 0.75)",
+    borderColor: colors.accentViolet,
     flexDirection: "row",
     gap: 12,
     paddingHorizontal: 28,
@@ -292,19 +279,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   timeTabDivider: {
-    backgroundColor: "rgba(246, 232, 200, 0.12)",
+    backgroundColor: colors.borderSoft,
     height: 30,
     width: 1,
   },
-  timeTabLabel: {
-    color: "rgba(246, 232, 200, 0.68)",
-    fontFamily: "serif",
-    fontSize: fontSizes.xl,
-    fontWeight: "500",
-    lineHeight: lineHeights.lg,
-  },
   timeTabLabelActive: {
-    color: PURPLE,
+    color: colors.accentViolet,
     fontWeight: "700",
   },
   timeTabLabelCompact: {

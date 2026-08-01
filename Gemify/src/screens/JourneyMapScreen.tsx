@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -40,8 +37,16 @@ import {
   getMilestoneRingY,
   paginateMilestones,
 } from "@/utils/milestonePagination";
+import {
+  AppButton,
+  AppModal,
+  AppText,
+  ArrowRightIcon,
+  CloseIcon,
+  IconButton,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { gradients, radius, shadows, typography } from "@/theme/theme";
+import { fonts, gradients, radius, shadows, spacing } from "@/theme/theme";
 
 type MilestoneModalProps = {
   milestone: JourneyMilestoneData | null;
@@ -53,6 +58,8 @@ const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
 const MILESTONE_DOOR_SOURCE = require("../../assets/create-goal/milestone-door.png");
 const SHIMMER_DURATION = 2200;
 const SHIMMER_PAUSE = 2500;
+/** Bespoke night-sky gradient behind the milestone sheet (feature art). */
+const SHEET_GRADIENT = ["#0A1325", "#050A15", "#08101F"] as const;
 
 function QuestButtonShimmer() {
   const [buttonWidth, setButtonWidth] = useState(0);
@@ -294,28 +301,6 @@ function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
   );
 }
 
-function ArrowRightIcon() {
-  return (
-    <Svg height={30} viewBox="0 0 30 30" width={30}>
-      <Path
-        d="M4 15 H25"
-        fill="none"
-        stroke={colors.secondaryDark}
-        strokeLinecap="round"
-        strokeWidth={2.5}
-      />
-      <Path
-        d="M16.5 6.5 L25 15 L16.5 23.5"
-        fill="none"
-        stroke={colors.secondaryDark}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.5}
-      />
-    </Svg>
-  );
-}
-
 function MilestoneModal({
   milestone,
   onClose,
@@ -362,206 +347,172 @@ function MilestoneModal({
     : [];
 
   return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onClose}
-      presentationStyle="overFullScreen"
-      statusBarTranslucent
-      transparent
+    <AppModal
+      onClose={onClose}
+      panelStyle={styles.modalPanel}
+      variant="sheet"
       visible={milestone !== null}
     >
-      <View
-        style={[
-          styles.modalRoot,
-          {
-            paddingTop: Math.max(insets.top, 14),
-          },
-        ]}
-      >
-        <Pressable
-          accessibilityLabel="Close milestone details"
-          accessibilityRole="button"
-          onPress={onClose}
-          style={styles.backdrop}
-        />
-
-        {milestone ? (
-          <View style={styles.sheetShadow}>
-            <LinearGradient
-              colors={["#0A1325", "#050A15", "#08101F"]}
+      {milestone ? (
+        <View style={styles.sheetShadow}>
+          <LinearGradient
+            colors={SHEET_GRADIENT}
+            style={[
+              styles.sheet,
+              { maxHeight: sheetMaxHeight, paddingBottom: sheetBottomPadding },
+              isCompact && styles.sheetCompact,
+              isShort && styles.sheetShort,
+            ]}
+          >
+            <Image
+              resizeMode="contain"
+              source={MILESTONE_DOOR_SOURCE}
               style={[
-                styles.sheet,
-                { maxHeight: sheetMaxHeight, paddingBottom: sheetBottomPadding },
-                isCompact && styles.sheetCompact,
-                isShort && styles.sheetShort,
+                styles.doorImage,
+                isCompact && styles.doorImageCompact,
+                isShort && styles.doorImageShort,
+              ]}
+            />
+
+            <IconButton
+              accessibilityLabel="Close"
+              icon={<CloseIcon size={26} strokeWidth={1.8} />}
+              onPress={onClose}
+              size="sm"
+              style={[styles.closeButton, isCompact && styles.closeButtonCompact]}
+            />
+
+            <View
+              style={[
+                styles.sheetHeader,
+                isCompact && styles.sheetHeaderCompact,
+                isShort && styles.sheetHeaderShort,
               ]}
             >
-              <View style={styles.cardHandle} />
-
-              <Image
-                resizeMode="contain"
-                source={MILESTONE_DOOR_SOURCE}
-                style={[
-                  styles.doorImage,
-                  isCompact && styles.doorImageCompact,
-                  isShort && styles.doorImageShort,
-                ]}
-              />
-
-              <Pressable
-                accessibilityLabel="Close"
-                accessibilityRole="button"
-                hitSlop={10}
-                onPress={onClose}
-                style={[styles.closeButton, isCompact && styles.closeButtonCompact]}
-              >
-                <Text
-                  style={[
-                    styles.closeText,
-                    isCompact && styles.closeTextCompact,
-                  ]}
-                >
-                  {"\u00D7"}
-                </Text>
-              </Pressable>
-
               <View
                 style={[
-                  styles.sheetHeader,
-                  isCompact && styles.sheetHeaderCompact,
-                  isShort && styles.sheetHeaderShort,
+                  styles.modalNumber,
+                  isCompact && styles.modalNumberCompact,
                 ]}
               >
-                <View
+                <AppText
+                  color={colors.primary}
                   style={[
-                    styles.modalNumber,
-                    isCompact && styles.modalNumberCompact,
+                    styles.modalNumberText,
+                    isCompact && styles.modalNumberTextCompact,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.modalNumberText,
-                      isCompact && styles.modalNumberTextCompact,
-                    ]}
-                  >
-                    {milestone.id}
-                  </Text>
-                </View>
-
-                <View style={styles.modalTitleBlock}>
-                  <Text
-                    style={[
-                      styles.modalTitle,
-                      isCompact && styles.modalTitleCompact,
-                      isShort && styles.modalTitleShort,
-                    ]}
-                  >
-                    {milestone.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.modalSubtitle,
-                      isCompact && styles.modalSubtitleCompact,
-                    ]}
-                  >
-                    {milestone.subtitle}
-                  </Text>
-                </View>
+                  {milestone.id}
+                </AppText>
               </View>
 
-              <ScrollView
-                bounces={false}
-                contentContainerStyle={styles.detailContent}
-                showsVerticalScrollIndicator={false}
-                style={styles.detailScroll}
-              >
-                {detailRows.map((row, index) => (
-                  <View
-                    key={row.label}
-                    style={[
-                      styles.detailRow,
-                      isCompact && styles.detailRowCompact,
-                      isShort && styles.detailRowShort,
-                      index === detailRows.length - 1 && styles.lastDetailRow,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.detailIcon,
-                        isCompact && styles.detailIconCompact,
-                      ]}
-                    >
-                      <MilestoneDetailIcon name={row.icon} />
-                    </View>
-
-                    <View
-                      style={[
-                        styles.detailCopy,
-                        isCompact && styles.detailCopyCompact,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.sectionLabel,
-                          isCompact && styles.sectionLabelCompact,
-                        ]}
-                      >
-                        {row.label}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.detailValue,
-                          isCompact && styles.detailValueCompact,
-                        ]}
-                      >
-                        {row.value}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.description,
-                          isCompact && styles.descriptionCompact,
-                        ]}
-                      >
-                        {row.description}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={onOpenQuests}
-                style={({ pressed }) => pressed && styles.buttonPressed}
-              >
-                <LinearGradient
-                  colors={gradients.primary}
-                  end={{ x: 1, y: 0.5 }}
-                  start={{ x: 0, y: 0.5 }}
+              <View style={styles.modalTitleBlock}>
+                <AppText
                   style={[
-                    styles.questButton,
-                    isCompact && styles.questButtonCompact,
+                    styles.modalTitle,
+                    isCompact && styles.modalTitleCompact,
+                    isShort && styles.modalTitleShort,
+                  ]}
+                  variant="title"
+                >
+                  {milestone.title}
+                </AppText>
+                <AppText
+                  color={colors.textSecondary}
+                  style={[
+                    styles.modalSubtitle,
+                    isCompact && styles.modalSubtitleCompact,
                   ]}
                 >
-                  <QuestButtonShimmer />
-                  <Text
+                  {milestone.subtitle}
+                </AppText>
+              </View>
+            </View>
+
+            <ScrollView
+              bounces={false}
+              contentContainerStyle={styles.detailContent}
+              showsVerticalScrollIndicator={false}
+              style={styles.detailScroll}
+            >
+              {detailRows.map((row, index) => (
+                <View
+                  key={row.label}
+                  style={[
+                    styles.detailRow,
+                    isCompact && styles.detailRowCompact,
+                    isShort && styles.detailRowShort,
+                    index === detailRows.length - 1 && styles.lastDetailRow,
+                  ]}
+                >
+                  <View
                     style={[
-                      styles.questButtonText,
-                      isCompact && styles.questButtonTextCompact,
+                      styles.detailIcon,
+                      isCompact && styles.detailIconCompact,
                     ]}
                   >
-                    Go to Quests
-                  </Text>
-                  <View style={styles.questButtonIcon}>
-                    <ArrowRightIcon />
+                    <MilestoneDetailIcon name={row.icon} />
                   </View>
-                </LinearGradient>
-              </Pressable>
-            </LinearGradient>
-          </View>
-        ) : null}
-      </View>
-    </Modal>
+
+                  <View
+                    style={[
+                      styles.detailCopy,
+                      isCompact && styles.detailCopyCompact,
+                    ]}
+                  >
+                    <AppText
+                      style={isCompact && styles.sectionLabelCompact}
+                      variant="eyebrow"
+                    >
+                      {row.label}
+                    </AppText>
+                    <AppText
+                      style={[
+                        styles.detailValue,
+                        isCompact && styles.detailValueCompact,
+                      ]}
+                      variant="pill"
+                    >
+                      {row.value}
+                    </AppText>
+                    <AppText
+                      style={[
+                        styles.description,
+                        isCompact && styles.descriptionCompact,
+                      ]}
+                    >
+                      {row.description}
+                    </AppText>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={styles.questButtonWrap}>
+              <AppButton
+                icon={
+                  <ArrowRightIcon
+                    color={colors.textOnPrimary}
+                    size={isCompact ? 24 : 30}
+                    strokeWidth={2.5}
+                  />
+                }
+                label="Go to Quests"
+                onPress={onOpenQuests}
+                size={isCompact ? "md" : "lg"}
+                textStyle={[
+                  styles.questButtonText,
+                  isCompact && styles.questButtonTextCompact,
+                ]}
+              />
+              <View pointerEvents="none" style={styles.questShimmerOverlay}>
+                <QuestButtonShimmer />
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      ) : null}
+    </AppModal>
   );
 }
 
@@ -626,20 +577,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  modalRoot: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingHorizontal: 8,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(1, 5, 13, 0.76)",
+  modalPanel: {
+    backgroundColor: colors.transparent,
+    borderWidth: 0,
+    padding: 0,
+    paddingHorizontal: spacing.sm,
   },
   sheetShadow: {
     width: "100%",
-    maxWidth: 760,
-    borderRadius: 28,
+    borderRadius: radius.sheet,
     backgroundColor: colors.backgroundSoft,
     shadowColor: colors.background,
     shadowOffset: { width: 0, height: 18 },
@@ -649,9 +595,9 @@ const styles = StyleSheet.create({
   },
   sheet: {
     overflow: "hidden",
-    borderRadius: 28,
+    borderRadius: radius.sheet,
     borderWidth: 1,
-    borderColor: "rgba(245, 184, 75, 0.66)",
+    borderColor: colors.borderStrong,
     paddingHorizontal: 30,
     paddingTop: 44,
   },
@@ -662,15 +608,6 @@ const styles = StyleSheet.create({
   sheetShort: {
     paddingHorizontal: 22,
     paddingTop: 24,
-  },
-  cardHandle: {
-    position: "absolute",
-    top: 12,
-    alignSelf: "center",
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: "rgba(246, 232, 200, 0.42)",
   },
   doorImage: {
     position: "absolute",
@@ -711,7 +648,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(6, 12, 25, 0.74)",
+    backgroundColor: colors.surfaceDeep,
     borderWidth: 1.5,
     borderColor: colors.primary,
     ...shadows.goldGlow,
@@ -722,8 +659,7 @@ const styles = StyleSheet.create({
     borderRadius: 29,
   },
   modalNumberText: {
-    color: colors.primary,
-    fontFamily: "serif",
+    fontFamily: fonts.serif,
     fontSize: 42,
     lineHeight: 48,
   },
@@ -736,7 +672,6 @@ const styles = StyleSheet.create({
     marginLeft: 18,
   },
   modalTitle: {
-    ...typography.title,
     fontSize: 36,
     lineHeight: 42,
   },
@@ -749,8 +684,7 @@ const styles = StyleSheet.create({
     lineHeight: 27,
   },
   modalSubtitle: {
-    color: "#D0BE99",
-    fontFamily: "serif",
+    fontFamily: fonts.serif,
     fontSize: 18,
     lineHeight: 24,
     marginTop: 3,
@@ -765,31 +699,10 @@ const styles = StyleSheet.create({
     right: 22,
     top: 34,
     zIndex: 3,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(6, 12, 25, 0.58)",
-    borderWidth: 1,
-    borderColor: "rgba(245, 184, 75, 0.36)",
   },
   closeButtonCompact: {
     right: 18,
     top: 28,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  closeText: {
-    color: colors.primary,
-    fontSize: 36,
-    fontWeight: "300",
-    lineHeight: 40,
-  },
-  closeTextCompact: {
-    fontSize: 30,
-    lineHeight: 34,
   },
   detailScroll: {
     flexShrink: 1,
@@ -801,7 +714,7 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(246, 232, 200, 0.13)",
+    borderBottomColor: colors.borderSoft,
     paddingBottom: 17,
     paddingTop: 18,
   },
@@ -833,21 +746,12 @@ const styles = StyleSheet.create({
   detailCopyCompact: {
     paddingLeft: 6,
   },
-  sectionLabel: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 2.4,
-    lineHeight: 17,
-  },
   sectionLabelCompact: {
     fontSize: 10,
     letterSpacing: 1.2,
     lineHeight: 12,
   },
   detailValue: {
-    color: colors.textPrimary,
-    fontFamily: "serif",
     fontSize: 24,
     fontWeight: "600",
     lineHeight: 30,
@@ -859,9 +763,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   description: {
-    color: "#BCA989",
-    fontFamily: "serif",
-    fontSize: 16,
+    fontFamily: fonts.serif,
     lineHeight: 21,
     marginTop: 4,
   },
@@ -870,35 +772,22 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 1,
   },
-  questButton: {
-    minHeight: 62,
-    borderRadius: radius.round,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 220, 124, 0.76)",
-    ...shadows.goldGlow,
+  questButtonWrap: {
+    marginTop: 2,
   },
-  questButtonCompact: {
-    minHeight: 54,
+  questShimmerOverlay: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: radius.md,
+    overflow: "hidden",
   },
   questButtonText: {
-    color: colors.secondaryDark,
-    fontFamily: "serif",
     fontSize: 28,
     fontWeight: "600",
     lineHeight: 34,
-    zIndex: 2,
   },
   questButtonTextCompact: {
     fontSize: 20,
     lineHeight: 25,
-  },
-  questButtonIcon: {
-    position: "absolute",
-    right: 22,
-    zIndex: 2,
   },
   shimmerClip: {
     ...StyleSheet.absoluteFill,
@@ -913,9 +802,5 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -28,
     bottom: -28,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.99 }],
   },
 });

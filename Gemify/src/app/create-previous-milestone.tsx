@@ -1,25 +1,25 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import type { ReactElement } from "react";
 import { useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
-import { NavigationHeader } from "@/components/NavigationHeader";
+import {
+  AppButton,
+  AppInput,
+  AppText,
+  Card,
+  ScreenHeader,
+  ScreenScaffold,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
+import { controls, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/create-goal/entering.png");
 const BANNER = require("../../assets/create-goal/banner-create-milestone.png");
@@ -36,20 +36,6 @@ type FieldConfig = {
   placeholder: string;
   renderIcon: () => ReactElement;
 };
-
-function InfoIcon() {
-  return (
-    <Svg fill="none" height={20} viewBox="0 0 24 24" width={20}>
-      <Circle cx={12} cy={12} r={9} stroke={colors.primary} strokeWidth={1.7} />
-      <Path
-        d="M12 10.6v5.2M12 7.6h.01"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
 
 function FlagIcon() {
   return (
@@ -164,287 +150,117 @@ export default function CreatePreviousMilestoneScreen() {
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
   const compact = height < 760 || width < 380;
-  const contentWidth = Math.min(width - 24, 620);
-  const showBanner = contentWidth >= MIN_READABLE_BANNER_WIDTH;
+  const showBanner = Math.min(width - 24, 620) >= MIN_READABLE_BANNER_WIDTH;
   const [values, setValues] = useState<Record<string, string>>({});
 
   return (
     <>
-      <NavigationHeader />
-
-      <View style={styles.screen}>
-        <Image
-          resizeMode="cover"
-          source={BACKGROUND}
-          style={[styles.background, { height, width }]}
-        />
-        <View pointerEvents="none" style={styles.backgroundShade} />
-
-        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.safeArea}
-          >
-            <ScrollView
-              bounces={false}
-              contentContainerStyle={[
-                styles.content,
-                {
-                  minHeight: height,
-                  paddingBottom: Math.max(insets.bottom, spacing.md),
-                  paddingTop: insets.top + (compact ? 60 : 72),
-                  width: contentWidth,
-                },
-              ]}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+      <ScreenHeader asStackHeader />
+      <ScreenScaffold
+        backgroundImage={BACKGROUND}
+        contentStyle={[
+          styles.content,
+          { paddingTop: insets.top + (compact ? 60 : 72) },
+        ]}
+        keyboardAvoiding
+        overlayOpacity={0.9}
+      >
+        <Card style={styles.pageSurface}>
+          <View style={styles.titleBlock}>
+            <AppText
+              align="center"
+              color={colors.primary}
+              style={compact && styles.titleCompact}
+              variant="title"
             >
-              <View
-                style={[
-                  styles.pageSurface,
-                  { padding: compact ? spacing.md : spacing.lg },
-                ]}
-              >
-                <View style={styles.titleBlock}>
-                  <Text style={[styles.title, compact && styles.titleCompact]}>
-                    Which milestone came before "Awakening"?
-                  </Text>
-                  <Text style={styles.subtitle}>
-                    Trace your journey backward from{' '}
-                    <Text style={styles.goldText}>Point B</Text>
-                    {' '}to where it all begins.
-                  </Text>
-                </View>
+              Which milestone came before &quot;Awakening&quot;?
+            </AppText>
+            <AppText align="center" style={styles.subtitle} variant="subtitle">
+              Trace your journey backward from{" "}
+              <AppText color={colors.primary} variant="subtitle">
+                Point B
+              </AppText>{" "}
+              to where it all begins.
+            </AppText>
+          </View>
 
-                {showBanner ? (
-                  <View style={styles.bannerContainer}>
-                    <Image
-                      source={BANNER}
-                      resizeMode="cover"
-                      style={styles.banner}
-                    />
-                  </View>
-                ) : null}
-                <View style={styles.form}>
-                  {FIELDS.map((field) => {
-                    const value = values[field.id] ?? "";
-                    const Icon = field.renderIcon;
+          {showBanner ? (
+            <View style={styles.bannerContainer}>
+              <Image resizeMode="cover" source={BANNER} style={styles.banner} />
+            </View>
+          ) : null}
 
-                    return (
-                      <View key={field.id} style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                          <Icon />
-                        </View>
-                        <View style={styles.inputTextBlock}>
-                          <Text numberOfLines={1} style={styles.inputLabel}>
-                            {field.label}
-                          </Text>
-                          <TextInput
-                            accessibilityLabel={field.label}
-                            maxLength={field.maxLength}
-                            onChangeText={(nextValue) =>
-                              setValues((current) => ({
-                                ...current,
-                                [field.id]: nextValue,
-                              }))
-                            }
-                            placeholder={field.placeholder}
-                            placeholderTextColor="rgba(211, 197, 185, 0.62)"
-                            selectionColor={colors.primary}
-                            style={styles.input}
-                            value={value}
-                          />
-                        </View>
-                        <Text style={styles.counter}>
-                          {value.length}/{field.maxLength}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
+          <View style={styles.form}>
+            {FIELDS.map((field) => {
+              const value = values[field.id] ?? "";
+              const Icon = field.renderIcon;
 
-                <Pressable
-                  accessibilityLabel="Add new milestone"
-                  accessibilityRole="button"
-                  onPress={() => router.navigate("/journey-map")}
-                  style={({ pressed }) => [
-                    styles.placeButtonWrap,
-                    pressed && styles.placeButtonPressed,
-                  ]}
-                >
-                  <LinearGradient
-                    colors={["#FFE08F", "#F5A12F", "#B66210"]}
-                    end={{ x: 1, y: 0.5 }}
-                    start={{ x: 0, y: 0.5 }}
-                    style={styles.placeButton}
-                  >
-                    <Text style={styles.placeButtonText}>Add new milestone</Text>
-                  </LinearGradient>
-                </Pressable>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+              return (
+                <AppInput
+                  accessibilityLabel={field.label}
+                  icon={<Icon />}
+                  key={field.id}
+                  label={field.label}
+                  maxLength={field.maxLength}
+                  onChangeText={(nextValue) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.id]: nextValue,
+                    }))
+                  }
+                  placeholder={field.placeholder}
+                  selectionColor={colors.primary}
+                  showCounter
+                  value={value}
+                />
+              );
+            })}
+          </View>
+
+          <AppButton
+            accessibilityLabel="Add new milestone"
+            label="Add new milestone"
+            onPress={() => router.navigate("/journey-map")}
+            size="lg"
+            style={styles.placeButton}
+            variant="primary"
+          />
+        </Card>
+      </ScreenScaffold>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    ...StyleSheet.absoluteFill,
+  banner: {
+    height: "100%",
+    width: "100%",
   },
-  backgroundShade: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(1, 5, 13, 0.58)",
+  bannerContainer: {
+    alignSelf: "stretch",
+    aspectRatio: 1712 / 650,
+    marginHorizontal: -controls.surface.cardPadding,
+    marginTop: spacing.sm,
+    overflow: "hidden",
   },
   content: {
     alignItems: "center",
-    alignSelf: "center",
-    paddingHorizontal: 0,
-  },
-  counter: {
-    color: "rgba(224, 216, 208, 0.58)",
-    fontSize: 16,
-    marginLeft: spacing.sm,
   },
   form: {
     gap: 11,
     marginTop: spacing.lg,
     width: "100%",
   },
-  goldText: {
-    color: colors.primary,
-  },
-  bannerContainer: {
-    alignSelf: 'stretch',
-    aspectRatio: 1712 / 650,
-    marginHorizontal: -spacing.md,
-    marginTop: spacing.sm,
-    overflow: 'hidden',
-  },
-
-  banner: {
-    width: '100%',
-    height: '100%',
-  },
-  input: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    marginTop: 3,
-    outlineColor: colors.transparent,
-    padding: 0,
-  },
-  inputIcon: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    marginRight: spacing.md,
-    width: 44,
-  },
-  inputLabel: {
-    color: "#F3ECE6",
-    fontSize: 16,
-    lineHeight: 21,
-  },
-  inputRow: {
-    alignItems: "center",
-    backgroundColor: "rgba(2, 10, 18, 0.94)",
-    borderColor: "rgba(230, 142, 42, 0.72)",
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: "row",
-    minHeight: 70,
-    paddingHorizontal: spacing.md,
-    width: "100%",
-  },
-  inputTextBlock: {
-    flex: 1,
-    minWidth: 0,
-  },
-  noteRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 11,
-    justifyContent: "center",
-    marginTop: spacing.md,
-    width: "100%",
-  },
-  noteText: {
-    color: "rgba(224, 213, 204, 0.62)",
-    flexShrink: 1,
-    fontSize: 14,
-    lineHeight: 19,
-  },
   pageSurface: {
-    backgroundColor: "rgba(1, 8, 15, 0.88)",
-    borderColor: "rgba(216, 126, 34, 0.45)",
-    borderRadius: 26,
-    borderWidth: 1,
     overflow: "hidden",
     width: "100%",
   },
   placeButton: {
-    alignItems: "center",
-    borderColor: "#FFE7A3",
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "center",
-    minHeight: 64,
-    overflow: "hidden",
-    paddingHorizontal: spacing.lg,
-  },
-  placeButtonPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.99 }],
-  },
-  placeButtonText: {
-    color: "#1A0F04",
-    fontFamily: Platform.select({ ios: "Georgia", default: "serif" }),
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  placeButtonWrap: {
-    borderRadius: radius.lg,
     marginTop: spacing.xl,
     width: "100%",
-    ...shadows.goldGlow,
-  },
-  returnButtonWrap: {
-    borderRadius: radius.lg,
-    marginTop: spacing.sm,
-    width: "100%",
-    ...shadows.goldGlow,
-  },
-  placeSpark: {
-    color: "#1A0F04",
-    fontSize: 30,
-    lineHeight: 32,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
-    overflow: "hidden",
   },
   subtitle: {
-    color: "rgba(234, 219, 208, 0.76)",
-    fontSize: 16,
-    lineHeight: 23,
     marginTop: spacing.sm,
-    textAlign: "center",
-  },
-  title: {
-    ...typography.title,
-    color: "#FFE2A1",
-    fontSize: 27,
-    lineHeight: 34,
-    textAlign: "center",
   },
   titleBlock: {
     alignItems: "center",

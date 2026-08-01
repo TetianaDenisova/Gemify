@@ -1,322 +1,129 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import Svg, { Path } from "react-native-svg";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { NavigationHeader } from "@/components/NavigationHeader";
+import {
+  AppButton,
+  AppInput,
+  AppText,
+  ArrowRightIcon,
+  HintRow,
+  ScreenHeader,
+  ScreenScaffold,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, shadows, spacing, typography } from "@/theme/theme";
+import { spacing } from "@/theme/theme";
 
 const DREAM_NAME_MAX_LENGTH = 60;
 const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
 
-function clamp(value: number, minimum: number, maximum: number) {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
-function BulbIcon() {
-  return (
-    <Svg fill="none" height={24} viewBox="0 0 24 24" width={24}>
-      <Path
-        d="M9 18h6M10 22h4M8.4 15.3A6.2 6.2 0 1 1 15.6 15c-.9.7-1.3 1.4-1.4 2H9.8c-.1-.6-.5-1.1-1.4-1.7Z"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <Svg fill="none" height={22} viewBox="0 0 24 24" width={22}>
-      <Path
-        d="M5 12h14M13 6l6 6-6 6"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </Svg>
-  );
-}
-
 export default function CreateGoalScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [dreamNameFocused, setDreamNameFocused] = useState(false);
   const [dreamName, setDreamName] = useState("");
   const { height, width } = useWindowDimensions();
   const compactLayout = height < 760 || width > height;
-  const horizontalPadding = clamp(width * 0.06, spacing.md, spacing.xl);
-  const titleFontSize = clamp(
-    width * 0.094,
-    compactLayout ? 28 : 32,
-    compactLayout ? 32 : 37,
-  );
   const sectionGap = compactLayout ? spacing.md : spacing.xl;
 
   return (
     <>
-      <NavigationHeader />
-      <View style={styles.screen}>
-        <Image
-          resizeMode="cover"
-          source={ENTERING_BACKGROUND}
-          style={[styles.backgroundImage, { height, width }]}
-        />
-        <View pointerEvents="none" style={styles.darkOverlay} />
-
-        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-          <KeyboardAvoidingView
-            behavior={
-              Platform.OS === "ios"
-                ? "padding"
-                : Platform.OS === "android"
-                  ? "height"
-                  : undefined
-            }
-            style={styles.keyboardView}
+      <ScreenHeader asStackHeader />
+      <ScreenScaffold
+        backgroundImage={ENTERING_BACKGROUND}
+        contentStyle={[
+          styles.content,
+          {
+            paddingBottom: compactLayout ? spacing.md : spacing.lg,
+            paddingTop: insets.top + 68,
+          },
+        ]}
+        keyboardAvoiding
+        overlayOpacity={0.45}
+        scroll={false}
+      >
+        <View
+          style={[
+            styles.topContent,
+            { marginTop: compactLayout ? spacing.xs : spacing.sm },
+          ]}
+        >
+          <AppText
+            align="center"
+            style={compactLayout && styles.titleCompact}
+            variant="screenTitle"
           >
-            <View
-              style={[
-                styles.content,
-                {
-                  paddingBottom: compactLayout ? spacing.md : spacing.lg,
-                  paddingHorizontal: horizontalPadding,
-                  paddingTop: insets.top + 68,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.topContent,
-                  { marginTop: compactLayout ? spacing.xs : spacing.sm },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.title,
-                    {
-                      fontSize: titleFontSize,
-                      lineHeight: titleFontSize + 6,
-                    },
-                  ]}
-                >
-                  Give your{"\n"}dream a name
-                </Text>
+            Give your{"\n"}dream a name
+          </AppText>
 
-                <Text
-                  style={[styles.subtitle, { marginTop: spacing.lg }]}
-                >
-                  Write down the future you want to create. Give it a name,
-                  and let the journey begin.
-                </Text>
-              </View>
+          <AppText align="center" style={styles.subtitle} variant="subtitle">
+            Write down the future you want to create. Give it a name, and let
+            the journey begin.
+          </AppText>
+        </View>
 
-              <View
-                style={[
-                  styles.formArea,
-                  { marginTop: compactLayout ? spacing.sm : spacing.md },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.nameInputWrapper,
-                    dreamNameFocused && styles.inputWrapperFocused,
-                  ]}
-                >
-                  <TextInput
-                    accessibilityLabel="Name your dream"
-                    maxLength={DREAM_NAME_MAX_LENGTH}
-                    onBlur={() => setDreamNameFocused(false)}
-                    onChangeText={setDreamName}
-                    onFocus={() => setDreamNameFocused(true)}
-                    placeholder="My dream name is..."
-                    placeholderTextColor={colors.textMuted}
-                    returnKeyType="next"
-                    selectionColor={colors.primary}
-                    style={styles.nameInput}
-                    value={dreamName}
-                  />
-                </View>
-              </View>
+        <View
+          style={[
+            styles.formArea,
+            { marginTop: compactLayout ? spacing.sm : spacing.md },
+          ]}
+        >
+          <AppInput
+            accessibilityLabel="Name your dream"
+            containerStyle={styles.inputContainer}
+            maxLength={DREAM_NAME_MAX_LENGTH}
+            onChangeText={setDreamName}
+            placeholder="My dream name is..."
+            returnKeyType="next"
+            selectionColor={colors.primary}
+            value={dreamName}
+          />
+        </View>
 
-              <View style={[styles.bottomArea, { marginTop: sectionGap }]}>
-                <View
-                  style={[
-                    styles.hintRow,
-                    { marginBottom: compactLayout ? spacing.md : spacing.lg },
-                  ]}
-                >
-                  <View style={styles.iconCircle}>
-                    <BulbIcon />
-                  </View>
+        <View style={[styles.bottomArea, { marginTop: sectionGap }]}>
+          <HintRow
+            style={{
+              marginBottom: compactLayout ? spacing.md : spacing.lg,
+            }}
+            text={
+              "Keep it simple, poetic, or practical.\nThe name only needs to mean something to you."
+            }
+          />
 
-                  <Text style={styles.hintText}>
-                    Keep it simple, poetic, or practical.{"\n"}
-                    The name only needs to mean something to you.
-                  </Text>
-                </View>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.navigate("/describe-dream")}
-                  style={({ pressed }) => [
-                    styles.continueButton,
-                    { height: compactLayout ? 56 : 64 },
-                    pressed && styles.continueButtonPressed,
-                  ]}
-                >
-                  <Text style={styles.continueText}>Continue</Text>
-
-                  <View style={styles.arrowCircle}>
-                    <ArrowIcon />
-                  </View>
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+          <AppButton
+            icon={<ArrowRightIcon color={colors.textOnPrimary} />}
+            label="Continue"
+            onPress={() => router.navigate("/describe-dream")}
+            size="lg"
+            variant="primary"
+          />
+        </View>
+      </ScreenScaffold>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  arrowCircle: {
-    alignItems: "center",
-    backgroundColor: colors.secondaryDark,
-    borderRadius: radius.round,
-    height: 48,
-    justifyContent: "center",
-    position: "absolute",
-    right: 10,
-    width: 48,
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFill,
-  },
   bottomArea: {
     width: "100%",
   },
   content: {
-    alignSelf: "center",
-    flexGrow: 1,
     justifyContent: "space-between",
-    maxWidth: 560,
-    width: "100%",
-  },
-  continueButton: {
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    height: 64,
-    justifyContent: "center",
-    ...shadows.goldGlow,
-  },
-  continueButtonPressed: {
-    backgroundColor: colors.primarySoft,
-    transform: [{ scale: 0.99 }],
-  },
-  continueText: {
-    color: colors.secondaryDark,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  darkOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.overlayDark,
-    opacity: 0.45,
   },
   formArea: {
     alignItems: "center",
     width: "100%",
   },
-  hintRow: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  hintText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  iconCircle: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 52,
-    justifyContent: "center",
-    marginRight: spacing.md,
-    width: 52,
-  },
-  inputWrapperFocused: {
-    borderWidth: 0,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  nameInput: {
-    backgroundColor: colors.transparent,
-    borderColor: colors.transparent,
-    borderWidth: 0,
-    color: colors.textPrimary,
-    fontSize: 16,
-    lineHeight: 23,
-    outlineColor: colors.transparent,
-    outlineWidth: 0,
-    padding: 0,
-  },
-  nameInputWrapper: {
-    backgroundColor: colors.surfaceGlass,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    justifyContent: "center",
+  inputContainer: {
     marginBottom: spacing.sm,
-    minHeight: 58,
-    paddingHorizontal: spacing.md,
     width: "100%",
   },
-  safeArea: {
-    flex: 1,
-  },
-  screen: {
-    backgroundColor: colors.background,
-    flex: 1,
-    overflow: "hidden",
-  },
   subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: "center",
+    marginTop: spacing.lg,
   },
-  title: {
-    ...typography.title,
-    letterSpacing: -0.4,
-    textAlign: "center",
+  titleCompact: {
+    fontSize: 30,
+    lineHeight: 36,
   },
   topContent: {
     alignItems: "center",
