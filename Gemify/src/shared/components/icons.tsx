@@ -144,6 +144,24 @@ export function SparkIcon({ color = colors.primary, size = 26 }: IconProps) {
   );
 }
 
+export function PencilIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="m4.75 19.25 4.25-1 9.29-9.29a2.12 2.12 0 0 0-3-3L6 15.25l-1.25 4Z"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function BulbIcon({
   color = colors.primary,
   size = 24,

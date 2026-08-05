@@ -21,6 +21,7 @@ export {
   CheckIcon,
   ChevronIcon,
   CloseIcon,
+  PencilIcon,
   PlusIcon,
   SparkIcon,
 } from "./icons";

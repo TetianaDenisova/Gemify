@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -8,14 +8,24 @@ import {
   AppButton,
   AppModal,
   AppText,
+  PencilIcon,
   ScreenHeader,
+  SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, radius, shadows, spacing } from "@/theme/theme";
+import {
+  fonts,
+  fontSizes,
+  iconSizes,
+  lineHeights,
+  radius,
+  shadows,
+  spacing,
+} from "@/theme/theme";
 
-function SparklesIcon() {
+function SparklesIcon({ size = 27 }: { size?: number }) {
   return (
-    <Svg fill="none" height={27} viewBox="0 0 24 24" width={27}>
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
       <Path
         d="M12 2.8c.55 3.52 2.48 5.45 6 6-3.52.55-5.45 2.48-6 6-.55-3.52-2.48-5.45-6-6 3.52-.55 5.45-2.48 6-6Z"
         stroke={colors.primary}
@@ -34,14 +44,20 @@ function SparklesIcon() {
   );
 }
 
+const DREAM_NAME = "Your Dream Name";
+const VISION_STATEMENT =
+  "I imagine waking up in the life I once dreamed about—my goal is real, my days reflect the person I have become, and I feel proud, fulfilled, and free. I can see where I live, how I spend my time, who shares this journey with me, and the new possibilities now open to me.";
+
 type JourneyOverviewModalProps = {
   onClose: () => void;
+  onEditPath: () => void;
   onOpenWhatIfPlan: () => void;
   visible: boolean;
 };
 
 function JourneyOverviewModal({
   onClose,
+  onEditPath,
   onOpenWhatIfPlan,
   visible,
 }: JourneyOverviewModalProps) {
@@ -58,69 +74,49 @@ function JourneyOverviewModal({
       variant="sheet"
       visible={visible}
     >
-      <View style={styles.overviewGlow}>
-        <View style={styles.overviewCard}>
-          <View style={styles.overviewOrnament} />
+      <View style={styles.frameOuter}>
+        <View style={styles.frameInner}>
           <AppText align="center" variant="eyebrow">
-            YOUR PATH
+            THE LIFE I&apos;M CREATING
           </AppText>
           <AppText align="center" style={styles.title} variant="title">
-            The Journey
+            {DREAM_NAME}
           </AppText>
-          <AppText align="center" style={styles.intro} variant="bodySmall">
-            A living map of the person you are becoming. Each milestone turns
-            focused action into lasting inner change.
-          </AppText>
-
-          <View style={styles.divider} />
-
-          <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
-              I
-            </AppText>
-            <View style={styles.stepCopy}>
-              <AppText variant="labelStrong">
-                Follow the illuminated path
-              </AppText>
-              <AppText variant="caption">
-                Your glowing milestone is the chapter currently unfolding.
-              </AppText>
-            </View>
-          </View>
-          <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
-              II
-            </AppText>
-            <View style={styles.stepCopy}>
-              <AppText variant="labelStrong">
-                Complete its quests
-              </AppText>
-              <AppText variant="caption">
-                Small, deliberate actions build progress within each chapter.
-              </AppText>
-            </View>
-          </View>
-          <View style={styles.stepRow}>
-            <AppText color={colors.primary} style={styles.stepNumber} variant="bodySmall">
-              III
-            </AppText>
-            <View style={styles.stepCopy}>
-              <AppText variant="labelStrong">
-                Unlock what comes next
-              </AppText>
-              <AppText variant="caption">
-                Finish a milestone to reveal the next realm of your journey.
-              </AppText>
-            </View>
+          <View style={styles.ornamentRow}>
+            <View style={styles.ornamentLine} />
+            <SparkIcon size={iconSizes.sm} />
+            <View style={styles.ornamentLine} />
           </View>
 
-          <AppButton
-            accessibilityLabel="Check What If Plan"
-            label={'Check "What If" Plan'}
-            onPress={onOpenWhatIfPlan}
-            style={styles.continueButton}
-            variant="secondary"
-          />
+          <View style={styles.visionCard}>
+            <AppText style={styles.quoteMark}>{"“"}</AppText>
+            <AppText style={styles.visionText} variant="bodySerif">
+              {VISION_STATEMENT}
+            </AppText>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <AppButton
+              accessibilityLabel="Check What If Plan"
+              icon={<SparklesIcon size={iconSizes.sm} />}
+              iconPosition="before"
+              label={'Check "What If" Plan'}
+              onPress={onOpenWhatIfPlan}
+              style={styles.actionButton}
+              textStyle={styles.actionLabel}
+              variant="secondary"
+            />
+            <AppButton
+              accessibilityLabel="Edit Path"
+              icon={<PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />}
+              iconPosition="before"
+              label="Edit Path"
+              onPress={onEditPath}
+              style={styles.actionButton}
+              textStyle={styles.actionLabel}
+              variant="primary"
+            />
+          </View>
         </View>
       </View>
     </AppModal>
@@ -136,6 +132,11 @@ export function JourneyMapControls() {
     router.push("/what-if-plan");
   };
 
+  const openEditPath = () => {
+    setOverviewVisible(false);
+    router.push("/describe-dream");
+  };
+
   return (
     <>
       <ScreenHeader
@@ -149,6 +150,7 @@ export function JourneyMapControls() {
 
       <JourneyOverviewModal
         onClose={() => setOverviewVisible(false)}
+        onEditPath={openEditPath}
         onOpenWhatIfPlan={openWhatIfPlan}
         visible={overviewVisible}
       />
@@ -163,56 +165,70 @@ const styles = StyleSheet.create({
     padding: 0,
     paddingHorizontal: spacing.md,
   },
-  overviewGlow: {
-    borderRadius: radius.lg,
-    backgroundColor: colors.backgroundSoft,
-    ...shadows.softDark,
-  },
-  overviewCard: {
-    overflow: "hidden",
+  frameOuter: {
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceGlass,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.lg,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceCard,
+    padding: spacing.xs,
+    ...shadows.softDark,
   },
-  overviewOrnament: {
-    alignSelf: "center",
-    width: 34,
-    height: 2,
-    marginBottom: 17,
-    borderRadius: 1,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
+  frameInner: {
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.borderFaint,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   title: {
     marginTop: spacing.xs,
   },
-  intro: {
-    marginTop: spacing.sm,
-  },
-  divider: {
-    height: 1,
-    marginVertical: spacing.md,
-    backgroundColor: colors.borderSoft,
-  },
-  stepRow: {
+  ornamentRow: {
+    alignItems: "center",
+    alignSelf: "center",
     flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
-  stepNumber: {
-    width: 32,
+  ornamentLine: {
+    width: 72,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  visionCard: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.surfaceDeep,
+    padding: spacing.lg,
+  },
+  quoteMark: {
+    color: colors.primary,
     fontFamily: fonts.serif,
+    fontSize: fontSizes.stat,
+    lineHeight: lineHeights.stat,
   },
-  stepCopy: {
+  visionText: {
     flex: 1,
+    color: colors.textPrimary,
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.xl,
   },
-  continueButton: {
-    marginTop: spacing.xs,
+  actionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  actionLabel: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
   },
 });

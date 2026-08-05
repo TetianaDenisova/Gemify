@@ -20,8 +20,10 @@ export type AppButtonSize = "md" | "lg";
 export type AppButtonProps = {
   accessibilityLabel?: string;
   disabled?: boolean;
-  /** Optional icon rendered after the label. */
+  /** Optional icon rendered next to the label. */
   icon?: ReactNode;
+  /** Side of the label the icon sits on. Default "after". */
+  iconPosition?: "before" | "after";
   label: string;
   onPress: () => void;
   size?: AppButtonSize;
@@ -43,6 +45,7 @@ export function AppButton({
   accessibilityLabel,
   disabled = false,
   icon,
+  iconPosition = "after",
   label,
   onPress,
   size = "md",
@@ -52,8 +55,15 @@ export function AppButton({
 }: AppButtonProps) {
   const minHeight = HEIGHTS[size];
 
+  const iconNode = icon ? (
+    <View style={iconPosition === "before" ? styles.iconBefore : styles.icon}>
+      {icon}
+    </View>
+  ) : null;
+
   const content = (
     <>
+      {iconPosition === "before" ? iconNode : null}
       <AppText
         color={variant === "primary" ? colors.textOnPrimary : colors.primary}
         style={textStyle}
@@ -61,7 +71,7 @@ export function AppButton({
       >
         {label}
       </AppText>
-      {icon ? <View style={styles.icon}>{icon}</View> : null}
+      {iconPosition === "after" ? iconNode : null}
     </>
   );
 
@@ -124,6 +134,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginLeft: spacing.sm,
+  },
+  iconBefore: {
+    marginRight: spacing.sm,
   },
   primaryShell: {
     ...shadows.goldGlow,
