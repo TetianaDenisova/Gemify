@@ -65,7 +65,7 @@ const TIMELINE_ITEM_WIDTH = 104;
 const TIMELINE_CONNECTOR_WIDTH = 26;
 const TIMELINE_ELLIPSIS_MIN_WIDTH = 34;
 
-const PROGRESS_BACK = require("../../../assets/progress-back.png");
+const PROGRESS_BACK = require("../../data/images/progress-map-img.png");
 
 const accentTints: Record<ProgressAccent, { glow: string; main: string }> = {
   ember: { glow: "rgba(184, 92, 74, 0.4)", main: colors.danger },

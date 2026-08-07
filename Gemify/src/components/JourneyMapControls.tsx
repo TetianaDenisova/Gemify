@@ -97,16 +97,6 @@ function JourneyOverviewModal({
 
           <View style={styles.actionsRow}>
             <AppButton
-              accessibilityLabel="Check What If Plan"
-              icon={<SparklesIcon size={iconSizes.sm} />}
-              iconPosition="before"
-              label={'Check "What If" Plan'}
-              onPress={onOpenWhatIfPlan}
-              style={styles.actionButton}
-              textStyle={styles.actionLabel}
-              variant="secondary"
-            />
-            <AppButton
               accessibilityLabel="Edit Path"
               icon={<PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />}
               iconPosition="before"
@@ -115,6 +105,16 @@ function JourneyOverviewModal({
               style={styles.actionButton}
               textStyle={styles.actionLabel}
               variant="primary"
+            />
+            <AppButton
+              accessibilityLabel="Check What If Plan"
+              icon={<SparklesIcon size={iconSizes.sm} />}
+              iconPosition="before"
+              label={'Check "What If" Plan'}
+              onPress={onOpenWhatIfPlan}
+              style={styles.actionButton}
+              textStyle={styles.actionLabel}
+              variant="secondary"
             />
           </View>
         </View>
