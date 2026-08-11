@@ -208,7 +208,12 @@ export default function StateScreen() {
         <Pressable
           accessibilityLabel="Continue"
           accessibilityRole="button"
-          onPress={() => router.navigate("/create-previous-milestone")}
+          onPress={() =>
+            router.navigate({
+              pathname: "/journey-map",
+              params: { edit: "1" },
+            })
+          }
           style={({ pressed: isPressed }) => [
             styles.continueImageButton,
             isPressed && pressed,

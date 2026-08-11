@@ -26,7 +26,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
@@ -743,9 +743,13 @@ function resequenceMilestones(
 
 export function GoalJourneyMapScreen() {
   const router = useRouter();
+  // Goal-creation flow opens the map directly in edit mode (?edit=1); the
+  // dream can't be deleted there because it isn't created yet.
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const openedInEditFlow = edit === "1";
   const [milestones, setMilestones] =
     useState<readonly JourneyMilestoneData[]>(journeyMilestones);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(openedInEditFlow);
   const [modalState, setModalState] = useState<MilestoneModalState | null>(
     null,
   );
@@ -898,6 +902,7 @@ export function GoalJourneyMapScreen() {
         editMode={isEditMode}
         onEnterEditMode={() => setIsEditMode(true)}
         onExitEditMode={() => setIsEditMode(false)}
+        showDeleteDream={!openedInEditFlow}
       />
 
       <MilestoneModal

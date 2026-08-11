@@ -15,6 +15,7 @@ import {
   AppModal,
   AppText,
   CheckIcon,
+  CloseIcon,
   IconButton,
   PencilIcon,
   ScreenHeader,
@@ -22,6 +23,7 @@ import {
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
+  controls,
   fonts,
   fontSizes,
   iconSizes,
@@ -235,16 +237,20 @@ export type JourneyMapControlsProps = {
   editMode: boolean;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
+  /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
+  showDeleteDream?: boolean;
 };
 
 export function JourneyMapControls({
   editMode,
   onEnterEditMode,
   onExitEditMode,
+  showDeleteDream = true,
 }: JourneyMapControlsProps) {
   const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
   const [dreamEditVisible, setDreamEditVisible] = useState(false);
+  const [confirmDreamDelete, setConfirmDreamDelete] = useState(false);
   const [dreamName, setDreamName] = useState(DREAM_NAME);
   const [visionStatement, setVisionStatement] = useState(VISION_STATEMENT);
 
@@ -274,6 +280,18 @@ export function JourneyMapControls({
         rightSlot={
           editMode ? (
             <View style={styles.editActions}>
+              {showDeleteDream ? (
+                <AppButton
+                  accessibilityLabel="Delete dream"
+                  icon={<CloseIcon color={colors.danger} size={iconSizes.sm} />}
+                  iconPosition="before"
+                  label="Delete"
+                  onPress={() => setConfirmDreamDelete(true)}
+                  style={styles.deleteDreamButton}
+                  textStyle={styles.deleteDreamLabel}
+                  variant="secondary"
+                />
+              ) : null}
               <IconButton
                 accessibilityLabel="Edit dream"
                 icon={<PencilIcon color={colors.primary} size={iconSizes.sm} />}
@@ -313,6 +331,39 @@ export function JourneyMapControls({
         visible={dreamEditVisible}
         visionStatement={visionStatement}
       />
+
+      <AppModal
+        onClose={() => setConfirmDreamDelete(false)}
+        variant="center"
+        visible={confirmDreamDelete}
+      >
+        <AppText align="center" variant="titleSm">
+          Delete this dream?
+        </AppText>
+        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
+          Your dream name and vision statement will be cleared.
+        </AppText>
+        <View style={styles.confirmActionsRow}>
+          <AppButton
+            label="Cancel"
+            onPress={() => setConfirmDreamDelete(false)}
+            style={styles.dreamActionButton}
+            textStyle={styles.actionLabel}
+            variant="secondary"
+          />
+          <AppButton
+            label="Delete"
+            onPress={() => {
+              setDreamName("");
+              setVisionStatement("");
+              setConfirmDreamDelete(false);
+            }}
+            style={[styles.dreamActionButton, styles.deleteButton]}
+            textStyle={[styles.actionLabel, styles.deleteLabel]}
+            variant="secondary"
+          />
+        </View>
+      </AppModal>
     </>
   );
 }
@@ -383,6 +434,33 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dreamSaveButton: {
+    marginTop: spacing.lg,
+  },
+  dreamActionButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  deleteButton: {
+    borderColor: colors.danger,
+  },
+  deleteLabel: {
+    color: colors.danger,
+  },
+  deleteDreamButton: {
+    borderColor: colors.danger,
+    minHeight: controls.iconButton.sm,
+    paddingHorizontal: spacing.md,
+  },
+  deleteDreamLabel: {
+    ...typography.controlLabel,
+    color: colors.danger,
+  },
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  confirmActionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
     marginTop: spacing.lg,
   },
   dreamNameInput: {

@@ -42,10 +42,6 @@ export default function RootLayout() {
           options={{ headerShown: true, headerTransparent: true }}
         />
         <Stack.Screen
-          name="create-previous-milestone"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
           name="create-habit"
           options={{ headerShown: false }}
         />
