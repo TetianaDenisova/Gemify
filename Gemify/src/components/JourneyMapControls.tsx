@@ -15,7 +15,6 @@ import {
   AppModal,
   AppText,
   CheckIcon,
-  CloseIcon,
   IconButton,
   PencilIcon,
   ScreenHeader,
@@ -23,7 +22,6 @@ import {
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
-  controls,
   fonts,
   fontSizes,
   iconSizes,
@@ -141,7 +139,10 @@ function JourneyOverviewModal({
 type DreamEditModalProps = {
   dreamName: string;
   onClose: () => void;
+  onDelete: () => void;
   onSave: (dreamName: string, visionStatement: string) => void;
+  /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
+  showDelete: boolean;
   visible: boolean;
   visionStatement: string;
 };
@@ -154,18 +155,22 @@ type DreamEditModalProps = {
 function DreamEditModal({
   dreamName,
   onClose,
+  onDelete,
   onSave,
+  showDelete,
   visible,
   visionStatement,
 }: DreamEditModalProps) {
   const insets = useSafeAreaInsets();
   const [draftName, setDraftName] = useState(dreamName);
   const [draftVision, setDraftVision] = useState(visionStatement);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [wasVisible, setWasVisible] = useState(false);
 
   // Reset the drafts each time the modal opens.
   if (visible !== wasVisible) {
     setWasVisible(visible);
+    setConfirmDelete(false);
     if (visible) {
       setDraftName(dreamName);
       setDraftVision(visionStatement);
@@ -219,14 +224,69 @@ function DreamEditModal({
               />
             </View>
 
-            <AppButton
-              disabled={!canSave}
-              label="Save Changes"
-              onPress={() => onSave(draftName.trim(), draftVision.trim())}
-              style={styles.dreamSaveButton}
-              textStyle={styles.actionLabel}
-            />
+            {showDelete ? (
+              <View style={styles.dreamActionsRow}>
+                <AppButton
+                  label="Delete Dream"
+                  onPress={() => setConfirmDelete(true)}
+                  style={[styles.dreamActionButton, styles.deleteButton]}
+                  textStyle={[styles.actionLabel, styles.deleteLabel]}
+                  variant="secondary"
+                />
+                <AppButton
+                  disabled={!canSave}
+                  label="Save Changes"
+                  onPress={() => onSave(draftName.trim(), draftVision.trim())}
+                  style={styles.dreamActionButton}
+                  textStyle={styles.actionLabel}
+                />
+              </View>
+            ) : (
+              <AppButton
+                disabled={!canSave}
+                label="Save Changes"
+                onPress={() => onSave(draftName.trim(), draftVision.trim())}
+                style={styles.dreamSaveButton}
+                textStyle={styles.actionLabel}
+              />
+            )}
           </View>
+
+          {confirmDelete ? (
+            <View style={styles.confirmOverlay}>
+              <View style={styles.confirmCard}>
+                <AppText align="center" variant="titleSm">
+                  Delete this dream?
+                </AppText>
+                <AppText
+                  align="center"
+                  style={styles.confirmBody}
+                  variant="bodySerif"
+                >
+                  Your dream name and vision statement will be cleared.
+                </AppText>
+                <View style={styles.confirmActionsRow}>
+                  <AppButton
+                    label="Cancel"
+                    onPress={() => setConfirmDelete(false)}
+                    style={styles.dreamActionButton}
+                    textStyle={styles.actionLabel}
+                    variant="secondary"
+                  />
+                  <AppButton
+                    label="Delete"
+                    onPress={() => {
+                      setConfirmDelete(false);
+                      onDelete();
+                    }}
+                    style={[styles.dreamActionButton, styles.deleteButton]}
+                    textStyle={[styles.actionLabel, styles.deleteLabel]}
+                    variant="secondary"
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </AppModal>
@@ -250,7 +310,6 @@ export function JourneyMapControls({
   const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
   const [dreamEditVisible, setDreamEditVisible] = useState(false);
-  const [confirmDreamDelete, setConfirmDreamDelete] = useState(false);
   const [dreamName, setDreamName] = useState(DREAM_NAME);
   const [visionStatement, setVisionStatement] = useState(VISION_STATEMENT);
 
@@ -280,18 +339,6 @@ export function JourneyMapControls({
         rightSlot={
           editMode ? (
             <View style={styles.editActions}>
-              {showDeleteDream ? (
-                <AppButton
-                  accessibilityLabel="Delete dream"
-                  icon={<CloseIcon color={colors.danger} size={iconSizes.sm} />}
-                  iconPosition="before"
-                  label="Delete"
-                  onPress={() => setConfirmDreamDelete(true)}
-                  style={styles.deleteDreamButton}
-                  textStyle={styles.deleteDreamLabel}
-                  variant="secondary"
-                />
-              ) : null}
               <IconButton
                 accessibilityLabel="Edit dream"
                 icon={<PencilIcon color={colors.primary} size={iconSizes.sm} />}
@@ -323,47 +370,20 @@ export function JourneyMapControls({
       <DreamEditModal
         dreamName={dreamName}
         onClose={() => setDreamEditVisible(false)}
+        onDelete={() => {
+          setDreamName("");
+          setVisionStatement("");
+          setDreamEditVisible(false);
+        }}
         onSave={(nextName, nextVision) => {
           setDreamName(nextName);
           setVisionStatement(nextVision);
           setDreamEditVisible(false);
         }}
+        showDelete={showDeleteDream}
         visible={dreamEditVisible}
         visionStatement={visionStatement}
       />
-
-      <AppModal
-        onClose={() => setConfirmDreamDelete(false)}
-        variant="center"
-        visible={confirmDreamDelete}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this dream?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          Your dream name and vision statement will be cleared.
-        </AppText>
-        <View style={styles.confirmActionsRow}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setConfirmDreamDelete(false)}
-            style={styles.dreamActionButton}
-            textStyle={styles.actionLabel}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={() => {
-              setDreamName("");
-              setVisionStatement("");
-              setConfirmDreamDelete(false);
-            }}
-            style={[styles.dreamActionButton, styles.deleteButton]}
-            textStyle={[styles.actionLabel, styles.deleteLabel]}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
     </>
   );
 }
@@ -446,14 +466,28 @@ const styles = StyleSheet.create({
   deleteLabel: {
     color: colors.danger,
   },
-  deleteDreamButton: {
-    borderColor: colors.danger,
-    minHeight: controls.iconButton.sm,
-    paddingHorizontal: spacing.md,
+  dreamActionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
-  deleteDreamLabel: {
-    ...typography.controlLabel,
-    color: colors.danger,
+  confirmOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    backgroundColor: colors.scrim,
+    borderRadius: radius.lg,
+    justifyContent: "center",
+    padding: spacing.lg,
+    zIndex: 10,
+  },
+  confirmCard: {
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: spacing.lg,
+    width: "100%",
+    ...shadows.softDark,
   },
   confirmBody: {
     marginTop: spacing.sm,
