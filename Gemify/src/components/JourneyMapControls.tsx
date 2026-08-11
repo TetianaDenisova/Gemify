@@ -1,6 +1,12 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
@@ -9,6 +15,7 @@ import {
   AppModal,
   AppText,
   CheckIcon,
+  IconButton,
   PencilIcon,
   ScreenHeader,
   SparkIcon,
@@ -22,6 +29,7 @@ import {
   radius,
   shadows,
   spacing,
+  typography,
 } from "@/theme/theme";
 
 function SparklesIcon({ size = 27 }: { size?: number }) {
@@ -50,17 +58,21 @@ const VISION_STATEMENT =
   "I imagine waking up in the life I once dreamed about—my goal is real, my days reflect the person I have become, and I feel proud, fulfilled, and free. I can see where I live, how I spend my time, who shares this journey with me, and the new possibilities now open to me.";
 
 type JourneyOverviewModalProps = {
+  dreamName: string;
   onClose: () => void;
   onEditPath: () => void;
   onOpenWhatIfPlan: () => void;
   visible: boolean;
+  visionStatement: string;
 };
 
 function JourneyOverviewModal({
+  dreamName,
   onClose,
   onEditPath,
   onOpenWhatIfPlan,
   visible,
+  visionStatement,
 }: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
 
@@ -81,7 +93,7 @@ function JourneyOverviewModal({
             THE LIFE I&apos;M CREATING
           </AppText>
           <AppText align="center" style={styles.title} variant="title">
-            {DREAM_NAME}
+            {dreamName}
           </AppText>
           <View style={styles.ornamentRow}>
             <View style={styles.ornamentLine} />
@@ -92,7 +104,7 @@ function JourneyOverviewModal({
           <View style={styles.visionCard}>
             <AppText style={styles.quoteMark}>{"“"}</AppText>
             <AppText style={styles.visionText} variant="bodySerif">
-              {VISION_STATEMENT}
+              {visionStatement}
             </AppText>
           </View>
 
@@ -124,6 +136,101 @@ function JourneyOverviewModal({
   );
 }
 
+type DreamEditModalProps = {
+  dreamName: string;
+  onClose: () => void;
+  onSave: (dreamName: string, visionStatement: string) => void;
+  visible: boolean;
+  visionStatement: string;
+};
+
+/**
+ * Edit-mode variant of the overview sheet: same frame, but the dream name and
+ * vision statement are editable in place. Save Changes enables once something
+ * actually changed.
+ */
+function DreamEditModal({
+  dreamName,
+  onClose,
+  onSave,
+  visible,
+  visionStatement,
+}: DreamEditModalProps) {
+  const insets = useSafeAreaInsets();
+  const [draftName, setDraftName] = useState(dreamName);
+  const [draftVision, setDraftVision] = useState(visionStatement);
+  const [wasVisible, setWasVisible] = useState(false);
+
+  // Reset the drafts each time the modal opens.
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setDraftName(dreamName);
+      setDraftVision(visionStatement);
+    }
+  }
+
+  const isDirty = draftName !== dreamName || draftVision !== visionStatement;
+  const canSave = isDirty && draftName.trim().length > 0;
+
+  return (
+    <AppModal
+      onClose={onClose}
+      panelStyle={[
+        styles.modalPanel,
+        { paddingBottom: Math.max(insets.bottom + 16, 30) },
+      ]}
+      showHandle={false}
+      variant="sheet"
+      visible={visible}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.frameOuter}>
+          <View style={styles.frameInner}>
+            <AppText align="center" variant="eyebrow">
+              THE LIFE I&apos;M CREATING
+            </AppText>
+            <TextInput
+              onChangeText={setDraftName}
+              placeholder="Your Dream Name"
+              placeholderTextColor={colors.textPlaceholder}
+              style={styles.dreamNameInput}
+              value={draftName}
+            />
+            <View style={styles.ornamentRow}>
+              <View style={styles.ornamentLine} />
+              <SparkIcon size={iconSizes.sm} />
+              <View style={styles.ornamentLine} />
+            </View>
+
+            <View style={styles.visionCard}>
+              <AppText style={styles.quoteMark}>{"“"}</AppText>
+              <TextInput
+                multiline
+                onChangeText={setDraftVision}
+                placeholder="Describe the life you are creating…"
+                placeholderTextColor={colors.textPlaceholder}
+                style={styles.visionInput}
+                value={draftVision}
+              />
+            </View>
+
+            <AppButton
+              disabled={!canSave}
+              label="Save Changes"
+              onPress={() => onSave(draftName.trim(), draftVision.trim())}
+              style={styles.dreamSaveButton}
+              textStyle={styles.actionLabel}
+            />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </AppModal>
+  );
+}
+
 export type JourneyMapControlsProps = {
   editMode: boolean;
   onEnterEditMode: () => void;
@@ -137,6 +244,9 @@ export function JourneyMapControls({
 }: JourneyMapControlsProps) {
   const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
+  const [dreamEditVisible, setDreamEditVisible] = useState(false);
+  const [dreamName, setDreamName] = useState(DREAM_NAME);
+  const [visionStatement, setVisionStatement] = useState(VISION_STATEMENT);
 
   const openWhatIfPlan = () => {
     setOverviewVisible(false);
@@ -154,25 +264,54 @@ export function JourneyMapControls({
         asStackHeader
         rightAction={
           editMode
-            ? {
-                accessibilityLabel: "Finish editing path",
-                icon: <CheckIcon color={colors.primary} size={iconSizes.md} />,
-                label: "Done",
-                onPress: onExitEditMode,
-              }
+            ? undefined
             : {
                 accessibilityLabel: "Open journey overview",
                 icon: <SparklesIcon />,
                 onPress: () => setOverviewVisible(true),
               }
         }
+        rightSlot={
+          editMode ? (
+            <View style={styles.editActions}>
+              <IconButton
+                accessibilityLabel="Edit dream"
+                icon={<PencilIcon color={colors.primary} size={iconSizes.sm} />}
+                label="Dream"
+                onPress={() => setDreamEditVisible(true)}
+                size="sm"
+              />
+              <IconButton
+                accessibilityLabel="Finish editing path"
+                icon={<CheckIcon color={colors.primary} size={iconSizes.md} />}
+                label="Done"
+                onPress={onExitEditMode}
+                size="sm"
+              />
+            </View>
+          ) : undefined
+        }
       />
 
       <JourneyOverviewModal
+        dreamName={dreamName}
         onClose={() => setOverviewVisible(false)}
         onEditPath={openEditPath}
         onOpenWhatIfPlan={openWhatIfPlan}
         visible={overviewVisible}
+        visionStatement={visionStatement}
+      />
+
+      <DreamEditModal
+        dreamName={dreamName}
+        onClose={() => setDreamEditVisible(false)}
+        onSave={(nextName, nextVision) => {
+          setDreamName(nextName);
+          setVisionStatement(nextVision);
+          setDreamEditVisible(false);
+        }}
+        visible={dreamEditVisible}
+        visionStatement={visionStatement}
       />
     </>
   );
@@ -237,6 +376,34 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.xl,
+  },
+  editActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  dreamSaveButton: {
+    marginTop: spacing.lg,
+  },
+  dreamNameInput: {
+    ...typography.title,
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    marginTop: spacing.xs,
+    paddingBottom: 2,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    textAlign: "center",
+  },
+  visionInput: {
+    ...typography.bodySerif,
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.xl,
+    minHeight: 120,
+    padding: 0,
+    textAlignVertical: "top",
   },
   actionsRow: {
     flexDirection: "row",

@@ -40,10 +40,7 @@ import {
   type JourneyMilestoneData,
 } from "@/data/journeyMilestones";
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
-import {
-  getMilestoneRingY,
-  paginateMilestones,
-} from "@/utils/milestonePagination";
+import { getMilestoneRingY } from "@/utils/milestonePagination";
 import {
   AppButton,
   AppModal,
@@ -56,7 +53,6 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   gradients,
-  layout,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -77,7 +73,6 @@ type MilestoneFormValues = {
   mentor: string;
   reward: string;
   state: string;
-  subtitle: string;
   title: string;
 };
 
@@ -92,8 +87,8 @@ type MilestoneModalProps = {
 const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
 const MILESTONE_DOOR_SOURCE = require("../../assets/create-goal/milestone-door.png");
 const PLUS_SOURCE = require("../../assets/plus.png");
-const PLUS_TOUCH_SIZE = layout.minTouchTarget;
-const PLUS_IMAGE_SIZE = 40;
+const PLUS_IMAGE_SIZE = 52;
+const PLUS_TOUCH_SIZE = 60;
 const SHIMMER_DURATION = 2200;
 const SHIMMER_PAUSE = 2500;
 /** Bespoke night-sky gradient behind the milestone sheet (feature art). */
@@ -104,7 +99,6 @@ const EMPTY_MILESTONE_FORM: MilestoneFormValues = {
   mentor: "",
   reward: "",
   state: "",
-  subtitle: "",
   title: "",
 };
 
@@ -434,6 +428,7 @@ function MilestoneModal({
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
   const [draft, setDraft] = useState<MilestoneFormValues>(EMPTY_MILESTONE_FORM);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [lastState, setLastState] = useState<MilestoneModalState | null>(null);
 
   const initialValues: MilestoneFormValues =
@@ -444,13 +439,13 @@ function MilestoneModal({
           mentor: state.milestone.mentor ?? "",
           reward: state.milestone.reward ?? "",
           state: state.milestone.state,
-          subtitle: state.milestone.subtitle,
           title: state.milestone.title,
         };
 
   // Reset the form whenever the modal opens for a different milestone/slot.
   if (state !== lastState) {
     setLastState(state);
+    setConfirmDelete(false);
     if (state) {
       setDraft(initialValues);
     }
@@ -471,7 +466,17 @@ function MilestoneModal({
   const isDirty = MILESTONE_DETAIL_FIELDS.some(
     (field) => draft[field.key] !== initialValues[field.key],
   );
-  const canSave = mode === "add" ? draft.title.trim().length > 0 : isDirty;
+  // Every field is mandatory except reward; add mode also requires the
+  // title/subtitle pair that edit mode keeps read-only.
+  const requiredKeys: readonly (keyof MilestoneFormValues)[] =
+    mode === "add"
+      ? ["title", "artifact", "state", "mentor"]
+      : ["artifact", "state", "mentor"];
+  const requiredComplete = requiredKeys.every(
+    (key) => draft[key].trim().length > 0,
+  );
+  const canSave =
+    mode === "add" ? requiredComplete : isDirty && requiredComplete;
 
   const setDraftField = (key: keyof MilestoneFormValues, text: string) =>
     setDraft((current) => ({ ...current, [key]: text }));
@@ -542,49 +547,26 @@ function MilestoneModal({
 
                 <View style={styles.modalTitleBlock}>
                   {mode === "add" ? (
-                    <>
-                      <MilestoneFieldInput
-                        onChangeText={(text) => setDraftField("title", text)}
-                        placeholder="Milestone title"
-                        style={[
-                          styles.titleInput,
-                          isCompact && styles.modalTitleCompact,
-                          isShort && styles.modalTitleShort,
-                        ]}
-                        value={draft.title}
-                      />
-                      <MilestoneFieldInput
-                        onChangeText={(text) => setDraftField("subtitle", text)}
-                        placeholder="Short subtitle"
-                        style={[
-                          styles.subtitleInput,
-                          isCompact && styles.modalSubtitleCompact,
-                        ]}
-                        value={draft.subtitle}
-                      />
-                    </>
+                    <MilestoneFieldInput
+                      onChangeText={(text) => setDraftField("title", text)}
+                      placeholder="Milestone title"
+                      style={[
+                        styles.titleInput,
+                        isCompact && styles.modalTitleCompact,
+                        isShort && styles.modalTitleShort,
+                      ]}
+                      value={draft.title}
+                    />
                   ) : (
-                    <>
-                      <AppText
-                        style={[
-                          isCompact && styles.modalTitleCompact,
-                          isShort && styles.modalTitleShort,
-                        ]}
-                        variant="title"
-                      >
-                        {milestone?.title}
-                      </AppText>
-                      <AppText
-                        color={colors.textSecondary}
-                        style={[
-                          styles.modalSubtitle,
-                          isCompact && styles.modalSubtitleCompact,
-                        ]}
-                        variant="bodySerif"
-                      >
-                        {milestone?.subtitle}
-                      </AppText>
-                    </>
+                    <AppText
+                      style={[
+                        isCompact && styles.modalTitleCompact,
+                        isShort && styles.modalTitleShort,
+                      ]}
+                      variant="title"
+                    >
+                      {milestone?.title}
+                    </AppText>
                   )}
                 </View>
               </View>
@@ -682,7 +664,7 @@ function MilestoneModal({
                   {mode === "edit" ? (
                     <AppButton
                       label="Delete Milestone"
-                      onPress={onDelete}
+                      onPress={() => setConfirmDelete(true)}
                       style={[styles.formActionButton, styles.deleteButton]}
                       textStyle={[styles.formActionLabel, styles.deleteLabel]}
                       variant="secondary"
@@ -706,6 +688,43 @@ function MilestoneModal({
                 </View>
               )}
             </LinearGradient>
+
+            {confirmDelete ? (
+              <View style={styles.confirmOverlay}>
+                <View style={styles.confirmCard}>
+                  <AppText align="center" variant="titleSm">
+                    Delete this milestone?
+                  </AppText>
+                  <AppText
+                    align="center"
+                    style={styles.confirmBody}
+                    variant="bodySerif"
+                  >
+                    “{milestone?.title}” and its details will be removed from
+                    your path.
+                  </AppText>
+                  <View style={styles.confirmActionsRow}>
+                    <AppButton
+                      label="Cancel"
+                      onPress={() => setConfirmDelete(false)}
+                      style={styles.formActionButton}
+                      textStyle={styles.formActionLabel}
+                      variant="secondary"
+                    />
+                    <AppButton
+                      label="Delete"
+                      onPress={() => {
+                        setConfirmDelete(false);
+                        onDelete();
+                      }}
+                      style={[styles.formActionButton, styles.deleteButton]}
+                      textStyle={[styles.formActionLabel, styles.deleteLabel]}
+                      variant="secondary"
+                    />
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </View>
         </KeyboardAvoidingView>
       ) : null}
@@ -731,29 +750,35 @@ export function GoalJourneyMapScreen() {
     null,
   );
 
-  const milestonePages = useMemo(
-    () => paginateMilestones(milestones),
-    [milestones],
-  );
   const currentConfig = journeyPageConfigs[0];
-  const currentMilestones = useMemo(
-    () => milestonePages[0] ?? [],
-    [milestonePages],
-  );
+  // The whole journey renders on a single page: milestones squeeze closer
+  // together as the path grows and the map is panned to see them all.
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
-      currentMilestones.map((_, index) => ({
+      milestones.map((_, index) => ({
         x: 0.5,
-        y: getMilestoneRingY(index, currentMilestones.length, currentConfig),
+        y: getMilestoneRingY(index, milestones.length, currentConfig),
       })),
-    [currentConfig, currentMilestones],
+    [currentConfig, milestones],
   );
   const ringStep =
-    (currentConfig.bottomY - currentConfig.castleY) /
-    (currentMilestones.length + 1);
+    milestones.length > 1
+      ? (currentConfig.bottomY - currentConfig.castleY) /
+        (milestones.length - 1)
+      : (currentConfig.bottomY - currentConfig.castleY) / 2;
   const insertSlots = isEditMode
-    ? Array.from({ length: currentMilestones.length + 1 }, (_, index) => index)
+    ? Array.from({ length: milestones.length + 1 }, (_, index) => index)
     : [];
+  /** Map Y for the plus that inserts at `slot`: midway between neighbours. */
+  const getInsertSlotY = (slot: number) => {
+    if (milestones.length === 0) {
+      return (currentConfig.bottomY + currentConfig.castleY) / 2;
+    }
+
+    const y = currentConfig.bottomY - ringStep * (slot - 0.5);
+
+    return Math.min(Math.max(y, 0.03), 0.97);
+  };
 
   const handleMilestonePress = (milestone: JourneyMilestoneData) =>
     setModalState({ milestone, mode: isEditMode ? "edit" : "view" });
@@ -766,14 +791,14 @@ export function GoalJourneyMapScreen() {
     if (modalState.mode === "add") {
       const created: JourneyMilestoneData = {
         ...NEW_MILESTONE_VISUALS,
-        active: false,
+        active: true,
         artifact: values.artifact.trim() || undefined,
         description: "",
         id: 0,
         mentor: values.mentor.trim() || undefined,
         reward: values.reward.trim() || undefined,
         state: values.state.trim(),
-        subtitle: values.subtitle.trim(),
+        subtitle: "",
         title: values.title.trim(),
       };
 
@@ -825,7 +850,7 @@ export function GoalJourneyMapScreen() {
       >
         {({ imageHeight, imageWidth }) => (
           <>
-            {currentMilestones.map((milestone, index) => (
+            {milestones.map((milestone, index) => (
               <JourneyMilestone
                 imageHeight={imageHeight}
                 imageWidth={imageWidth}
@@ -837,7 +862,7 @@ export function GoalJourneyMapScreen() {
             ))}
 
             {insertSlots.map((slot) => {
-              const slotY = currentConfig.bottomY - ringStep * (slot + 0.5);
+              const slotY = getInsertSlotY(slot);
 
               return (
                 <Pressable
@@ -993,14 +1018,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xxl,
     lineHeight: lineHeights.xxl,
   },
-  modalSubtitle: {
-    marginTop: spacing.xs,
-  },
-  modalSubtitleCompact: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-    marginTop: 0,
-  },
   closeButton: {
     position: "absolute",
     right: 22,
@@ -1096,15 +1113,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: 0,
   },
-  subtitleInput: {
-    ...typography.bodySerif,
-    borderBottomColor: colors.borderSoft,
-    borderBottomWidth: 1,
-    marginTop: spacing.xs,
-    paddingBottom: 2,
-    paddingTop: 0,
-    paddingHorizontal: 0,
-  },
   formActionsRow: {
     flexDirection: "row",
     gap: spacing.md,
@@ -1123,6 +1131,32 @@ const styles = StyleSheet.create({
   },
   deleteLabel: {
     color: colors.danger,
+  },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    backgroundColor: colors.scrim,
+    borderRadius: radius.sheet,
+    justifyContent: "center",
+    padding: spacing.lg,
+    zIndex: 10,
+  },
+  confirmCard: {
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: spacing.lg,
+    width: "100%",
+    ...shadows.softDark,
+  },
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  confirmActionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
   },
   questButtonWrap: {
     marginTop: 2,

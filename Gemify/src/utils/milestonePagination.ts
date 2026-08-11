@@ -30,13 +30,16 @@ export function paginateMilestones<T>(
 }
 
 export type JourneyPageVerticalBounds = {
-  /** Relative Y position of the bottom of the visible journey area. */
+  /** Relative Y position of the first (bottom-most) milestone. */
   bottomY: number;
-  /** Relative Y position of the castle/target. */
+  /** Relative Y where the path reaches the castle — the last milestone anchor. */
   castleY: number;
 };
 
-/** Returns a relative Y coordinate evenly spaced inside the page bounds. */
+/**
+ * Returns a relative Y coordinate for a milestone ring. The first ring anchors
+ * at bottomY, the last ring at castleY, with equal gaps in between.
+ */
 export function getMilestoneRingY(
   index: number,
   ringsOnPage: number,
@@ -46,7 +49,11 @@ export function getMilestoneRingY(
     throw new RangeError("Milestone ring index must be inside a non-empty page");
   }
 
-  const step = (bottomY - castleY) / (ringsOnPage + 1);
+  if (ringsOnPage === 1) {
+    return bottomY;
+  }
 
-  return bottomY - step * (index + 1);
+  const step = (bottomY - castleY) / (ringsOnPage - 1);
+
+  return bottomY - step * index;
 }

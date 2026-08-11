@@ -7,8 +7,9 @@ export type JourneyPageConfig = JourneyPageVerticalBounds;
  */
 export const journeyPageConfigs: readonly JourneyPageConfig[] = [
   {
-    castleY: 0.36,
-    bottomY: 0.94,
+    // Last milestone lands just below the castle art; first stays low on the map.
+    castleY: 0.4,
+    bottomY: 0.86,
   },
   {
     castleY: 0.48,

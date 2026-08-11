@@ -26,6 +26,8 @@ export type ScreenHeaderProps = {
    */
   asStackHeader?: boolean;
   buttonSize?: IconButtonSize;
+  /** Custom centered content rendered instead of the title/subtitle block. */
+  centerSlot?: ReactNode;
   /**
    * Left button. Defaults to a back button (onBack, else router.back, else
    * replace "/"). Pass null to render a spacer instead.
@@ -33,6 +35,8 @@ export type ScreenHeaderProps = {
   leftAction?: ScreenHeaderAction | null;
   onBack?: () => void;
   rightAction?: ScreenHeaderAction | null;
+  /** Custom right-side content (e.g. a button group) rendered instead of rightAction. */
+  rightSlot?: ReactNode;
   style?: StyleProp<ViewStyle>;
   subtitle?: string;
   title?: string;
@@ -61,9 +65,11 @@ function ActionSlot({
 export function ScreenHeader({
   asStackHeader = false,
   buttonSize = "sm",
+  centerSlot,
   leftAction,
   onBack,
   rightAction = null,
+  rightSlot,
   style,
   subtitle,
   title,
@@ -100,7 +106,9 @@ export function ScreenHeader({
     <View style={[styles.row, style]}>
       <ActionSlot action={left} size={buttonSize} />
 
-      {hasTitle ? (
+      {centerSlot ? (
+        <View style={styles.centerSlot}>{centerSlot}</View>
+      ) : hasTitle ? (
         <View style={styles.titleBlock}>
           <AppText align="center" numberOfLines={1} variant="screenTitle">
             {title}
@@ -115,7 +123,7 @@ export function ScreenHeader({
         <View style={styles.flexSpacer} />
       )}
 
-      <ActionSlot action={rightAction} size={buttonSize} />
+      {rightSlot ?? <ActionSlot action={rightAction} size={buttonSize} />}
     </View>
   );
 
@@ -133,6 +141,10 @@ export function ScreenHeader({
 }
 
 const styles = StyleSheet.create({
+  centerSlot: {
+    alignItems: "center",
+    flex: 1,
+  },
   flexSpacer: {
     flex: 1,
   },

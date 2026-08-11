@@ -1,12 +1,16 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type TextStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -17,15 +21,26 @@ import {
   AppModal,
   AppText,
   Card,
+  CheckIcon,
   CloseIcon,
   IconButton,
+  PencilIcon,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, lineHeights, radius, shadows, spacing } from "@/theme/theme";
+import {
+  fontSizes,
+  iconSizes,
+  lineHeights,
+  pressed as pressedStyle,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/create-goal/risk-plan-background.png");
 const RISK_IMAGE = require("../../assets/create-goal/risk-image.png");
@@ -37,6 +52,7 @@ type IconProps = {
 
 type RiskPlan = {
   actions: readonly string[];
+  id: number;
   prompt: string;
   title: string;
 };
@@ -49,6 +65,7 @@ const DEFAULT_PLANS: readonly RiskPlan[] = [
       "I'll rest briefly and continue.",
       "I'll move the task to my next available time.",
     ],
+    id: 1,
     prompt: "I may feel too tired to complete the planned action.",
     title: "Lack of energy",
   },
@@ -58,6 +75,7 @@ const DEFAULT_PLANS: readonly RiskPlan[] = [
       "I'll reschedule it immediately.",
       "I'll protect this time as a priority.",
     ],
+    id: 2,
     prompt: "I may not have enough time to do everything I planned.",
     title: "Lack of time",
   },
@@ -67,6 +85,7 @@ const DEFAULT_PLANS: readonly RiskPlan[] = [
       "I'll take one tiny action to get started.",
       "I'll celebrate small wins to stay inspired.",
     ],
+    id: 3,
     prompt: "I may lose interest or forget why this matters.",
     title: "Loss of motivation",
   },
@@ -77,19 +96,54 @@ export default function WhatIfPlanScreen() {
   const { width } = useWindowDimensions();
   const [plans, setPlans] = useState<readonly RiskPlan[]>(DEFAULT_PLANS);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const nextIdRef = useRef(DEFAULT_PLANS.length + 1);
   const compact = width < 380;
   const verySmall = width < 340;
+
+  const updatePlan = (updated: RiskPlan) =>
+    setPlans((current) =>
+      current.map((plan) => (plan.id === updated.id ? updated : plan)),
+    );
+
+  const planPendingDelete =
+    plans.find((plan) => plan.id === confirmDeleteId) ?? null;
 
   return (
     <>
       <ScreenHeader
         asStackHeader
-        rightAction={{
-          accessibilityLabel: "Add risk",
-          icon: <PlusIcon color={colors.primary} size={24} />,
-          label: "Add Risk",
-          onPress: () => setModalVisible(true),
-        }}
+        rightAction={
+          isEditMode
+            ? undefined
+            : {
+                accessibilityLabel: "Edit risks",
+                icon: <PencilIcon color={colors.primary} size={iconSizes.sm} />,
+                label: "Edit",
+                onPress: () => setIsEditMode(true),
+              }
+        }
+        rightSlot={
+          isEditMode ? (
+            <View style={styles.editActions}>
+              <IconButton
+                accessibilityLabel="Add risk"
+                icon={<PlusIcon color={colors.primary} size={iconSizes.md} />}
+                label="Add Risk"
+                onPress={() => setModalVisible(true)}
+                size="sm"
+              />
+              <IconButton
+                accessibilityLabel="Finish editing risks"
+                icon={<CheckIcon color={colors.primary} size={iconSizes.md} />}
+                label="Done"
+                onPress={() => setIsEditMode(false)}
+                size="sm"
+              />
+            </View>
+          ) : undefined
+        }
       />
 
       <ScreenScaffold
@@ -118,10 +172,13 @@ export default function WhatIfPlanScreen() {
         </View>
 
         <View style={styles.cardList}>
-          {plans.map((plan, index) => (
+          {plans.map((plan) => (
             <RiskCard
-              key={`${plan.title}-${index}`}
+              key={plan.id}
               compact={compact}
+              editMode={isEditMode}
+              onChange={updatePlan}
+              onRequestDelete={() => setConfirmDeleteId(plan.id)}
               plan={plan}
               showRiskImage={!verySmall}
             />
@@ -131,10 +188,49 @@ export default function WhatIfPlanScreen() {
 
       <AddRiskModal
         maxWidth={Math.min(width - 32, 720)}
-        onAdd={(plan) => setPlans((current) => [plan, ...current])}
+        onAdd={(plan) =>
+          setPlans((current) => [
+            { ...plan, id: nextIdRef.current++ },
+            ...current,
+          ])
+        }
         onClose={() => setModalVisible(false)}
         visible={modalVisible}
       />
+
+      <AppModal
+        onClose={() => setConfirmDeleteId(null)}
+        variant="center"
+        visible={confirmDeleteId !== null}
+      >
+        <AppText align="center" variant="titleSm">
+          Delete this risk?
+        </AppText>
+        <AppText align="center" style={styles.confirmBody} variant="body">
+          “{planPendingDelete?.title}” and its protection plan will be removed.
+        </AppText>
+        <View style={styles.confirmActions}>
+          <AppButton
+            label="Cancel"
+            onPress={() => setConfirmDeleteId(null)}
+            style={styles.confirmButton}
+            textStyle={styles.confirmLabel}
+            variant="secondary"
+          />
+          <AppButton
+            label="Delete"
+            onPress={() => {
+              setPlans((current) =>
+                current.filter((plan) => plan.id !== confirmDeleteId),
+              );
+              setConfirmDeleteId(null);
+            }}
+            style={[styles.confirmButton, styles.deleteButton]}
+            textStyle={[styles.confirmLabel, styles.deleteLabel]}
+            variant="secondary"
+          />
+        </View>
+      </AppModal>
     </>
   );
 }
@@ -146,38 +242,36 @@ function AddRiskModal({
   visible,
 }: {
   maxWidth: number;
-  onAdd: (plan: RiskPlan) => void;
+  onAdd: (plan: Omit<RiskPlan, "id">) => void;
   onClose: () => void;
   visible: boolean;
 }) {
   const compact = maxWidth < 420;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [actionOne, setActionOne] = useState("");
-  const [actionTwo, setActionTwo] = useState("");
-  const [actionThree, setActionThree] = useState("");
+  const [actions, setActions] = useState<readonly string[]>([""]);
 
   function resetAndClose() {
     setTitle("");
     setDescription("");
-    setActionOne("");
-    setActionTwo("");
-    setActionThree("");
+    setActions([""]);
     onClose();
   }
 
   function handleAdd() {
     const cleanTitle = title.trim();
-    const actions = [actionOne, actionTwo, actionThree]
+    const cleanActions = actions
       .map((action) => action.trim())
       .filter(Boolean);
 
-    if (!cleanTitle || actions.length === 0) {
+    if (!cleanTitle || cleanActions.length === 0) {
       return;
     }
 
     onAdd({
-      actions: actions.map((action) => (action.endsWith(".") ? action : `${action}.`)),
+      actions: cleanActions.map((action) =>
+        action.endsWith(".") ? action : `${action}.`,
+      ),
       prompt: description.trim() || "If this gets in the way...",
       title: cleanTitle,
     });
@@ -187,6 +281,7 @@ function AddRiskModal({
   return (
     <AppModal
       dismissOnBackdrop={false}
+      maxWidth={maxWidth}
       onClose={resetAndClose}
       panelStyle={[styles.modalPanelShell, { maxWidth }]}
       variant="center"
@@ -244,33 +339,34 @@ function AddRiskModal({
               Protection actions *
             </AppText>
             <AppText style={styles.actionsHint} variant="body">
-              Add 1 to 3 actions to mitigate this risk.
+              Add as many actions as you need to mitigate this risk.
             </AppText>
           </View>
 
-          <ActionField
-            compact={compact}
-            label="Action 1 *"
-            number="1"
-            onChangeText={setActionOne}
-            placeholder="e.g. Do a 5-minute version"
-            value={actionOne}
-          />
-          <ActionField
-            compact={compact}
-            label="Action 2 (optional)"
-            number="2"
-            onChangeText={setActionTwo}
-            placeholder="e.g. Take a short rest"
-            value={actionTwo}
-          />
-          <ActionField
-            compact={compact}
-            label="Action 3 (optional)"
-            number="3"
-            onChangeText={setActionThree}
-            placeholder="e.g. Move it to my next available time"
-            value={actionThree}
+          {actions.map((action, index) => (
+            <ActionField
+              key={`action-${index}`}
+              compact={compact}
+              label={index === 0 ? "Action 1 *" : `Action ${index + 1} (optional)`}
+              number={String(index + 1)}
+              onChangeText={(text) =>
+                setActions((current) =>
+                  current.map((value, i) => (i === index ? text : value)),
+                )
+              }
+              placeholder="e.g. Do a 5-minute version"
+              value={action}
+            />
+          ))}
+
+          <AppButton
+            icon={<PlusIcon color={colors.primary} size={iconSizes.sm} />}
+            iconPosition="before"
+            label="Add Action"
+            onPress={() => setActions((current) => [...current, ""])}
+            style={styles.addActionButton}
+            textStyle={styles.addActionLabel}
+            variant="ghost"
           />
 
           <AppButton
@@ -358,22 +454,98 @@ function ActionField({
   );
 }
 
+function UnderlineInput({
+  multiline = false,
+  onBlur,
+  onChangeText,
+  placeholder,
+  style,
+  value,
+}: {
+  multiline?: boolean;
+  onBlur?: () => void;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  style?: StyleProp<TextStyle>;
+  value: string;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextInput
+      multiline={multiline}
+      onBlur={() => {
+        setFocused(false);
+        onBlur?.();
+      }}
+      onChangeText={onChangeText}
+      onFocus={() => setFocused(true)}
+      placeholder={placeholder}
+      placeholderTextColor={colors.textPlaceholder}
+      selectionColor={colors.primary}
+      style={[
+        styles.underlineInput,
+        focused && styles.underlineInputFocused,
+        style,
+      ]}
+      value={value}
+    />
+  );
+}
+
 function RiskCard({
   compact,
+  editMode,
+  onChange,
+  onRequestDelete,
   plan,
   showRiskImage,
 }: {
   compact: boolean;
+  editMode: boolean;
+  onChange: (plan: RiskPlan) => void;
+  onRequestDelete: () => void;
   plan: RiskPlan;
   showRiskImage: boolean;
 }) {
+  const setAction = (index: number, text: string) =>
+    onChange({
+      ...plan,
+      actions: plan.actions.map((action, i) => (i === index ? text : action)),
+    });
+
+  // Emptied actions disappear on blur; a risk always keeps at least one.
+  const removeActionIfEmpty = (index: number) => {
+    if (plan.actions[index].trim() === "" && plan.actions.length > 1) {
+      onChange({
+        ...plan,
+        actions: plan.actions.filter((_, i) => i !== index),
+      });
+    }
+  };
+
   return (
     <Card
       accessibilityLabel={`${plan.title} protection plan`}
-      onPress={() => {}}
+      onPress={editMode ? undefined : () => {}}
       style={[styles.card, compact && styles.cardCompact]}
       variant="strong"
     >
+      {editMode ? (
+        <Pressable
+          accessibilityLabel={`Remove ${plan.title} risk`}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onRequestDelete}
+          style={({ pressed: isPressed }) => [
+            styles.removeButton,
+            isPressed && pressedStyle,
+          ]}
+        >
+          <CloseIcon color={colors.danger} size={iconSizes.sm} />
+        </Pressable>
+      ) : null}
+
       <View style={[styles.riskSide, compact && styles.riskSideCompact]}>
         {showRiskImage ? (
           <View style={[styles.riskImageWrap, compact && styles.riskImageWrapCompact]}>
@@ -383,19 +555,38 @@ function RiskCard({
 
         <View style={styles.riskCopy}>
           <AppText variant="eyebrow">Risk</AppText>
-          <AppText
-            color="#FFFFFF"
-            style={[styles.riskTitle, compact && styles.riskTitleCompact]}
-            variant="titleSm"
-          >
-            {plan.title}
-          </AppText>
-          <AppText
-            style={[styles.prompt, compact && styles.promptCompact]}
-            variant="body"
-          >
-            {plan.prompt}
-          </AppText>
+          {editMode ? (
+            <UnderlineInput
+              onChangeText={(text) => onChange({ ...plan, title: text })}
+              placeholder="Risk title"
+              style={[styles.titleInput, compact && styles.riskTitleCompact]}
+              value={plan.title}
+            />
+          ) : (
+            <AppText
+              color="#FFFFFF"
+              style={[styles.riskTitle, compact && styles.riskTitleCompact]}
+              variant="titleSm"
+            >
+              {plan.title}
+            </AppText>
+          )}
+          {editMode ? (
+            <UnderlineInput
+              multiline
+              onChangeText={(text) => onChange({ ...plan, prompt: text })}
+              placeholder="What could get in the way?"
+              style={[styles.promptInput, compact && styles.promptCompact]}
+              value={plan.prompt}
+            />
+          ) : (
+            <AppText
+              style={[styles.prompt, compact && styles.promptCompact]}
+              variant="body"
+            >
+              {plan.prompt}
+            </AppText>
+          )}
         </View>
       </View>
 
@@ -420,17 +611,28 @@ function RiskCard({
 
         <View style={styles.bulletList}>
           {plan.actions.map((action, actionIndex) => (
-            <View key={`${action}-${actionIndex}`} style={styles.bulletRow}>
+            <View key={`action-${actionIndex}`} style={styles.bulletRow}>
               <AppText color={colors.primary} style={styles.bullet}>
                 {"•"}
               </AppText>
-              <AppText
-                color="rgba(255, 255, 255, 0.84)"
-                style={styles.bulletText}
-                variant="body"
-              >
-                {action}
-              </AppText>
+              {editMode ? (
+                <UnderlineInput
+                  multiline
+                  onBlur={() => removeActionIfEmpty(actionIndex)}
+                  onChangeText={(text) => setAction(actionIndex, text)}
+                  placeholder="Protection action"
+                  style={styles.actionInput}
+                  value={action}
+                />
+              ) : (
+                <AppText
+                  color="rgba(255, 255, 255, 0.84)"
+                  style={styles.bulletText}
+                  variant="body"
+                >
+                  {action}
+                </AppText>
+              )}
             </View>
           ))}
         </View>
@@ -688,6 +890,79 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: spacing.xl,
     width: "100%",
+  },
+  addActionButton: {
+    alignSelf: "flex-start",
+    marginTop: spacing.md,
+  },
+  addActionLabel: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
+  },
+  editActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  removeButton: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceGlass,
+    borderColor: colors.border,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: spacing.xl,
+    justifyContent: "center",
+    position: "absolute",
+    right: spacing.sm,
+    top: spacing.sm,
+    width: spacing.xl,
+    zIndex: 2,
+  },
+  underlineInput: {
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    paddingBottom: 2,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  underlineInputFocused: {
+    borderBottomColor: colors.primary,
+  },
+  titleInput: {
+    ...typography.titleSm,
+    color: "#FFFFFF",
+    marginTop: spacing.md,
+  },
+  promptInput: {
+    ...typography.body,
+    marginTop: spacing.md,
+  },
+  actionInput: {
+    ...typography.body,
+    color: "rgba(255, 255, 255, 0.84)",
+    flex: 1,
+  },
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  confirmActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  confirmLabel: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
+  },
+  deleteButton: {
+    borderColor: colors.danger,
+  },
+  deleteLabel: {
+    color: colors.danger,
   },
   subtitle: {
     marginTop: spacing.sm,

@@ -16,6 +16,8 @@ export type AppModalProps = {
   children: ReactNode;
   /** Tap on the scrim closes the modal. Default true. */
   dismissOnBackdrop?: boolean;
+  /** Overrides the default max panel width (480 center / 760 sheet). */
+  maxWidth?: number;
   onClose: () => void;
   /** Styles for the panel wrapper around children. */
   panelStyle?: StyleProp<ViewStyle>;
@@ -34,6 +36,7 @@ export type AppModalProps = {
 export function AppModal({
   children,
   dismissOnBackdrop = true,
+  maxWidth,
   onClose,
   panelStyle,
   showHandle = true,
@@ -59,7 +62,9 @@ export function AppModal({
           style={styles.scrim}
         />
         {isSheet ? (
-          <View style={[styles.sheet, panelStyle]}>
+          <View
+            style={[styles.sheet, maxWidth != null && { maxWidth }, panelStyle]}
+          >
             {showHandle ? <View style={styles.handle} /> : null}
             {children}
           </View>
@@ -67,7 +72,7 @@ export function AppModal({
           <ScrollView
             contentContainerStyle={styles.centerScroll}
             showsVerticalScrollIndicator={false}
-            style={styles.centerScrollView}
+            style={[styles.centerScrollView, maxWidth != null && { maxWidth }]}
           >
             <View style={[styles.centerPanel, panelStyle]}>{children}</View>
           </ScrollView>
