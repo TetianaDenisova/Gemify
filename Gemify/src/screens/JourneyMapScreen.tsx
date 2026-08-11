@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
+  type StyleProp,
+  type TextStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +36,7 @@ import {
 } from "@/components/JourneyMilestone";
 import {
   journeyMilestones,
+  type JourneyMilestoneBoardConfig,
   type JourneyMilestoneData,
 } from "@/data/journeyMilestones";
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
@@ -49,24 +56,69 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   gradients,
+  layout,
   lineHeights,
+  pressed as pressedStyle,
   radius,
   shadows,
   spacing,
+  typography,
 } from "@/theme/theme";
 
+type MilestoneModalMode = "view" | "edit" | "add";
+
+type MilestoneModalState =
+  | { milestone: JourneyMilestoneData; mode: "view" | "edit" }
+  | { insertIndex: number; mode: "add" };
+
+/** Editable milestone fields collected by the edit/add form. */
+type MilestoneFormValues = {
+  artifact: string;
+  mentor: string;
+  reward: string;
+  state: string;
+  subtitle: string;
+  title: string;
+};
+
 type MilestoneModalProps = {
-  milestone: JourneyMilestoneData | null;
   onClose: () => void;
+  onDelete: () => void;
   onOpenQuests: () => void;
+  onSave: (values: MilestoneFormValues) => void;
+  state: MilestoneModalState | null;
 };
 
 const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
 const MILESTONE_DOOR_SOURCE = require("../../assets/create-goal/milestone-door.png");
+const PLUS_SOURCE = require("../../assets/plus.png");
+const PLUS_TOUCH_SIZE = layout.minTouchTarget;
+const PLUS_IMAGE_SIZE = 40;
 const SHIMMER_DURATION = 2200;
 const SHIMMER_PAUSE = 2500;
 /** Bespoke night-sky gradient behind the milestone sheet (feature art). */
 const SHEET_GRADIENT = ["#0A1325", "#050A15", "#08101F"] as const;
+
+const EMPTY_MILESTONE_FORM: MilestoneFormValues = {
+  artifact: "",
+  mentor: "",
+  reward: "",
+  state: "",
+  subtitle: "",
+  title: "",
+};
+
+/** Board visuals applied to milestones created from the map editor. */
+const NEW_MILESTONE_VISUALS: Omit<JourneyMilestoneBoardConfig, "milestoneId"> = {
+  glowIntensity: 0.8,
+  opacity: 0.9,
+  rotation: 0,
+  size: 100,
+  tilt: 0.26,
+  variant: "simple",
+  x: 0.5,
+  y: 0.7,
+};
 
 function QuestButtonShimmer() {
   const [buttonWidth, setButtonWidth] = useState(0);
@@ -177,12 +229,47 @@ function QuestButtonShimmer() {
 
 type MilestoneDetailIconName = "artifact" | "state" | "mentor" | "reward";
 
-type MilestoneDetailRow = {
+type MilestoneDetailKey = "artifact" | "state" | "mentor" | "reward";
+
+type MilestoneDetailField = {
   description: string;
   icon: MilestoneDetailIconName;
+  key: MilestoneDetailKey;
   label: string;
-  value: string;
+  placeholder: string;
 };
+
+const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
+  {
+    description:
+      "This will be the proof of your progress and show that the goal is achieved.",
+    icon: "artifact",
+    key: "artifact",
+    label: "ARTIFACT",
+    placeholder: "Proof of progress",
+  },
+  {
+    description: "Your mental and emotional state that supports this stage.",
+    icon: "state",
+    key: "state",
+    label: "STATE",
+    placeholder: "Your state",
+  },
+  {
+    description: "Someone who guides, supports, and helps you grow.",
+    icon: "mentor",
+    key: "mentor",
+    label: "MENTOR",
+    placeholder: "Trusted guide",
+  },
+  {
+    description: "A meaningful reward that celebrates your progress.",
+    icon: "reward",
+    key: "reward",
+    label: "REWARD",
+    placeholder: "Meaningful reward",
+  },
+];
 
 function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
   const stroke = colors.primary;
@@ -308,13 +395,71 @@ function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
   );
 }
 
+type MilestoneFieldInputProps = {
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  style?: StyleProp<TextStyle>;
+  value: string;
+};
+
+/** Serif value input with the thin underline used by the milestone form. */
+function MilestoneFieldInput({
+  onChangeText,
+  placeholder,
+  style,
+  value,
+}: MilestoneFieldInputProps) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextInput
+      onBlur={() => setFocused(false)}
+      onChangeText={onChangeText}
+      onFocus={() => setFocused(true)}
+      placeholder={placeholder}
+      placeholderTextColor={colors.textPlaceholder}
+      style={[styles.fieldInput, focused && styles.fieldInputFocused, style]}
+      value={value}
+    />
+  );
+}
+
 function MilestoneModal({
-  milestone,
   onClose,
+  onDelete,
   onOpenQuests,
+  onSave,
+  state,
 }: MilestoneModalProps) {
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
+  const [draft, setDraft] = useState<MilestoneFormValues>(EMPTY_MILESTONE_FORM);
+  const [lastState, setLastState] = useState<MilestoneModalState | null>(null);
+
+  const initialValues: MilestoneFormValues =
+    state === null || state.mode === "add"
+      ? EMPTY_MILESTONE_FORM
+      : {
+          artifact: state.milestone.artifact ?? "",
+          mentor: state.milestone.mentor ?? "",
+          reward: state.milestone.reward ?? "",
+          state: state.milestone.state,
+          subtitle: state.milestone.subtitle,
+          title: state.milestone.title,
+        };
+
+  // Reset the form whenever the modal opens for a different milestone/slot.
+  if (state !== lastState) {
+    setLastState(state);
+    if (state) {
+      setDraft(initialValues);
+    }
+  }
+
+  const mode: MilestoneModalMode = state?.mode ?? "view";
+  const milestone = state && state.mode !== "add" ? state.milestone : null;
+  const displayNumber =
+    state?.mode === "add" ? state.insertIndex + 1 : milestone?.id ?? 0;
   const isCompact = width < 520;
   const isShort = height < 760;
   const sheetMaxHeight = Math.min(
@@ -322,209 +467,279 @@ function MilestoneModal({
     height * (isCompact ? 0.72 : 0.82),
   );
   const sheetBottomPadding = Math.max(insets.bottom + 14, isCompact ? 18 : 22);
-  const detailRows: readonly MilestoneDetailRow[] = milestone
-    ? [
-        {
-          description:
-            "This will be the proof of your progress and show that the goal is achieved.",
-          icon: "artifact",
-          label: "ARTIFACT",
-          value: milestone.artifact ?? "Proof of progress",
-        },
-        {
-          description:
-            "Your mental and emotional state that supports this stage.",
-          icon: "state",
-          label: "STATE",
-          value: milestone.state,
-        },
-        {
-          description: "Someone who guides, supports, and helps you grow.",
-          icon: "mentor",
-          label: "MENTOR",
-          value: milestone.mentor ?? "Trusted guide",
-        },
-        {
-          description: "A meaningful reward that celebrates your progress.",
-          icon: "reward",
-          label: "REWARD",
-          value: milestone.reward ?? "Meaningful reward",
-        },
-      ]
-    : [];
+
+  const isDirty = MILESTONE_DETAIL_FIELDS.some(
+    (field) => draft[field.key] !== initialValues[field.key],
+  );
+  const canSave = mode === "add" ? draft.title.trim().length > 0 : isDirty;
+
+  const setDraftField = (key: keyof MilestoneFormValues, text: string) =>
+    setDraft((current) => ({ ...current, [key]: text }));
 
   return (
     <AppModal
       onClose={onClose}
       panelStyle={styles.modalPanel}
       variant="sheet"
-      visible={milestone !== null}
+      visible={state !== null}
     >
-      {milestone ? (
-        <View style={styles.sheetShadow}>
-          <LinearGradient
-            colors={SHEET_GRADIENT}
-            style={[
-              styles.sheet,
-              { maxHeight: sheetMaxHeight, paddingBottom: sheetBottomPadding },
-              isCompact && styles.sheetCompact,
-              isShort && styles.sheetShort,
-            ]}
-          >
-            <Image
-              resizeMode="contain"
-              source={MILESTONE_DOOR_SOURCE}
+      {state ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={styles.sheetShadow}>
+            <LinearGradient
+              colors={SHEET_GRADIENT}
               style={[
-                styles.doorImage,
-                isCompact && styles.doorImageCompact,
-                isShort && styles.doorImageShort,
-              ]}
-            />
-
-            <IconButton
-              accessibilityLabel="Close"
-              icon={<CloseIcon size={26} strokeWidth={1.8} />}
-              onPress={onClose}
-              size="sm"
-              style={[styles.closeButton, isCompact && styles.closeButtonCompact]}
-            />
-
-            <View
-              style={[
-                styles.sheetHeader,
-                isCompact && styles.sheetHeaderCompact,
-                isShort && styles.sheetHeaderShort,
+                styles.sheet,
+                { maxHeight: sheetMaxHeight, paddingBottom: sheetBottomPadding },
+                isCompact && styles.sheetCompact,
+                isShort && styles.sheetShort,
               ]}
             >
+              <Image
+                resizeMode="contain"
+                source={MILESTONE_DOOR_SOURCE}
+                style={[
+                  styles.doorImage,
+                  isCompact && styles.doorImageCompact,
+                  isShort && styles.doorImageShort,
+                ]}
+              />
+
+              <IconButton
+                accessibilityLabel="Close"
+                icon={<CloseIcon size={26} strokeWidth={1.8} />}
+                onPress={onClose}
+                size="sm"
+                style={[
+                  styles.closeButton,
+                  isCompact && styles.closeButtonCompact,
+                ]}
+              />
+
               <View
                 style={[
-                  styles.modalNumber,
-                  isCompact && styles.modalNumberCompact,
+                  styles.sheetHeader,
+                  isCompact && styles.sheetHeaderCompact,
+                  isShort && styles.sheetHeaderShort,
                 ]}
               >
-                <AppText
-                  color={colors.primary}
-                  style={isCompact && styles.modalNumberTextCompact}
-                  variant="stat"
-                >
-                  {milestone.id}
-                </AppText>
-              </View>
-
-              <View style={styles.modalTitleBlock}>
-                <AppText
-                  style={[
-                    isCompact && styles.modalTitleCompact,
-                    isShort && styles.modalTitleShort,
-                  ]}
-                  variant="title"
-                >
-                  {milestone.title}
-                </AppText>
-                <AppText
-                  color={colors.textSecondary}
-                  style={[
-                    styles.modalSubtitle,
-                    isCompact && styles.modalSubtitleCompact,
-                  ]}
-                  variant="bodySerif"
-                >
-                  {milestone.subtitle}
-                </AppText>
-              </View>
-            </View>
-
-            <ScrollView
-              bounces={false}
-              contentContainerStyle={styles.detailContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.detailScroll}
-            >
-              {detailRows.map((row, index) => (
                 <View
-                  key={row.label}
                   style={[
-                    styles.detailRow,
-                    isCompact && styles.detailRowCompact,
-                    isShort && styles.detailRowShort,
-                    index === detailRows.length - 1 && styles.lastDetailRow,
+                    styles.modalNumber,
+                    isCompact && styles.modalNumberCompact,
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.detailIcon,
-                      isCompact && styles.detailIconCompact,
-                    ]}
+                  <AppText
+                    color={colors.primary}
+                    style={isCompact && styles.modalNumberTextCompact}
+                    variant="stat"
                   >
-                    <MilestoneDetailIcon name={row.icon} />
-                  </View>
+                    {displayNumber}
+                  </AppText>
+                </View>
 
+                <View style={styles.modalTitleBlock}>
+                  {mode === "add" ? (
+                    <>
+                      <MilestoneFieldInput
+                        onChangeText={(text) => setDraftField("title", text)}
+                        placeholder="Milestone title"
+                        style={[
+                          styles.titleInput,
+                          isCompact && styles.modalTitleCompact,
+                          isShort && styles.modalTitleShort,
+                        ]}
+                        value={draft.title}
+                      />
+                      <MilestoneFieldInput
+                        onChangeText={(text) => setDraftField("subtitle", text)}
+                        placeholder="Short subtitle"
+                        style={[
+                          styles.subtitleInput,
+                          isCompact && styles.modalSubtitleCompact,
+                        ]}
+                        value={draft.subtitle}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <AppText
+                        style={[
+                          isCompact && styles.modalTitleCompact,
+                          isShort && styles.modalTitleShort,
+                        ]}
+                        variant="title"
+                      >
+                        {milestone?.title}
+                      </AppText>
+                      <AppText
+                        color={colors.textSecondary}
+                        style={[
+                          styles.modalSubtitle,
+                          isCompact && styles.modalSubtitleCompact,
+                        ]}
+                        variant="bodySerif"
+                      >
+                        {milestone?.subtitle}
+                      </AppText>
+                    </>
+                  )}
+                </View>
+              </View>
+
+              <ScrollView
+                bounces={false}
+                contentContainerStyle={styles.detailContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                style={styles.detailScroll}
+              >
+                {MILESTONE_DETAIL_FIELDS.map((field, index) => (
                   <View
+                    key={field.label}
                     style={[
-                      styles.detailCopy,
-                      isCompact && styles.detailCopyCompact,
+                      styles.detailRow,
+                      isCompact && styles.detailRowCompact,
+                      isShort && styles.detailRowShort,
+                      index === MILESTONE_DETAIL_FIELDS.length - 1 &&
+                        styles.lastDetailRow,
                     ]}
                   >
-                    <AppText
-                      style={isCompact && styles.sectionLabelCompact}
-                      variant="eyebrow"
-                    >
-                      {row.label}
-                    </AppText>
-                    <AppText
+                    <View
                       style={[
-                        styles.detailValue,
-                        isCompact && styles.detailValueCompact,
+                        styles.detailIcon,
+                        isCompact && styles.detailIconCompact,
                       ]}
-                      variant="titleSm"
                     >
-                      {row.value}
-                    </AppText>
-                    <AppText
-                      style={isCompact && styles.descriptionCompact}
-                      variant="bodySerif"
+                      <MilestoneDetailIcon name={field.icon} />
+                    </View>
+
+                    <View
+                      style={[
+                        styles.detailCopy,
+                        isCompact && styles.detailCopyCompact,
+                      ]}
                     >
-                      {row.description}
-                    </AppText>
+                      <AppText
+                        style={isCompact && styles.sectionLabelCompact}
+                        variant="eyebrow"
+                      >
+                        {field.label}
+                      </AppText>
+                      {mode === "view" ? (
+                        <AppText
+                          style={[
+                            styles.detailValue,
+                            isCompact && styles.detailValueCompact,
+                          ]}
+                          variant="titleSm"
+                        >
+                          {(milestone?.[field.key] ?? "") || field.placeholder}
+                        </AppText>
+                      ) : (
+                        <MilestoneFieldInput
+                          onChangeText={(text) =>
+                            setDraftField(field.key, text)
+                          }
+                          placeholder={field.placeholder}
+                          style={isCompact && styles.fieldInputCompact}
+                          value={draft[field.key]}
+                        />
+                      )}
+                      <AppText
+                        style={isCompact && styles.descriptionCompact}
+                        variant="bodySerif"
+                      >
+                        {field.description}
+                      </AppText>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {mode === "view" ? (
+                <View style={styles.questButtonWrap}>
+                  <AppButton
+                    icon={
+                      <ArrowRightIcon
+                        color={colors.textOnPrimary}
+                        size={isCompact ? 24 : 30}
+                        strokeWidth={2.5}
+                      />
+                    }
+                    label="Go to Quests"
+                    onPress={onOpenQuests}
+                    size={isCompact ? "md" : "lg"}
+                  />
+                  <View pointerEvents="none" style={styles.questShimmerOverlay}>
+                    <QuestButtonShimmer />
                   </View>
                 </View>
-              ))}
-            </ScrollView>
-
-            <View style={styles.questButtonWrap}>
-              <AppButton
-                icon={
-                  <ArrowRightIcon
-                    color={colors.textOnPrimary}
-                    size={isCompact ? 24 : 30}
-                    strokeWidth={2.5}
+              ) : (
+                <View style={styles.formActionsRow}>
+                  {mode === "edit" ? (
+                    <AppButton
+                      label="Delete Milestone"
+                      onPress={onDelete}
+                      style={[styles.formActionButton, styles.deleteButton]}
+                      textStyle={[styles.formActionLabel, styles.deleteLabel]}
+                      variant="secondary"
+                    />
+                  ) : (
+                    <AppButton
+                      label="Cancel"
+                      onPress={onClose}
+                      style={styles.formActionButton}
+                      textStyle={styles.formActionLabel}
+                      variant="secondary"
+                    />
+                  )}
+                  <AppButton
+                    disabled={!canSave}
+                    label="Save Changes"
+                    onPress={() => onSave(draft)}
+                    style={styles.formActionButton}
+                    textStyle={styles.formActionLabel}
                   />
-                }
-                label="Go to Quests"
-                onPress={onOpenQuests}
-                size={isCompact ? "md" : "lg"}
-              />
-              <View pointerEvents="none" style={styles.questShimmerOverlay}>
-                <QuestButtonShimmer />
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
+                </View>
+              )}
+            </LinearGradient>
+          </View>
+        </KeyboardAvoidingView>
       ) : null}
     </AppModal>
   );
 }
 
+/** Renumbers milestones so ids always run 1..n in path order. */
+function resequenceMilestones(
+  list: readonly JourneyMilestoneData[],
+): JourneyMilestoneData[] {
+  return list.map((milestone, index) =>
+    milestone.id === index + 1 ? milestone : { ...milestone, id: index + 1 },
+  );
+}
+
 export function GoalJourneyMapScreen() {
   const router = useRouter();
-  const [selectedMilestone, setSelectedMilestone] =
-    useState<JourneyMilestoneData | null>(null);
+  const [milestones, setMilestones] =
+    useState<readonly JourneyMilestoneData[]>(journeyMilestones);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [modalState, setModalState] = useState<MilestoneModalState | null>(
+    null,
+  );
+
   const milestonePages = useMemo(
-    () => paginateMilestones(journeyMilestones),
-    [],
+    () => paginateMilestones(milestones),
+    [milestones],
   );
   const currentConfig = journeyPageConfigs[0];
-  const currentMilestones = milestonePages[0] ?? [];
+  const currentMilestones = useMemo(
+    () => milestonePages[0] ?? [],
+    [milestonePages],
+  );
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
       currentMilestones.map((_, index) => ({
@@ -533,37 +748,142 @@ export function GoalJourneyMapScreen() {
       })),
     [currentConfig, currentMilestones],
   );
+  const ringStep =
+    (currentConfig.bottomY - currentConfig.castleY) /
+    (currentMilestones.length + 1);
+  const insertSlots = isEditMode
+    ? Array.from({ length: currentMilestones.length + 1 }, (_, index) => index)
+    : [];
+
+  const handleMilestonePress = (milestone: JourneyMilestoneData) =>
+    setModalState({ milestone, mode: isEditMode ? "edit" : "view" });
+
+  const handleSave = (values: MilestoneFormValues) => {
+    if (!modalState) {
+      return;
+    }
+
+    if (modalState.mode === "add") {
+      const created: JourneyMilestoneData = {
+        ...NEW_MILESTONE_VISUALS,
+        active: false,
+        artifact: values.artifact.trim() || undefined,
+        description: "",
+        id: 0,
+        mentor: values.mentor.trim() || undefined,
+        reward: values.reward.trim() || undefined,
+        state: values.state.trim(),
+        subtitle: values.subtitle.trim(),
+        title: values.title.trim(),
+      };
+
+      setMilestones((current) => {
+        const next = [...current];
+        next.splice(modalState.insertIndex, 0, created);
+        return resequenceMilestones(next);
+      });
+    } else if (modalState.mode === "edit") {
+      setMilestones((current) =>
+        current.map((milestone) =>
+          milestone.id === modalState.milestone.id
+            ? {
+                ...milestone,
+                artifact: values.artifact.trim() || undefined,
+                mentor: values.mentor.trim() || undefined,
+                reward: values.reward.trim() || undefined,
+                state: values.state.trim() || milestone.state,
+              }
+            : milestone,
+        ),
+      );
+    }
+
+    setModalState(null);
+  };
+
+  const handleDelete = () => {
+    if (!modalState || modalState.mode !== "edit") {
+      return;
+    }
+
+    setMilestones((current) =>
+      resequenceMilestones(
+        current.filter(
+          (milestone) => milestone.id !== modalState.milestone.id,
+        ),
+      ),
+    );
+    setModalState(null);
+  };
 
   return (
     <View style={styles.screen}>
       <JourneyMapScroll
-        enabled={selectedMilestone === null}
+        enabled={modalState === null}
         showAtmosphere
         source={JOURNEY_MAP_SOURCE}
       >
-        {({ imageHeight, imageWidth }) =>
-          currentMilestones.map((milestone, index) => (
-            <JourneyMilestone
-              imageHeight={imageHeight}
-              imageWidth={imageWidth}
-              key={milestone.id}
-              milestone={milestone}
-              onPress={setSelectedMilestone}
-              position={positions[index]}
-            />
-          ))
-        }
+        {({ imageHeight, imageWidth }) => (
+          <>
+            {currentMilestones.map((milestone, index) => (
+              <JourneyMilestone
+                imageHeight={imageHeight}
+                imageWidth={imageWidth}
+                key={milestone.id}
+                milestone={milestone}
+                onPress={handleMilestonePress}
+                position={positions[index]}
+              />
+            ))}
+
+            {insertSlots.map((slot) => {
+              const slotY = currentConfig.bottomY - ringStep * (slot + 0.5);
+
+              return (
+                <Pressable
+                  accessibilityLabel={`Add milestone at position ${slot + 1}`}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  key={`insert-${slot}`}
+                  onPress={() =>
+                    setModalState({ insertIndex: slot, mode: "add" })
+                  }
+                  style={({ pressed }) => [
+                    styles.plusButton,
+                    {
+                      left: imageWidth / 2 - PLUS_TOUCH_SIZE / 2,
+                      top: slotY * imageHeight - PLUS_TOUCH_SIZE / 2,
+                    },
+                    pressed && pressedStyle,
+                  ]}
+                >
+                  <Image
+                    resizeMode="contain"
+                    source={PLUS_SOURCE}
+                    style={styles.plusImage}
+                  />
+                </Pressable>
+              );
+            })}
+          </>
+        )}
       </JourneyMapScroll>
 
-      <JourneyMapControls />
+      <JourneyMapControls
+        editMode={isEditMode}
+        onEnterEditMode={() => setIsEditMode(true)}
+        onExitEditMode={() => setIsEditMode(false)}
+      />
 
       <MilestoneModal
-        milestone={selectedMilestone}
-        onClose={() => setSelectedMilestone(null)}
+        onClose={() => setModalState(null)}
+        onDelete={handleDelete}
         onOpenQuests={() => {
-          setSelectedMilestone(null);
+          setModalState(null);
           router.push("/milestone-quests");
         }}
+        onSave={handleSave}
+        state={modalState}
       />
     </View>
   );
@@ -751,6 +1071,59 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.xs,
     marginTop: 1,
   },
+  fieldInput: {
+    ...typography.titleSm,
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    marginTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    paddingTop: 0,
+    paddingHorizontal: 0,
+  },
+  fieldInputFocused: {
+    borderBottomColor: colors.primary,
+  },
+  fieldInputCompact: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+    marginTop: 2,
+  },
+  titleInput: {
+    ...typography.title,
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    paddingBottom: 2,
+    paddingTop: 0,
+    paddingHorizontal: 0,
+  },
+  subtitleInput: {
+    ...typography.bodySerif,
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    marginTop: spacing.xs,
+    paddingBottom: 2,
+    paddingTop: 0,
+    paddingHorizontal: 0,
+  },
+  formActionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  formActionButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  formActionLabel: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
+  },
+  deleteButton: {
+    borderColor: colors.danger,
+  },
+  deleteLabel: {
+    color: colors.danger,
+  },
   questButtonWrap: {
     marginTop: 2,
   },
@@ -762,6 +1135,18 @@ const styles = StyleSheet.create({
   shimmerClip: {
     ...StyleSheet.absoluteFill,
     overflow: "hidden",
+  },
+  plusButton: {
+    position: "absolute",
+    width: PLUS_TOUCH_SIZE,
+    height: PLUS_TOUCH_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 30,
+  },
+  plusImage: {
+    width: PLUS_IMAGE_SIZE,
+    height: PLUS_IMAGE_SIZE,
   },
   shimmerBloom: {
     position: "absolute",

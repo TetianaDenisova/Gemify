@@ -8,6 +8,7 @@ import {
   AppButton,
   AppModal,
   AppText,
+  CheckIcon,
   PencilIcon,
   ScreenHeader,
   SparkIcon,
@@ -123,7 +124,17 @@ function JourneyOverviewModal({
   );
 }
 
-export function JourneyMapControls() {
+export type JourneyMapControlsProps = {
+  editMode: boolean;
+  onEnterEditMode: () => void;
+  onExitEditMode: () => void;
+};
+
+export function JourneyMapControls({
+  editMode,
+  onEnterEditMode,
+  onExitEditMode,
+}: JourneyMapControlsProps) {
   const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
 
@@ -134,18 +145,27 @@ export function JourneyMapControls() {
 
   const openEditPath = () => {
     setOverviewVisible(false);
-    router.push("/describe-dream");
+    onEnterEditMode();
   };
 
   return (
     <>
       <ScreenHeader
         asStackHeader
-        rightAction={{
-          accessibilityLabel: "Open journey overview",
-          icon: <SparklesIcon />,
-          onPress: () => setOverviewVisible(true),
-        }}
+        rightAction={
+          editMode
+            ? {
+                accessibilityLabel: "Finish editing path",
+                icon: <CheckIcon color={colors.primary} size={iconSizes.md} />,
+                label: "Done",
+                onPress: onExitEditMode,
+              }
+            : {
+                accessibilityLabel: "Open journey overview",
+                icon: <SparklesIcon />,
+                onPress: () => setOverviewVisible(true),
+              }
+        }
       />
 
       <JourneyOverviewModal
