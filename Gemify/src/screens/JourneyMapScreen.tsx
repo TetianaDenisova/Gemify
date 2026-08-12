@@ -1,3 +1,5 @@
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -12,9 +14,6 @@ import {
   type StyleProp,
   type TextStyle,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -26,7 +25,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 
 import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
@@ -40,7 +40,6 @@ import {
   type JourneyMilestoneData,
 } from "@/data/journeyMilestones";
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
-import { getMilestoneRingY } from "@/utils/milestonePagination";
 import {
   AppButton,
   AppModal,
@@ -60,6 +59,7 @@ import {
   spacing,
   typography,
 } from "@/theme/theme";
+import { getMilestoneRingY } from "@/utils/milestonePagination";
 
 type MilestoneModalMode = "view" | "edit" | "add";
 
@@ -236,32 +236,32 @@ type MilestoneDetailField = {
 const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
   {
     description:
-      "This will be the proof of your progress and show that the goal is achieved.",
+      "",
     icon: "artifact",
     key: "artifact",
     label: "ARTIFACT",
-    placeholder: "Proof of progress",
+    placeholder: "What will show that your goal has been achieved?",
   },
   {
-    description: "Your mental and emotional state that supports this stage.",
+    description: "",
     icon: "state",
     key: "state",
     label: "STATE",
-    placeholder: "Your state",
+    placeholder: "How do you want to feel at this stage?",
   },
   {
-    description: "Someone who guides, supports, and helps you grow.",
+    description: "",
     icon: "mentor",
     key: "mentor",
     label: "MENTOR",
-    placeholder: "Trusted guide",
+    placeholder: "Who can guide and support you?",
   },
   {
-    description: "A meaningful reward that celebrates your progress.",
+    description: "",
     icon: "reward",
     key: "reward",
     label: "REWARD",
-    placeholder: "Meaningful reward",
+    placeholder: "How will you reward your progress?",
   },
 ];
 
