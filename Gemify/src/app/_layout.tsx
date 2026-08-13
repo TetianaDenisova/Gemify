@@ -1,10 +1,18 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { initDatabase } from "@/db";
 import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
+  useEffect(() => {
+    initDatabase().catch((cause) => {
+      console.error("Failed to initialize the database", cause);
+    });
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ backgroundColor: colors.background, flex: 1 }}>
       <StatusBar style="light" />
@@ -44,6 +52,10 @@ export default function RootLayout() {
         <Stack.Screen
           name="create-habit"
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="items-demo"
+          options={{ headerShown: true, headerTransparent: true }}
         />
       </Stack>
     </GestureHandlerRootView>

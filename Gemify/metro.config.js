@@ -10,8 +10,20 @@ config.transformer = {
 
 config.resolver = {
   ...config.resolver,
-  assetExts: assetExts.filter((extension) => extension !== "svg"),
+  // "wasm" is required by expo-sqlite on web.
+  assetExts: [...assetExts.filter((extension) => extension !== "svg"), "wasm"],
   sourceExts: [...sourceExts, "svg"],
+};
+
+// expo-sqlite's web worker needs SharedArrayBuffer, which browsers only
+// enable under cross-origin isolation.
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => (req, res, next) => {
+    res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    middleware(req, res, next);
+  },
 };
 
 module.exports = config;
