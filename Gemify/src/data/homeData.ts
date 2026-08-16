@@ -1,4 +1,3 @@
-export { homeDummyData as homeData } from "./homeDummyData";
 export type {
   HomeData,
   HomeHeader,

@@ -8,7 +8,7 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { BlockIconArt } from "@/components/TimeBlockTabs";
-import type { ActionIcon, DayAction, TimeBlock } from "@/data/timeBlocks";
+import type { ActionIcon, DayAction, TimeBlock } from "@/dto/timeBlocks";
 import { AppText, Card, Checkbox, SparkIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { fontSizes, layout, lineHeights, spacing } from "@/theme/theme";

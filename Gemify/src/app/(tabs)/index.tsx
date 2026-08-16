@@ -4,11 +4,9 @@ import { StyleSheet, View } from "react-native";
 import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
-import { homeData } from "@/data/homeData";
-import { getCurrentTimeBlockKey } from "@/data/timeBlocks";
 import type { DreamSummary } from "@/db";
+import { useDayTaskBlocks, currentBlockKey } from "@/hooks/useDayTaskBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
-import { useTimeBlocks } from "@/hooks/useTimeBlocks";
 import {
   AppButton,
   AppText,
@@ -19,6 +17,13 @@ import {
 } from "@/shared/components";
 import { spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
+
+function greetingForNow(now: Date): string {
+  const hour = now.getHours();
+  if (hour < 12) return "Good morning ✦";
+  if (hour < 18) return "Good afternoon ✦";
+  return "Good evening ✦";
+}
 
 const GOAL_VISUALS: readonly {
   themeColor: ThemeColor;
@@ -47,18 +52,20 @@ export default function HomeScreen() {
   const router = useRouter();
   const today = todayKey();
   const { dreams, loading } = useDreamSummaries();
-  const { blocks, totalActions, completedActions, toggleAction } =
-    useTimeBlocks(today);
+  const { blocks, totalTasks, completedTasks, toggleTask } =
+    useDayTaskBlocks(today);
 
-  const currentBlockKey = getCurrentTimeBlockKey(new Date());
+  // Current focus = the sprint tasks scheduled into the time block that
+  // matches the clock right now.
+  const focusKey = currentBlockKey(blocks, new Date());
   const currentBlock =
-    blocks.find((block) => block.key === currentBlockKey) ?? blocks[0];
+    blocks.find((block) => block.key === focusKey) ?? blocks[0];
 
   return (
     <ScreenScaffold tabClearance topInset>
       <HomeHeader
-        greeting={homeData.header.greeting}
-        subtitle={homeData.header.subtitle}
+        greeting={greetingForNow(new Date())}
+        subtitle="You become who you repeatedly choose to be."
       />
 
       <SectionHeader
@@ -110,22 +117,36 @@ export default function HomeScreen() {
         variant="eyebrow"
       />
 
-      {currentBlock ? (
+      {currentBlock && currentBlock.actions.length > 0 ? (
         <TimeBlockCard
           block={currentBlock}
           onToggleAction={(index) => {
             const action = currentBlock.actions[index];
-            if (action) toggleAction(action.id, !action.done);
+            if (action) toggleTask(action.taskId, !action.done);
           }}
           showHeader={false}
           showIntro={false}
           style={styles.currentBlock}
         />
-      ) : null}
+      ) : (
+        <Card style={styles.currentBlock}>
+          <AppText align="center" variant="bodySmall">
+            Nothing scheduled for right now. Plan tasks in the Sprint tab and
+            your current focus will appear here.
+          </AppText>
+          <View style={styles.emptyButton}>
+            <AppButton
+              label="Open Weekly Plan"
+              onPress={() => router.push("/sprint")}
+              variant="secondary"
+            />
+          </View>
+        </Card>
+      )}
 
       <TodayProgressCard
-        completedActions={completedActions}
-        totalActions={totalActions}
+        completedActions={completedTasks}
+        totalActions={totalTasks}
       />
     </ScreenScaffold>
   );

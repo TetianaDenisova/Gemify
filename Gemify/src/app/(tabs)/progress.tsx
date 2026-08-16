@@ -17,12 +17,11 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 
-import {
-  progressAccentLayout,
-  type FulfillmentPoint,
-  type ProgressAccent,
-  type TimelineIconKey,
-  type TimelineMoment,
+import type {
+  FulfillmentPoint,
+  ProgressAccent,
+  TimelineIconKey,
+  TimelineMoment,
 } from "@/data/progressData";
 import { addTimelineMoment } from "@/db";
 import { useProgressContent } from "@/hooks/useProgressContent";
@@ -582,7 +581,7 @@ function TimelineGlyph({ color, icon, size = 26 }: { color: string; icon: Timeli
 }
 
 function TimelineMomentItem({ moment }: { moment: TimelineMoment }) {
-  const tint = accentTints[progressAccentLayout.moments[moment.key] ?? "gold"];
+  const tint = accentTints.gold;
 
   return (
     <View style={styles.timelineItem}>

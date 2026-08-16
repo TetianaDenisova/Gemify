@@ -7,8 +7,8 @@ import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePic
 import { TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
-import { useTimeBlocks } from "@/hooks/useTimeBlocks";
-import { ScreenHeader, ScreenScaffold } from "@/shared/components";
+import { useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
+import { AppText, Card, ScreenHeader, ScreenScaffold } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { layout, spacing } from "@/theme/theme";
 import { toDateKey } from "@/utils/dates";
@@ -41,8 +41,8 @@ export default function MyDayScreen() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const { blocks, completedActions, totalActions, toggleAction } =
-    useTimeBlocks(toDateKey(selectedDate));
+  const { blocks, completedTasks, totalTasks, toggleTask } =
+    useDayTaskBlocks(toDateKey(selectedDate));
 
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
@@ -85,10 +85,19 @@ export default function MyDayScreen() {
             block={activeBlock}
             onToggleAction={(index) => {
               const action = activeBlock.actions[index];
-              if (action) toggleAction(action.id, !action.done);
+              if (action) toggleTask(action.taskId, !action.done);
             }}
             style={compact ? styles.blockSectionCompact : styles.blockSection}
           />
+        ) : null}
+
+        {activeBlock && activeBlock.actions.length === 0 ? (
+          <Card style={styles.emptyBlockCard}>
+            <AppText align="center" variant="bodySmall">
+              No tasks scheduled for this block. Plan your week in the Sprint
+              tab and they will show up here.
+            </AppText>
+          </Card>
         ) : null}
       </ScreenScaffold>
 
@@ -100,9 +109,9 @@ export default function MyDayScreen() {
         ]}
       >
         <TodayProgressCard
-          completedActions={completedActions}
+          completedActions={completedTasks}
           style={styles.progressCard}
-          totalActions={totalActions}
+          totalActions={totalTasks}
         />
       </View>
 
@@ -128,6 +137,10 @@ const styles = StyleSheet.create({
   },
   blockSectionCompact: {
     marginTop: spacing.md,
+  },
+  emptyBlockCard: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.lg,
   },
   header: {
     paddingHorizontal: 0,

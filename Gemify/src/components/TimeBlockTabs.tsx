@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import type { BlockIcon, TimeBlock } from "@/data/timeBlocks";
+import type { BlockIcon, TimeBlock } from "@/dto/timeBlocks";
 import { AppText, ChevronIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { fontSizes, layout, lineHeights, pressed, radius } from "@/theme/theme";

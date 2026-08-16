@@ -117,7 +117,7 @@ export async function getDayProgress(
 
 /**
  * Key of the block whose start time most recently passed, falling back to the
- * first flexible block. Mirrors getCurrentTimeBlockKey in src/data/timeBlocks.
+ * first flexible block.
  */
 export async function getCurrentBlockKey(now: Date): Promise<string> {
   const db = await getDatabase();

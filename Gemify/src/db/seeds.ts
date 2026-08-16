@@ -41,7 +41,7 @@ export type TimeBlockSeed = {
   startTime: string | null;
 };
 
-/** Daily routine blocks (from src/data/timeBlocks.ts, minus completion state). */
+/** Daily routine blocks (minus completion state). */
 export const TIME_BLOCK_SEEDS: readonly TimeBlockSeed[] = [
   {
     key: "anytime",
