@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +16,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
+import {
+  createRisk,
+  deleteRisk,
+  getDreams,
+  getRisks,
+  setRiskActions,
+  updateRisk,
+} from "@/db";
 import {
   AppButton,
   AppInput,
@@ -57,55 +66,101 @@ type RiskPlan = {
   title: string;
 };
 
-const DEFAULT_PLANS: readonly RiskPlan[] = [
-  {
-    actions: [
-      "I will make the step smaller.",
-      "I'll do a 5-minute version.",
-      "I'll rest briefly and continue.",
-      "I'll move the task to my next available time.",
-    ],
-    id: 1,
-    prompt: "I may feel too tired to complete the planned action.",
-    title: "Lack of energy",
-  },
-  {
-    actions: [
-      "I will choose the smallest useful version.",
-      "I'll reschedule it immediately.",
-      "I'll protect this time as a priority.",
-    ],
-    id: 2,
-    prompt: "I may not have enough time to do everything I planned.",
-    title: "Lack of time",
-  },
-  {
-    actions: [
-      "I'll reconnect with why this goal matters.",
-      "I'll take one tiny action to get started.",
-      "I'll celebrate small wins to stay inspired.",
-    ],
-    id: 3,
-    prompt: "I may lose interest or forget why this matters.",
-    title: "Loss of motivation",
-  },
-] as const;
-
 export default function WhatIfPlanScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [plans, setPlans] = useState<readonly RiskPlan[]>(DEFAULT_PLANS);
+  const { dreamId: dreamIdParam } = useLocalSearchParams<{ dreamId?: string }>();
+  const [dreamId, setDreamId] = useState<number | null>(null);
+  const [plans, setPlans] = useState<readonly RiskPlan[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const nextIdRef = useRef(DEFAULT_PLANS.length + 1);
   const compact = width < 380;
   const verySmall = width < 340;
+
+  const loadPlans = useCallback(async () => {
+    try {
+      let id = Number(dreamIdParam);
+      if (!Number.isFinite(id) || id <= 0) {
+        const [firstDream] = await getDreams();
+        if (!firstDream) {
+          setDreamId(null);
+          setPlans([]);
+          return;
+        }
+        id = firstDream.id;
+      }
+      setDreamId(id);
+      const risks = await getRisks(id);
+      setPlans(
+        risks.map((risk) => ({
+          actions: risk.actions.map((action) => action.content),
+          id: risk.id,
+          prompt: risk.prompt,
+          title: risk.title,
+        })),
+      );
+    } catch (cause) {
+      console.error("Failed to load the What-If plans", cause);
+    }
+  }, [dreamIdParam]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPlans();
+    }, [loadPlans]),
+  );
 
   const updatePlan = (updated: RiskPlan) =>
     setPlans((current) =>
       current.map((plan) => (plan.id === updated.id ? updated : plan)),
     );
+
+  /** Persists all inline edits when leaving edit mode. */
+  const finishEditing = async () => {
+    setIsEditMode(false);
+    try {
+      for (const plan of plans) {
+        if (plan.title.trim()) {
+          await updateRisk(plan.id, { title: plan.title, prompt: plan.prompt });
+        }
+        const cleanActions = plan.actions
+          .map((action) => action.trim())
+          .filter(Boolean);
+        if (cleanActions.length > 0) {
+          await setRiskActions(plan.id, cleanActions);
+        }
+      }
+    } catch (cause) {
+      console.error("Failed to save the What-If plans", cause);
+    }
+    await loadPlans();
+  };
+
+  const handleAdd = async (plan: Omit<RiskPlan, "id">) => {
+    if (dreamId === null) return;
+    try {
+      await createRisk(dreamId, {
+        title: plan.title,
+        prompt: plan.prompt,
+        actions: plan.actions,
+      });
+      await loadPlans();
+    } catch (cause) {
+      console.error("Failed to add the risk", cause);
+    }
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (confirmDeleteId === null) return;
+    try {
+      await deleteRisk(confirmDeleteId);
+      await loadPlans();
+    } catch (cause) {
+      console.error("Failed to delete the risk", cause);
+    }
+    setConfirmDeleteId(null);
+  };
 
   const planPendingDelete =
     plans.find((plan) => plan.id === confirmDeleteId) ?? null;
@@ -138,7 +193,7 @@ export default function WhatIfPlanScreen() {
                 accessibilityLabel="Finish editing risks"
                 icon={<CheckIcon color={colors.primary} size={iconSizes.md} />}
                 label="Done"
-                onPress={() => setIsEditMode(false)}
+                onPress={finishEditing}
                 size="sm"
               />
             </View>
@@ -188,12 +243,7 @@ export default function WhatIfPlanScreen() {
 
       <AddRiskModal
         maxWidth={Math.min(width - 32, 720)}
-        onAdd={(plan) =>
-          setPlans((current) => [
-            { ...plan, id: nextIdRef.current++ },
-            ...current,
-          ])
-        }
+        onAdd={handleAdd}
         onClose={() => setModalVisible(false)}
         visible={modalVisible}
       />
@@ -219,12 +269,7 @@ export default function WhatIfPlanScreen() {
           />
           <AppButton
             label="Delete"
-            onPress={() => {
-              setPlans((current) =>
-                current.filter((plan) => plan.id !== confirmDeleteId),
-              );
-              setConfirmDeleteId(null);
-            }}
+            onPress={handleDeleteConfirmed}
             style={[styles.confirmButton, styles.deleteButton]}
             textStyle={[styles.confirmLabel, styles.deleteLabel]}
             variant="secondary"

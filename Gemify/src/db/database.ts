@@ -1,4 +1,8 @@
-import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
+import {
+  deleteDatabaseAsync,
+  openDatabaseAsync,
+  type SQLiteDatabase,
+} from "expo-sqlite";
 
 import { migrations } from "./migrations";
 
@@ -36,6 +40,30 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
   await db.execAsync("PRAGMA foreign_keys = ON;");
   await migrate(db);
   return db;
+}
+
+/**
+ * Development-only reset: closes the connection, deletes the database file,
+ * and re-opens it (which re-runs every migration and re-seeds reference
+ * data). Compiled out of production builds via the __DEV__ guard.
+ */
+export async function resetDatabaseForDev(): Promise<void> {
+  if (!__DEV__) {
+    throw new Error("resetDatabaseForDev is only available in development.");
+  }
+
+  if (databasePromise) {
+    try {
+      const db = await databasePromise;
+      await db.closeAsync();
+    } catch {
+      // A failed open still leaves no connection worth closing.
+    }
+    databasePromise = null;
+  }
+
+  await deleteDatabaseAsync(DATABASE_NAME);
+  await initDatabase();
 }
 
 async function migrate(db: SQLiteDatabase): Promise<void> {

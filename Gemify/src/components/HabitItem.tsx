@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { useState } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { AppText, Card, CheckIcon, ChevronIcon } from "@/shared/components";
@@ -173,9 +178,12 @@ function HabitTitle({ compact, title }: { compact: boolean; title: string }) {
   const [truncated, setTruncated] = useState(false);
 
   // A new width (or a new title) may well fit, so measure again from scratch.
-  useEffect(() => {
+  const measureKey = `${compact}|${width}|${title}`;
+  const [lastMeasureKey, setLastMeasureKey] = useState(measureKey);
+  if (measureKey !== lastMeasureKey) {
+    setLastMeasureKey(measureKey);
     setTruncated(false);
-  }, [compact, title, width]);
+  }
 
   if (truncated) {
     return null;
@@ -258,11 +266,14 @@ export function HabitProgress({
   activeDayIndex,
   compact = false,
   expanded = false,
+  onDayPress,
   progress,
 }: {
   activeDayIndex?: number;
   compact?: boolean;
   expanded?: boolean;
+  /** When set, day cells become tappable (used to toggle completions). */
+  onDayPress?: (dayIndex: number) => void;
   progress: readonly HabitCompletion[];
 }) {
   return (
@@ -277,8 +288,11 @@ export function HabitProgress({
         const highlighted = index === activeDayIndex;
 
         return (
-          <View
+          <Pressable
+            accessibilityLabel={`${day} status`}
+            disabled={!onDayPress}
             key={day}
+            onPress={() => onDayPress?.(index)}
             style={[
               styles.dayCell,
               highlighted && !expanded && styles.dayCellHighlighted,
@@ -301,7 +315,7 @@ export function HabitProgress({
                 <CheckIcon color={colors.primaryBright} size={18} strokeWidth={2.4} />
               </View>
             ) : null}
-          </View>
+          </Pressable>
         );
       })}
     </View>
@@ -313,11 +327,13 @@ export function HabitItemRow({
   compact = false,
   expanded = false,
   habit,
+  onDayPress,
 }: {
   activeDayIndex?: number;
   compact?: boolean;
   expanded?: boolean;
   habit: Habit;
+  onDayPress?: (dayIndex: number) => void;
 }) {
   return (
     <View>
@@ -326,6 +342,7 @@ export function HabitItemRow({
         activeDayIndex={activeDayIndex}
         compact={compact}
         expanded={expanded}
+        onDayPress={onDayPress}
         progress={habit.progress}
       />
     </View>

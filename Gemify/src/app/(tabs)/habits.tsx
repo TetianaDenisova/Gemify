@@ -1,15 +1,28 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
 } from "react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { type HabitCompletion, HabitItemRow } from "@/components/HabitItem";
 import {
+  deleteHabit,
+  getDreams,
+  type Dream,
+  type HabitDetailSection as DbHabitDetailSection,
+} from "@/db";
+import {
+  habitTimeLabel,
+  useHabitWeek,
+  type HabitWeekView,
+} from "@/hooks/useHabitWeek";
+import {
+  AppButton,
+  AppModal,
   AppText,
   Checkbox,
   ChevronIcon,
@@ -29,8 +42,6 @@ import {
   spacing,
 } from "@/theme/theme";
 
-const ACTIVE_DAY_INDEX = 2;
-
 /** Bespoke deep-night gradient behind the habits board. */
 const HABITS_BACKGROUND = [
   "#020713",
@@ -38,8 +49,6 @@ const HABITS_BACKGROUND = [
   "rgba(3, 8, 19, 0.92)",
   "rgba(3, 8, 19, 0.98)",
 ] as const;
-
-type Completion = HabitCompletion;
 
 type HabitDetailSection = {
   icon: "sun" | "feather" | "shield";
@@ -53,7 +62,8 @@ type Habit = {
   details: readonly HabitDetailSection[];
   goal: number;
   icon: "workout" | "water" | "book" | "meditate";
-  progress: readonly Completion[];
+  id: number;
+  progress: readonly HabitCompletion[];
   time: string;
   title: string;
 };
@@ -66,140 +76,47 @@ type HabitGroup = {
   habits: readonly Habit[];
 };
 
-const habitGroups: readonly HabitGroup[] = [
-  {
-    count: "2 habits",
-    icon: "book",
-    tint: colors.accentVioletStrong,
-    title: "Growth Mindset",
-    habits: [
-      {
-        accent: colors.accentVioletStrong,
-        day: 10,
-        details: [
-          {
-            icon: "sun",
-            rows: ["Put the book on the coffee table", "Open to the next page before bed"],
-            title: "How to make this habit easy to start",
-          },
-          {
-            icon: "feather",
-            rows: ["Read for 5 minutes only"],
-            title: "Easy version for a bad day",
-          },
-          {
-            icon: "shield",
-            rows: [
-              "If I feel tired -> read one page",
-              "If I forget after coffee -> read before lunch",
-            ],
-            title: "Obstacles & backup plan",
-          },
-        ],
-        goal: 24,
-        icon: "book",
-        progress: ["done", "done", "partial", "missed", "open", "missed", "missed"],
-        time: "After morning coffee",
-        title: "Read 20 minutes",
-      },
-      {
-        accent: colors.accentVioletStrong,
-        day: 6,
-        details: [
-          {
-            icon: "sun",
-            rows: ["Place cushion by the bed", "Start the timer before checking messages"],
-            title: "How to make this habit easy to start",
-          },
-          {
-            icon: "feather",
-            rows: ["Breathe quietly for 2 minutes"],
-            title: "Easy version for a bad day",
-          },
-          {
-            icon: "shield",
-            rows: [
-              "If I wake up late -> meditate after shower",
-              "If the room is noisy -> use headphones",
-            ],
-            title: "Obstacles & backup plan",
-          },
-        ],
-        goal: 24,
-        icon: "meditate",
-        progress: ["done", "missed", "done", "missed", "open", "missed", "missed"],
-        time: "After waking up",
-        title: "Meditate",
-      },
-    ],
-  },
-  {
-    count: "2 habits",
-    icon: "heart",
-    tint: colors.primary,
-    title: "Healthy Body",
-    habits: [
-      {
-        accent: colors.primary,
-        day: 12,
-        details: [
-          {
-            icon: "sun",
-            rows: ["Lay out clothes before work", "Queue the workout plan in advance"],
-            title: "How to make this habit easy to start",
-          },
-          {
-            icon: "feather",
-            rows: ["Do one set only"],
-            title: "Easy version for a bad day",
-          },
-          {
-            icon: "shield",
-            rows: [
-              "If I feel tired -> do the easy version",
-              "If work runs late -> train before dinner",
-            ],
-            title: "Obstacles & backup plan",
-          },
-        ],
-        goal: 24,
-        icon: "workout",
-        progress: ["done", "done", "done", "missed", "open", "missed", "missed"],
-        time: "After work",
-        title: "Workout",
-      },
-      {
-        accent: colors.primary,
-        day: 15,
-        details: [
-          {
-            icon: "sun",
-            rows: ["Fill bottle before breakfast", "Keep a glass on the desk"],
-            title: "How to make this habit easy to start",
-          },
-          {
-            icon: "feather",
-            rows: ["Drink one full bottle"],
-            title: "Easy version for a bad day",
-          },
-          {
-            icon: "shield",
-            rows: [
-              "If I leave home -> carry the bottle",
-              "If I forget all morning -> drink with lunch",
-            ],
-            title: "Obstacles & backup plan",
-          },
-        ],
-        goal: 24,
-        icon: "water",
-        progress: ["done", "done", "done", "done", "open", "missed", "missed"],
-        time: "All day",
-        title: "Drink 2L of water",
-      },
-    ],
-  },
-];
+const GROUP_VISUAL_CYCLE = [
+  { icon: "book", tint: colors.accentVioletStrong },
+  { icon: "heart", tint: colors.primary },
+] as const;
+
+const HABIT_ICON_CYCLE = ["workout", "water", "book", "meditate"] as const;
+
+const DETAIL_SECTION_META: Record<
+  DbHabitDetailSection,
+  { icon: HabitDetailSection["icon"]; title: string }
+> = {
+  easy_start: { icon: "sun", title: "How to make this habit easy to start" },
+  easy_version: { icon: "feather", title: "Easy version for a bad day" },
+  backup_plan: { icon: "shield", title: "Obstacles & backup plan" },
+};
+
+/** DB habit view → the row shape this screen renders. */
+function toHabitRow(view: HabitWeekView, index: number, tint: string): Habit {
+  const sections = (
+    Object.keys(DETAIL_SECTION_META) as DbHabitDetailSection[]
+  )
+    .map((section) => ({
+      ...DETAIL_SECTION_META[section],
+      rows: view.details
+        .filter((entry) => entry.section === section)
+        .map((entry) => entry.content),
+    }))
+    .filter((section) => section.rows.length > 0);
+
+  return {
+    accent: tint,
+    day: view.doneCount,
+    details: sections,
+    goal: view.habit.goalDays,
+    icon: HABIT_ICON_CYCLE[index % HABIT_ICON_CYCLE.length],
+    id: view.habit.id,
+    progress: view.weekProgress,
+    time: view.habit.cue || habitTimeLabel(view.habit.timeOfDay),
+    title: view.habit.title,
+  };
+}
 
 function MenuIcon() {
   return (
@@ -298,13 +215,18 @@ function HeaderOrnament({ compact }: { compact: boolean }) {
   );
 }
 
-function TodayBar({ compact }: { compact: boolean }) {
+function TodayBar({
+  compact,
+  totalHabits,
+}: {
+  compact: boolean;
+  totalHabits: number;
+}) {
   const dateLabel = new Date().toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     weekday: "long",
   });
-  const totalHabits = habitGroups.reduce((sum, group) => sum + group.habits.length, 0);
 
   return (
     <View style={[styles.todayBar, compact && styles.todayBarCompact]}>
@@ -417,14 +339,22 @@ function HabitDetailSectionView({
 }
 
 function HabitRow({
+  activeDayIndex,
   compact,
   expanded,
   habit,
+  onDayPress,
+  onDelete,
+  onEdit,
   onPress,
 }: {
+  activeDayIndex: number;
   compact: boolean;
   expanded: boolean;
   habit: Habit;
+  onDayPress: (dayIndex: number) => void;
+  onDelete: () => void;
+  onEdit: () => void;
   onPress: () => void;
 }) {
   return (
@@ -441,16 +371,32 @@ function HabitRow({
       ]}
     >
       <HabitItemRow
-        activeDayIndex={ACTIVE_DAY_INDEX}
+        activeDayIndex={activeDayIndex}
         compact={compact}
         expanded={expanded}
         habit={habit}
+        onDayPress={expanded ? onDayPress : undefined}
       />
       {expanded ? (
         <View style={styles.detailPanel}>
           {habit.details.map((section) => (
             <HabitDetailSectionView compact={compact} key={section.title} section={section} />
           ))}
+          <View style={styles.habitActionsRow}>
+            <AppButton
+              label="Edit"
+              onPress={onEdit}
+              style={styles.habitActionButton}
+              variant="secondary"
+            />
+            <AppButton
+              label="Delete"
+              onPress={onDelete}
+              style={[styles.habitActionButton, styles.habitDeleteButton]}
+              textStyle={styles.habitDeleteLabel}
+              variant="secondary"
+            />
+          </View>
         </View>
       ) : null}
     </Pressable>
@@ -486,10 +432,65 @@ export default function HabitsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
-  const [expandedHabit, setExpandedHabit] = useState<string | null>(null);
+  const [expandedHabit, setExpandedHabit] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Habit | null>(null);
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const { habits: habitViews, refresh, setCompletion, weekDates } =
+    useHabitWeek();
 
-  function handleHabitPress(title: string) {
-    setExpandedHabit((current) => (current === title ? null : title));
+  useFocusEffect(
+    useCallback(() => {
+      getDreams()
+        .then(setDreams)
+        .catch((cause: unknown) =>
+          console.error("Failed to load dreams", cause),
+        );
+    }, []),
+  );
+
+  // Monday-first index of today, matching the week strip's order.
+  const activeDayIndex = (new Date().getDay() + 6) % 7;
+
+  const groups: (HabitGroup & { views: HabitWeekView[] })[] = dreams
+    .map((dream, index) => {
+      const visuals = GROUP_VISUAL_CYCLE[index % GROUP_VISUAL_CYCLE.length];
+      const views = habitViews.filter(
+        (view) => view.habit.dreamId === dream.id,
+      );
+      return {
+        count: `${views.length} ${views.length === 1 ? "habit" : "habits"}`,
+        icon: visuals.icon,
+        tint: visuals.tint,
+        title: dream.title,
+        habits: views.map((view, habitIndex) =>
+          toHabitRow(view, habitIndex, visuals.tint),
+        ),
+        views,
+      };
+    })
+    .filter((group) => group.habits.length > 0);
+
+  function handleHabitPress(id: number) {
+    setExpandedHabit((current) => (current === id ? null : id));
+  }
+
+  function handleDayPress(habit: Habit, dayIndex: number) {
+    const date = weekDates[dayIndex];
+    const current = habit.progress[dayIndex];
+    // Tap cycles done ↔ open; the create/edit form is where richer statuses
+    // could live later.
+    setCompletion(habit.id, date, current === "done" ? null : "done");
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return;
+    try {
+      await deleteHabit(deleteTarget.id);
+      await refresh();
+    } catch (cause) {
+      console.error("Failed to delete the habit", cause);
+    }
+    setDeleteTarget(null);
   }
 
   return (
@@ -521,24 +522,68 @@ export default function HabitsScreen() {
         />
       </View>
 
-      <TodayBar compact={compact} />
+      <TodayBar compact={compact} totalHabits={habitViews.length} />
 
       <View style={styles.groups}>
-        {habitGroups.map((group) => (
+        {groups.map((group) => (
           <View key={group.title} style={styles.group}>
             <GroupHeader compact={compact} group={group} />
             {group.habits.map((habit) => (
               <HabitRow
+                activeDayIndex={activeDayIndex}
                 compact={compact}
-                expanded={expandedHabit === habit.title}
+                expanded={expandedHabit === habit.id}
                 habit={habit}
-                key={habit.title}
-                onPress={() => handleHabitPress(habit.title)}
+                key={habit.id}
+                onDayPress={(dayIndex) => handleDayPress(habit, dayIndex)}
+                onDelete={() => setDeleteTarget(habit)}
+                onEdit={() =>
+                  router.push({
+                    pathname: "/create-habit",
+                    params: { habitId: String(habit.id) },
+                  })
+                }
+                onPress={() => handleHabitPress(habit.id)}
               />
             ))}
           </View>
         ))}
       </View>
+
+      {habitViews.length === 0 ? (
+        <View style={styles.emptyState}>
+          <AppText align="center" variant="bodySmall">
+            No habits yet. Tap + to create the first one.
+          </AppText>
+        </View>
+      ) : null}
+
+      <AppModal
+        onClose={() => setDeleteTarget(null)}
+        visible={deleteTarget !== null}
+      >
+        <AppText align="center" variant="titleSm">
+          Delete this habit?
+        </AppText>
+        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
+          “{deleteTarget?.title}” and its history will be removed.
+        </AppText>
+        <View style={styles.habitActionsRow}>
+          <AppButton
+            label="Cancel"
+            onPress={() => setDeleteTarget(null)}
+            style={styles.habitActionButton}
+            variant="secondary"
+          />
+          <AppButton
+            label="Delete"
+            onPress={handleDeleteConfirmed}
+            style={[styles.habitActionButton, styles.habitDeleteButton]}
+            textStyle={styles.habitDeleteLabel}
+            variant="secondary"
+          />
+        </View>
+      </AppModal>
     </ScreenScaffold>
   );
 }
@@ -638,6 +683,27 @@ const styles = StyleSheet.create({
   },
   groups: {
     marginTop: spacing.md,
+  },
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  emptyState: {
+    paddingVertical: spacing.xl,
+  },
+  habitActionButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  habitActionsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  habitDeleteButton: {
+    borderColor: colors.danger,
+  },
+  habitDeleteLabel: {
+    color: colors.danger,
   },
   todayBar: {
     alignItems: "center",

@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,7 @@ const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
 export default function DescribeDreamScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { name } = useLocalSearchParams<{ name?: string }>();
   const [description, setDescription] = useState("");
   const { height, width } = useWindowDimensions();
   const compactLayout = height < 760 || width > height;
@@ -94,7 +95,12 @@ export default function DescribeDreamScreen() {
           <AppButton
             icon={<ArrowRightIcon color={colors.textOnPrimary} />}
             label="Continue"
-            onPress={() => router.navigate("/state")}
+            onPress={() =>
+              router.navigate({
+                pathname: "/state",
+                params: { name: name ?? "", description: description.trim() },
+              })
+            }
             size="lg"
             variant="primary"
           />

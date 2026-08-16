@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -9,15 +10,34 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import { HabitItemCard } from "@/components/HabitItem";
+import { HabitItemCard, type HabitCompletion } from "@/components/HabitItem";
+import {
+  approveIdea,
+  createIdea,
+  createQuest,
+  createTask,
+  getDreams,
+  getIdeas,
+  getMilestoneById,
+  getMilestones,
+  getQuests,
+  getTasksByQuest,
+  setTaskDone,
+  type Idea,
+  type Milestone,
+  type Quest,
+  type Task,
+} from "@/db";
+import { habitTimeLabel, useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
+  AppInput,
+  AppModal,
   AppText,
   BackIcon,
   Badge,
   Card,
   Checkbox,
-  ChevronIcon,
   ListItem,
   PlusIcon,
   ProgressRing,
@@ -39,50 +59,35 @@ import {
 
 const QUEST_HEADER_SOURCE = require("../../../assets/quest-header.png");
 
-type Idea = {
-  icon: "star" | "shirt" | "music" | "drop";
-  score: number;
-  title: string;
-};
+type IdeaIconKey = "star" | "shirt" | "music" | "drop";
 
-type QuestTask = {
-  done: boolean;
-  frequency: string;
-  title: string;
-};
-
-type Quest = {
-  color: string;
-  icon: "spark" | "book" | "heart";
-  meta: string;
-  progress: number;
-  status: string;
-  subtitle: string;
-  title: string;
-};
-
-const ideas: readonly Idea[] = [
-  { icon: "star", score: 10, title: "Book a fitness coach call" },
-  { icon: "shirt", score: 8, title: "Buy new workout clothes" },
-  { icon: "music", score: 6, title: "Prepare your morning playlist" },
-  { icon: "drop", score: 4, title: "Put water bottle on your desk" },
+const IDEA_ICON_CYCLE: readonly IdeaIconKey[] = [
+  "star",
+  "shirt",
+  "music",
+  "drop",
 ];
 
-const questTasks: readonly QuestTask[] = [
-  { done: false, frequency: "Daily", title: "Wake up at 6:00 AM" },
-  { done: true, frequency: "10 min", title: "10 min meditation" },
-  { done: false, frequency: "20 min workout", title: "Move my body" },
-];
+const HABIT_ICON_CYCLE = ["workout", "water", "book", "meditate"] as const;
+const HABIT_ACCENT_CYCLE = [colors.primary, "#7F91FF", "#D986FF", "#4FC3F7"];
 
-const identity: Quest = {
-  color: "#FF5FA7",
-  icon: "heart",
-  meta: "2 / 5 actions    2 habits",
-  progress: 46,
-  status: "",
-  subtitle: "Express myself clearly and calmly in any situation.",
-  title: "Confident Communicator",
+/** Quest plus its tasks, as one unit of screen state. */
+type QuestWithTasks = {
+  quest: Quest;
+  tasks: Task[];
 };
+
+type PromptState =
+  | { kind: "idea" }
+  | { kind: "quest" }
+  | { kind: "task"; questId: number }
+  | null;
+
+function daysSince(isoDate: string): number {
+  const started = new Date(isoDate).getTime();
+  if (Number.isNaN(started)) return 0;
+  return Math.max(0, Math.floor((Date.now() - started) / 86_400_000));
+}
 
 function MoreIcon({ color = colors.primary }: { color?: string }) {
   return (
@@ -141,20 +146,7 @@ function ClockIcon() {
   );
 }
 
-function DragHandle() {
-  return (
-    <View style={styles.dragHandle}>
-      {[0, 1, 2].map((row) => (
-        <View key={row} style={styles.dragRow}>
-          <View style={styles.dragDot} />
-          <View style={styles.dragDot} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function IdeaIcon({ icon }: { icon: Idea["icon"] }) {
+function IdeaIcon({ icon }: { icon: IdeaIconKey }) {
   if (icon === "shirt") {
     return (
       <Svg height={29} viewBox="0 0 24 24" width={29}>
@@ -212,59 +204,21 @@ function IdeaIcon({ icon }: { icon: Idea["icon"] }) {
   );
 }
 
-function QuestIcon({ color, icon, size = 58 }: { color: string; icon: Quest["icon"]; size?: number }) {
-  if (icon === "book") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M9 12c7 0 11 2 15 7 4-5 8-7 15-7v24c-7 0-11 2-15 7-4-5-8-7-15-7V12Z"
-          fill="none"
-          stroke={color}
-          strokeLinejoin="round"
-          strokeWidth={3}
-        />
-        <Path d="M24 19v24" stroke={color} strokeLinecap="round" strokeWidth={3} />
-      </Svg>
-    );
-  }
-
-  if (icon === "heart") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M24 40S9 31 9 18c0-6 8-10 15-2 7-8 15-4 15 2 0 13-15 22-15 22Z"
-          fill={color}
-        />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg height={size} viewBox="0 0 48 48" width={size}>
-      <Path
-        d="M24 5 29 19 43 24 29 29 24 43 19 29 5 24 19 19 24 5Z"
-        fill="none"
-        stroke={color}
-        strokeLinejoin="round"
-        strokeWidth={2.3}
-      />
-      <Path d="M24 15 27 22 34 24 27 26 24 33 21 26 14 24 21 22 24 15Z" fill={color} />
-    </Svg>
-  );
-}
-
 function PillButton({
   color = colors.accentViolet,
   label,
   minWidth,
+  onPress,
 }: {
   color?: string;
   label: string;
   minWidth?: number;
+  onPress?: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      onPress={onPress}
       style={({ pressed: isPressed }) => [
         styles.pillButton,
         { borderColor: color, minWidth },
@@ -278,36 +232,29 @@ function PillButton({
   );
 }
 
-function GradientAction({ label }: { label: string }) {
-  return (
-    <AppButton
-      icon={<SparkIcon color={colors.textOnPrimary} size={22} />}
-      label={label}
-      onPress={() => {}}
-      variant="primary"
-    />
-  );
-}
-
 function IdeaRow({
   compact,
   idea,
   index,
+  isLast,
+  onApprove,
 }: {
   compact: boolean;
   idea: Idea;
   index: number;
+  isLast: boolean;
+  onApprove: () => void;
 }) {
   return (
     <View
       style={[
         styles.ideaRow,
         compact && styles.ideaRowCompact,
-        index === ideas.length - 1 && styles.lastRow,
+        isLast && styles.lastRow,
       ]}
     >
       <View style={styles.ideaIconFrame}>
-        <IdeaIcon icon={idea.icon} />
+        <IdeaIcon icon={IDEA_ICON_CYCLE[index % IDEA_ICON_CYCLE.length]} />
       </View>
       <AppText
         numberOfLines={2}
@@ -321,24 +268,59 @@ function IdeaRow({
         style={[styles.scorePill, compact && styles.scorePillCompact]}
         textStyle={styles.scoreText}
       />
-      <PillButton label="Approve" minWidth={compact ? 84 : 126} />
+      <PillButton
+        label="Approve"
+        minWidth={compact ? 84 : 126}
+        onPress={onApprove}
+      />
     </View>
   );
 }
 
-function TaskRow({ task }: { task: QuestTask }) {
+function TaskRow({
+  onToggle,
+  task,
+}: {
+  onToggle: () => void;
+  task: Task;
+}) {
+  const subtitle = task.scheduledDate
+    ? `${task.scheduledDate}${task.scheduledTime ? ` · ${task.scheduledTime}` : ""}`
+    : "Not scheduled";
+
   return (
     <ListItem
-      leading={<Checkbox checked={task.done} shape="circle" size={36} />}
+      leading={
+        <Pressable accessibilityRole="checkbox" hitSlop={8} onPress={onToggle}>
+          <Checkbox checked={task.isDone} shape="circle" size={36} />
+        </Pressable>
+      }
       style={styles.taskRow}
-      subtitle={task.frequency}
+      subtitle={subtitle}
       title={task.title}
-      trailing={<DragHandle />}
     />
   );
 }
 
-function ActiveQuestCard({ compact }: { compact: boolean }) {
+function ActiveQuestCard({
+  compact,
+  entry,
+  onAddTask,
+  onAddToSprint,
+  onToggleTask,
+}: {
+  compact: boolean;
+  entry: QuestWithTasks;
+  onAddTask: () => void;
+  onAddToSprint: () => void;
+  onToggleTask: (task: Task) => void;
+}) {
+  const { quest, tasks } = entry;
+  const doneCount = tasks.filter((task) => task.isDone).length;
+  const progress =
+    tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const activeDays = daysSince(quest.createdAt);
+
   return (
     <Card style={styles.activeQuestCard} variant="strong">
       <View
@@ -353,32 +335,45 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
             color={colors.primary}
             size={74}
             strokeWidth={4}
-            value={67}
+            value={progress}
           />
         </View>
         <View style={styles.activeQuestCopy}>
-          <AppText variant="cardTitle">Morning routine mastery</AppText>
+          <AppText variant="cardTitle">{quest.title}</AppText>
           <View style={styles.questMetaRow}>
             <View style={styles.metaItem}>
               <ClockIcon />
-              <AppText variant="meta">2 / 3 tasks</AppText>
+              <AppText variant="meta">
+                {doneCount} / {tasks.length} tasks
+              </AppText>
             </View>
             <AppText style={styles.metaSeparator}>|</AppText>
             <View style={styles.metaItem}>
               <CalendarIcon color={colors.textSecondary} />
-              <AppText variant="meta">7 days active</AppText>
+              <AppText variant="meta">
+                {activeDays} {activeDays === 1 ? "day" : "days"} active
+              </AppText>
             </View>
           </View>
         </View>
-        <PillButton label="Add to sprint" minWidth={compact ? 84 : 126} />
+        <PillButton
+          label="Add to sprint"
+          minWidth={compact ? 84 : 126}
+          onPress={onAddToSprint}
+        />
       </View>
 
       <Card padded={false} style={styles.taskList}>
-        {questTasks.map((task) => (
-          <TaskRow key={task.title} task={task} />
+        {tasks.map((task) => (
+          <TaskRow
+            key={task.id}
+            onToggle={() => onToggleTask(task)}
+            task={task}
+          />
         ))}
         <Pressable
           accessibilityRole="button"
+          onPress={onAddTask}
           style={({ pressed: isPressed }) => [styles.addTaskButton, isPressed && pressed]}
         >
           <PlusIcon color={colors.accentViolet} size={24} />
@@ -391,40 +386,55 @@ function ActiveQuestCard({ compact }: { compact: boolean }) {
   );
 }
 
-const dummyHabit = {
-  accent: colors.primary,
-  day: 12,
-  goal: 24,
-  icon: "workout" as const,
-  progress: ["done", "done", "done", "missed", "open", "missed", "missed"] as const,
-  time: "After work",
-  title: "Workout",
-};
+/** Small centered dialog with one input, used for quick "add X" prompts. */
+function TextPromptModal({
+  onClose,
+  onSubmit,
+  placeholder,
+  title,
+  visible,
+}: {
+  onClose: () => void;
+  onSubmit: (value: string) => void;
+  placeholder: string;
+  title: string;
+  visible: boolean;
+}) {
+  const [value, setValue] = useState("");
+  const [wasVisible, setWasVisible] = useState(false);
 
-function IdentityRow() {
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setValue("");
+  }
+
   return (
-    <Card style={styles.identityCard}>
-      <View style={[styles.largeIconFrame, styles.identityIconFrame]}>
-        <QuestIcon color={identity.color} icon={identity.icon} />
-      </View>
-      <View style={styles.identityCopy}>
-        <AppText variant="cardTitle">{identity.title}</AppText>
-        <AppText style={styles.identitySubtitle} variant="subtitle">
-          {identity.subtitle}
-        </AppText>
-        <AppText style={styles.identityMeta} variant="meta">
-          {identity.meta}
-        </AppText>
-      </View>
-      <ProgressRing
-        backgroundColor={colors.surfaceDeep}
-        color={identity.color}
-        size={86}
-        strokeWidth={4}
-        value={identity.progress}
+    <AppModal onClose={onClose} visible={visible}>
+      <AppText align="center" variant="titleSm">
+        {title}
+      </AppText>
+      <AppInput
+        autoFocus
+        containerStyle={styles.promptInput}
+        onChangeText={setValue}
+        placeholder={placeholder}
+        value={value}
       />
-      <ChevronIcon direction="down" size={22} />
-    </Card>
+      <View style={styles.promptActions}>
+        <AppButton
+          label="Cancel"
+          onPress={onClose}
+          style={styles.promptButton}
+          variant="secondary"
+        />
+        <AppButton
+          disabled={!value.trim()}
+          label="Add"
+          onPress={() => onSubmit(value.trim())}
+          style={styles.promptButton}
+        />
+      </View>
+    </AppModal>
   );
 }
 
@@ -432,6 +442,125 @@ export default function MilestoneQuestsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isNarrow = width < layout.compactBreakpoint;
+  const { milestoneId: milestoneIdParam } = useLocalSearchParams<{
+    milestoneId?: string;
+    dreamId?: string;
+  }>();
+
+  const [milestone, setMilestone] = useState<Milestone | null>(null);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [questEntries, setQuestEntries] = useState<QuestWithTasks[]>([]);
+  const [prompt, setPrompt] = useState<PromptState>(null);
+  const { habits } = useHabitWeek(milestone?.dreamId);
+
+  const loadScreen = useCallback(async () => {
+    try {
+      let resolved: Milestone | null = null;
+      const paramId = Number(milestoneIdParam);
+      if (milestoneIdParam && Number.isFinite(paramId) && paramId > 0) {
+        resolved = await getMilestoneById(paramId);
+      }
+      if (!resolved) {
+        // Tab opened directly: fall back to the first dream's first active
+        // milestone so the screen always shows something real.
+        const [firstDream] = await getDreams();
+        if (firstDream) {
+          const milestones = await getMilestones(firstDream.id);
+          resolved =
+            milestones.find((entry) => entry.status === "active") ??
+            milestones[0] ??
+            null;
+        }
+      }
+
+      setMilestone(resolved);
+      if (!resolved) {
+        setIdeas([]);
+        setQuestEntries([]);
+        return;
+      }
+
+      const [ideaList, questList] = await Promise.all([
+        getIdeas(resolved.id),
+        getQuests(resolved.id),
+      ]);
+      const withTasks = await Promise.all(
+        questList.map(async (quest) => ({
+          quest,
+          tasks: await getTasksByQuest(quest.id),
+        })),
+      );
+      setIdeas(ideaList);
+      setQuestEntries(withTasks);
+    } catch (cause) {
+      console.error("Failed to load milestone quests", cause);
+    }
+  }, [milestoneIdParam]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadScreen();
+    }, [loadScreen]),
+  );
+
+  const allTasks = questEntries.flatMap((entry) => entry.tasks);
+  const doneTasks = allTasks.filter((task) => task.isDone).length;
+  const milestoneProgress =
+    allTasks.length > 0 ? Math.round((doneTasks / allTasks.length) * 100) : 0;
+  const oldestQuest = questEntries.reduce<string | null>(
+    (oldest, entry) =>
+      oldest === null || entry.quest.createdAt < oldest
+        ? entry.quest.createdAt
+        : oldest,
+    null,
+  );
+  const daysInProgress = oldestQuest ? daysSince(oldestQuest) : 0;
+
+  const handleApproveIdea = async (idea: Idea) => {
+    try {
+      await approveIdea(idea.id);
+      await loadScreen();
+    } catch (cause) {
+      console.error("Failed to approve the idea", cause);
+    }
+  };
+
+  const handleToggleTask = async (task: Task) => {
+    // Optimistic flip; reload fixes any divergence.
+    setQuestEntries((current) =>
+      current.map((entry) => ({
+        ...entry,
+        tasks: entry.tasks.map((existing) =>
+          existing.id === task.id
+            ? { ...existing, isDone: !existing.isDone }
+            : existing,
+        ),
+      })),
+    );
+    try {
+      await setTaskDone(task.id, !task.isDone);
+    } catch (cause) {
+      console.error("Failed to toggle the task", cause);
+      await loadScreen();
+    }
+  };
+
+  const handlePromptSubmit = async (value: string) => {
+    if (!prompt) return;
+    try {
+      if (prompt.kind === "quest" && milestone) {
+        await createQuest(milestone.id, value);
+      } else if (prompt.kind === "idea" && milestone) {
+        await createIdea(milestone.id, value, 5);
+      } else if (prompt.kind === "task") {
+        await createTask({ questId: prompt.questId, title: value });
+      }
+      await loadScreen();
+    } catch (cause) {
+      console.error("Failed to add the entry", cause);
+    }
+    setPrompt(null);
+  };
 
   return (
     <ScreenScaffold tabClearance topInset>
@@ -480,11 +609,14 @@ export default function MilestoneQuestsScreen() {
               CURRENT MILESTONE
             </AppText>
           </View>
-          <AppText variant="cardTitle">Build Unstoppable Discipline</AppText>
+          <AppText variant="cardTitle">
+            {milestone?.title ?? "No milestone yet"}
+          </AppText>
           <View style={styles.metaItem}>
             <CalendarIcon />
             <AppText color={colors.primary} variant="meta">
-              18 days in progress
+              {daysInProgress} {daysInProgress === 1 ? "day" : "days"} in
+              progress
             </AppText>
           </View>
         </View>
@@ -495,53 +627,133 @@ export default function MilestoneQuestsScreen() {
             meta="COMPLETE"
             size={116}
             strokeWidth={5}
-            value={72}
+            value={milestoneProgress}
           />
         </View>
       </Card>
 
       <Card style={styles.ideaPanel}>
-        <AppText color={colors.accentViolet} variant="eyebrow">
-          IDEAS THAT CAN HELP ACHIEVE
-        </AppText>
+        <SectionHeader
+          action={{
+            icon: <PlusIcon size={14} />,
+            label: "Add",
+            onPress: () => setPrompt({ kind: "idea" }),
+          }}
+          style={styles.ideaHeader}
+          title="IDEAS THAT CAN HELP ACHIEVE"
+          variant="eyebrow"
+        />
         <View style={styles.sparkle}>
           <SparkIcon color={colors.accentViolet} size={30} />
         </View>
-        <Card padded={false} style={styles.ideaList}>
-          {ideas.map((idea, index) => (
-            <IdeaRow
-              compact={isNarrow}
-              idea={idea}
-              index={index}
-              key={idea.title}
-            />
-          ))}
-        </Card>
+        {ideas.length > 0 ? (
+          <Card padded={false} style={styles.ideaList}>
+            {ideas.map((idea, index) => (
+              <IdeaRow
+                compact={isNarrow}
+                idea={idea}
+                index={index}
+                isLast={index === ideas.length - 1}
+                key={idea.id}
+                onApprove={() => handleApproveIdea(idea)}
+              />
+            ))}
+          </Card>
+        ) : (
+          <AppText style={styles.emptyHint} variant="bodySmall">
+            Capture small ideas here, then approve the best ones into quests.
+          </AppText>
+        )}
       </Card>
 
       <SectionHeader
         action={{
           icon: <PlusIcon />,
           label: "Add Quest",
-          onPress: () => {},
+          onPress: () => setPrompt({ kind: "quest" }),
         }}
         style={styles.sectionHeader}
         title="QUESTS"
       />
 
-      <ActiveQuestCard compact={isNarrow} />
+      {questEntries.map((entry) => (
+        <ActiveQuestCard
+          compact={isNarrow}
+          entry={entry}
+          key={entry.quest.id}
+          onAddTask={() => setPrompt({ kind: "task", questId: entry.quest.id })}
+          onAddToSprint={() => router.push("/sprint")}
+          onToggleTask={handleToggleTask}
+        />
+      ))}
+
+      {questEntries.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <AppText align="center" variant="bodySmall">
+            No quests yet — add the first one to break this milestone into
+            doable steps.
+          </AppText>
+        </Card>
+      ) : null}
 
       <SectionHeader
         action={{
           icon: <PlusIcon />,
           label: "Add Habit",
-          onPress: () => router.push("/create-habit"),
+          onPress: () =>
+            router.push({
+              pathname: "/create-habit",
+              params: {
+                dreamId: milestone ? String(milestone.dreamId) : "",
+              },
+            }),
         }}
         style={[styles.sectionHeader, styles.habitSectionHeader]}
         title="HABITS"
       />
 
-      <HabitItemCard habit={dummyHabit} />
+      {habits.map((view, index) => (
+        <HabitItemCard
+          habit={{
+            accent: HABIT_ACCENT_CYCLE[index % HABIT_ACCENT_CYCLE.length],
+            day: view.doneCount,
+            goal: view.habit.goalDays,
+            icon: HABIT_ICON_CYCLE[index % HABIT_ICON_CYCLE.length],
+            progress: view.weekProgress as readonly HabitCompletion[],
+            time: habitTimeLabel(view.habit.timeOfDay),
+            title: view.habit.title,
+          }}
+          key={view.habit.id}
+        />
+      ))}
+
+      {habits.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <AppText align="center" variant="bodySmall">
+            No habits linked to this dream yet.
+          </AppText>
+        </Card>
+      ) : null}
+
+      <TextPromptModal
+        onClose={() => setPrompt(null)}
+        onSubmit={handlePromptSubmit}
+        placeholder={
+          prompt?.kind === "task"
+            ? "Task title..."
+            : prompt?.kind === "idea"
+              ? "Idea title..."
+              : "Quest title..."
+        }
+        title={
+          prompt?.kind === "task"
+            ? "Add a task"
+            : prompt?.kind === "idea"
+              ? "Add an idea"
+              : "Add a quest"
+        }
+        visible={prompt !== null}
+      />
     </ScreenScaffold>
   );
 }
@@ -575,19 +787,12 @@ const styles = StyleSheet.create({
     height: 58,
     paddingHorizontal: spacing.md,
   },
-  dragDot: {
-    backgroundColor: colors.textPrimary,
-    borderRadius: 2,
-    height: 3,
-    width: 3,
+  emptyCard: {
+    marginBottom: spacing.md,
+    paddingVertical: spacing.lg,
   },
-  dragHandle: {
-    gap: 4,
-    width: 24,
-  },
-  dragRow: {
-    flexDirection: "row",
-    gap: 5,
+  emptyHint: {
+    marginTop: spacing.md,
   },
   habitSectionHeader: {
     marginTop: 28,
@@ -607,26 +812,8 @@ const styles = StyleSheet.create({
   heroImage: {
     ...StyleSheet.absoluteFill,
   },
-  identityCard: {
-    alignItems: "center",
-    borderColor: "rgba(255, 95, 167, 0.2)",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.lg,
-    minHeight: 116,
-  },
-  identityCopy: {
-    flex: 1,
-  },
-  identityIconFrame: {
-    borderColor: identity.color,
-    shadowColor: identity.color,
-  },
-  identityMeta: {
-    marginTop: spacing.sm,
-  },
-  identitySubtitle: {
-    marginTop: spacing.xs,
+  ideaHeader: {
+    paddingHorizontal: 0,
   },
   ideaIconFrame: {
     alignItems: "center",
@@ -673,20 +860,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
-  largeIconFrame: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceDeep,
-    borderColor: colors.primary,
-    borderRadius: 48,
-    borderWidth: 1,
-    height: 96,
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    width: 96,
-  },
   lastRow: {
     borderBottomWidth: 0,
   },
@@ -725,6 +898,18 @@ const styles = StyleSheet.create({
     height: controls.button.pill.height,
     justifyContent: "center",
     paddingHorizontal: controls.button.pill.paddingHorizontal,
+  },
+  promptActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  promptButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  promptInput: {
+    marginTop: spacing.lg,
   },
   questMetaRow: {
     alignItems: "center",

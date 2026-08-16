@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path, Rect } from "react-native-svg";
@@ -7,11 +7,11 @@ import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePic
 import { TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
-import type { TimeBlock } from "@/data/timeBlocks";
-import { timeBlocks } from "@/data/timeBlocks";
+import { useTimeBlocks } from "@/hooks/useTimeBlocks";
 import { ScreenHeader, ScreenScaffold } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { layout, spacing } from "@/theme/theme";
+import { toDateKey } from "@/utils/dates";
 
 /** Extra scroll clearance so content is not hidden behind the fixed footer. */
 const FOOTER_CLEARANCE = 150;
@@ -37,39 +37,17 @@ export default function MyDayScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
 
-  const [blocks, setBlocks] = useState<readonly TimeBlock[]>(timeBlocks);
   const [activeKey, setActiveKey] = useState("wake-up");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const { blocks, completedActions, totalActions, toggleAction } =
+    useTimeBlocks(toDateKey(selectedDate));
 
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
 
   const activeBlock = blocks.find((block) => block.key === activeKey) ?? blocks[0];
-
-  const { completed, total } = useMemo(() => {
-    const all = blocks.flatMap((block) => block.actions);
-    const doneCount = all.filter((action) => action.done).length;
-    return {
-      completed: doneCount,
-      total: all.length,
-    };
-  }, [blocks]);
-
-  function toggleAction(blockKey: string, index: number) {
-    setBlocks((current) =>
-      current.map((block) =>
-        block.key === blockKey
-          ? {
-              ...block,
-              actions: block.actions.map((action, i) =>
-                i === index ? { ...action, done: !action.done } : action,
-              ),
-            }
-          : block,
-      ),
-    );
-  }
 
   return (
     <View style={styles.screen}>
@@ -102,11 +80,16 @@ export default function MyDayScreen() {
           style={compact ? styles.tabsCompact : styles.tabs}
         />
 
-        <TimeBlockCard
-          block={activeBlock}
-          onToggleAction={(index) => toggleAction(activeBlock.key, index)}
-          style={compact ? styles.blockSectionCompact : styles.blockSection}
-        />
+        {activeBlock ? (
+          <TimeBlockCard
+            block={activeBlock}
+            onToggleAction={(index) => {
+              const action = activeBlock.actions[index];
+              if (action) toggleAction(action.id, !action.done);
+            }}
+            style={compact ? styles.blockSectionCompact : styles.blockSection}
+          />
+        ) : null}
       </ScreenScaffold>
 
       <View
@@ -117,9 +100,9 @@ export default function MyDayScreen() {
         ]}
       >
         <TodayProgressCard
-          completedActions={completed}
+          completedActions={completedActions}
           style={styles.progressCard}
-          totalActions={total}
+          totalActions={totalActions}
         />
       </View>
 

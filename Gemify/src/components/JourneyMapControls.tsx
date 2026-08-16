@@ -53,10 +53,6 @@ function SparklesIcon({ size = 27 }: { size?: number }) {
   );
 }
 
-const DREAM_NAME = "Your Dream Name";
-const VISION_STATEMENT =
-  "I imagine waking up in the life I once dreamed about—my goal is real, my days reflect the person I have become, and I feel proud, fulfilled, and free. I can see where I live, how I spend my time, who shares this journey with me, and the new possibilities now open to me.";
-
 type JourneyOverviewModalProps = {
   dreamName: string;
   onClose: () => void;
@@ -294,28 +290,40 @@ function DreamEditModal({
 }
 
 export type JourneyMapControlsProps = {
+  /** Id of the dream shown on the map; forwarded to the What-If screen. */
+  dreamId?: number;
+  dreamName: string;
   editMode: boolean;
+  onDeleteDream: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
+  onSaveDream: (dreamName: string, visionStatement: string) => void;
   /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
   showDeleteDream?: boolean;
+  visionStatement: string;
 };
 
 export function JourneyMapControls({
+  dreamId,
+  dreamName,
   editMode,
+  onDeleteDream,
   onEnterEditMode,
   onExitEditMode,
+  onSaveDream,
   showDeleteDream = true,
+  visionStatement,
 }: JourneyMapControlsProps) {
   const router = useRouter();
   const [overviewVisible, setOverviewVisible] = useState(false);
   const [dreamEditVisible, setDreamEditVisible] = useState(false);
-  const [dreamName, setDreamName] = useState(DREAM_NAME);
-  const [visionStatement, setVisionStatement] = useState(VISION_STATEMENT);
 
   const openWhatIfPlan = () => {
     setOverviewVisible(false);
-    router.push("/what-if-plan");
+    router.push({
+      pathname: "/what-if-plan",
+      params: { dreamId: dreamId !== undefined ? String(dreamId) : "" },
+    });
   };
 
   const openEditPath = () => {
@@ -371,13 +379,11 @@ export function JourneyMapControls({
         dreamName={dreamName}
         onClose={() => setDreamEditVisible(false)}
         onDelete={() => {
-          setDreamName("");
-          setVisionStatement("");
           setDreamEditVisible(false);
+          onDeleteDream();
         }}
         onSave={(nextName, nextVision) => {
-          setDreamName(nextName);
-          setVisionStatement(nextVision);
+          onSaveDream(nextName, nextVision);
           setDreamEditVisible(false);
         }}
         showDelete={showDeleteDream}

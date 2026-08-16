@@ -1,17 +1,32 @@
-import type { ReactNode } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import {
+  getScheduledTaskCounts,
+  getScheduledTasks,
+  getUnscheduledTasks,
+  setTaskDone,
+  updateTask,
+  type TaskWithBreadcrumb,
+} from "@/db";
+import {
+  AppButton,
+  AppInput,
+  AppModal,
   AppText,
   Card,
+  Checkbox,
   ChevronIcon,
+  Chip,
   IconButton,
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { pressed, radius, spacing } from "@/theme/theme";
+import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 
 /** Bespoke night-sky gradient behind the sprint board. */
 const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
@@ -19,64 +34,50 @@ const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
 type WeekDay = {
   count: number;
   date: number;
+  dateKey: string;
   label: string;
-  selected?: boolean;
+  selected: boolean;
 };
 
-type ScheduledTask = {
+/** Unscheduled tasks regrouped dream → milestone → quest for the tree card. */
+type DreamGroup = {
   dream: string;
-  duration: string;
-  milestone: string;
-  quest: string;
-  time: string;
-  title: string;
+  taskCount: number;
+  milestones: {
+    milestone: string;
+    quests: { quest: string; tasks: TaskWithBreadcrumb[] }[];
+  }[];
 };
 
-type UnscheduledTask = {
-  duration: string;
-  title: string;
-};
+function groupUnscheduled(tasks: TaskWithBreadcrumb[]): DreamGroup[] {
+  const groups: DreamGroup[] = [];
+  for (const task of tasks) {
+    let dream = groups.find((entry) => entry.dream === task.dreamTitle);
+    if (!dream) {
+      dream = { dream: task.dreamTitle, taskCount: 0, milestones: [] };
+      groups.push(dream);
+    }
+    dream.taskCount += 1;
 
-const weekDays: readonly WeekDay[] = [
-  { count: 2, date: 20, label: "MON" },
-  { count: 1, date: 21, label: "TUE" },
-  { count: 2, date: 22, label: "WED" },
-  { count: 1, date: 23, label: "THU" },
-  { count: 2, date: 24, label: "FRI", selected: true },
-  { count: 0, date: 25, label: "SAT" },
-  { count: 1, date: 26, label: "SUN" },
-];
+    let milestone = dream.milestones.find(
+      (entry) => entry.milestone === task.milestoneTitle,
+    );
+    if (!milestone) {
+      milestone = { milestone: task.milestoneTitle, quests: [] };
+      dream.milestones.push(milestone);
+    }
 
-const scheduledTasks: readonly ScheduledTask[] = [
-  {
-    dream: "Growth Mindset",
-    duration: "45 min",
-    milestone: "Become a Creator",
-    quest: "Learn Video Making",
-    time: "09:00",
-    title: "Review video script",
-  },
-  {
-    dream: "Growth Mindset",
-    duration: "90 min",
-    milestone: "Become a Creator",
-    quest: "Learn Video Making",
-    time: "11:00",
-    title: "Record first lesson",
-  },
-];
-
-const unscheduledGroup = {
-  dream: "Growth Mindset",
-  milestone: "Become a Creator",
-  quest: { done: 3, title: "Learn Video Making", total: 5 },
-  tasks: [
-    { duration: "60 min", title: "Plan and write video script" },
-    { duration: "90 min", title: "Edit and publish short clip" },
-  ] as readonly UnscheduledTask[],
-};
-
-const collapsedDream = { taskCount: 1, title: "Build Confidence" };
+    let quest = milestone.quests.find(
+      (entry) => entry.quest === task.questTitle,
+    );
+    if (!quest) {
+      quest = { quest: task.questTitle, tasks: [] };
+      milestone.quests.push(quest);
+    }
+    quest.tasks.push(task);
+  }
+  return groups;
+}
 
 function CalendarIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (
@@ -102,18 +103,6 @@ function ClockIcon({ color = colors.textSecondary, size = 15 }: { color?: string
     <Svg height={size} viewBox="0 0 24 24" width={size}>
       <Circle cx={12} cy={12} fill="none" r={8.5} stroke={color} strokeWidth={1.7} />
       <Path d="M12 7.5V12l3 2" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function DragHandleIcon({ color = colors.textMuted, size = 26 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      {[5, 12, 19].map((cy) =>
-        [8, 16].map((cx) => (
-          <Circle cx={cx} cy={cy} fill={color} key={`${cx}-${cy}`} r={1.8} />
-        )),
-      )}
     </Svg>
   );
 }
@@ -157,7 +146,7 @@ function QuestTargetIcon({ color = colors.accentVioletStrong, size = 22 }: { col
   );
 }
 
-function DayCell({ day }: { day: WeekDay }) {
+function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
   const hasTasks = day.count > 0;
   const dotColor = day.selected
     ? colors.primary
@@ -166,7 +155,15 @@ function DayCell({ day }: { day: WeekDay }) {
       : colors.textMuted;
 
   return (
-    <View style={[styles.dayCell, day.selected && styles.dayCellSelected]}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed: isPressed }) => [
+        styles.dayCell,
+        day.selected && styles.dayCellSelected,
+        isPressed && pressed,
+      ]}
+    >
       <AppText
         color={day.selected ? colors.primary : colors.textMuted}
         style={styles.dayLabel}
@@ -190,43 +187,59 @@ function DayCell({ day }: { day: WeekDay }) {
           {day.count}
         </AppText>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function TaskBreadcrumb({ task }: { task: ScheduledTask }) {
+function TaskBreadcrumb({ task }: { task: TaskWithBreadcrumb }) {
   return (
     <View style={styles.breadcrumb}>
       <AppText color={colors.accentViolet} numberOfLines={1} variant="bodySmall">
-        {task.dream}
+        {task.dreamTitle}
       </AppText>
       <AppText color={colors.textMuted} variant="bodySmall">/</AppText>
       <AppText color={colors.primary} numberOfLines={1} variant="bodySmall">
-        {task.milestone}
+        {task.milestoneTitle}
       </AppText>
       <AppText color={colors.textMuted} variant="bodySmall">/</AppText>
       <AppText color={colors.accentViolet} numberOfLines={1} variant="bodySmall">
-        {task.quest}
+        {task.questTitle}
       </AppText>
     </View>
   );
 }
 
-function ScheduledTaskCard({ task }: { task: ScheduledTask }) {
+function ScheduledTaskCard({
+  onReschedule,
+  onToggleDone,
+  task,
+}: {
+  onReschedule: () => void;
+  onToggleDone: () => void;
+  task: TaskWithBreadcrumb;
+}) {
   return (
     <Card style={styles.taskCard}>
       <View style={styles.taskCardRow}>
-        <DragHandleIcon />
+        <Pressable accessibilityRole="checkbox" hitSlop={8} onPress={onToggleDone}>
+          <Checkbox checked={task.isDone} shape="circle" size={32} />
+        </Pressable>
         <View style={styles.taskCardCopy}>
           <AppText numberOfLines={1} variant="pill">{task.title}</AppText>
           <View style={styles.taskMeta}>
             <ClockIcon />
             <AppText color={colors.textSecondary} variant="bodySmall">
-              {task.time} · {task.duration}
+              {task.scheduledTime ?? "Anytime"}
             </AppText>
           </View>
           <TaskBreadcrumb task={task} />
         </View>
+        <IconButton
+          accessibilityLabel="Reschedule task"
+          icon={<CalendarPlusIcon />}
+          onPress={onReschedule}
+          size="sm"
+        />
       </View>
     </Card>
   );
@@ -272,23 +285,21 @@ function TreeRow({
 
 function UnscheduledTaskRow({
   divider,
+  onSchedule,
   task,
 }: {
   divider?: boolean;
-  task: UnscheduledTask;
+  onSchedule: () => void;
+  task: TaskWithBreadcrumb;
 }) {
   return (
     <View style={[styles.unscheduledTaskRow, divider && styles.unscheduledTaskRowDivider]}>
-      <DragHandleIcon size={22} />
       <View style={styles.taskCardCopy}>
         <AppText numberOfLines={2} variant="pill">{task.title}</AppText>
-        <View style={styles.taskMeta}>
-          <ClockIcon />
-          <AppText color={colors.textSecondary} variant="bodySmall">{task.duration}</AppText>
-        </View>
       </View>
       <Pressable
         accessibilityRole="button"
+        onPress={onSchedule}
         style={({ pressed: isPressed }) => [styles.scheduleButton, isPressed && pressed]}
       >
         <CalendarPlusIcon />
@@ -298,7 +309,216 @@ function UnscheduledTaskRow({
   );
 }
 
+const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+/** Day-of-week + optional time picker used to (re)schedule a task. */
+function ScheduleModal({
+  onClose,
+  onSave,
+  onUnschedule,
+  task,
+  weekDays,
+}: {
+  onClose: () => void;
+  onSave: (date: string, time: string | null) => void;
+  onUnschedule: () => void;
+  task: TaskWithBreadcrumb | null;
+  weekDays: WeekDay[];
+}) {
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [time, setTime] = useState("");
+  const [lastTaskId, setLastTaskId] = useState<number | null>(null);
+
+  if (task && task.id !== lastTaskId) {
+    setLastTaskId(task.id);
+    setSelectedDate(task.scheduledDate);
+    setTime(task.scheduledTime ?? "");
+  }
+
+  const timeValid = time.trim() === "" || TIME_PATTERN.test(time.trim());
+
+  return (
+    <AppModal onClose={onClose} visible={task !== null}>
+      <AppText align="center" variant="titleSm">
+        Schedule task
+      </AppText>
+      <AppText align="center" style={styles.modalSubtitle} variant="bodySmall">
+        {task?.title}
+      </AppText>
+
+      <View style={styles.modalDayGrid}>
+        {weekDays.map((day) => (
+          <Chip
+            key={day.dateKey}
+            label={`${day.label} ${day.date}`}
+            onPress={() => setSelectedDate(day.dateKey)}
+            selected={selectedDate === day.dateKey}
+            style={styles.modalDayChip}
+          />
+        ))}
+      </View>
+
+      <AppInput
+        containerStyle={styles.modalTimeInput}
+        label="Time (optional)"
+        onChangeText={setTime}
+        placeholder="09:00"
+        value={time}
+      />
+
+      <View style={styles.modalActions}>
+        {task?.scheduledDate ? (
+          <AppButton
+            label="Unschedule"
+            onPress={onUnschedule}
+            style={styles.modalButton}
+            variant="secondary"
+          />
+        ) : (
+          <AppButton
+            label="Cancel"
+            onPress={onClose}
+            style={styles.modalButton}
+            variant="secondary"
+          />
+        )}
+        <AppButton
+          disabled={!selectedDate || !timeValid}
+          label="Save"
+          onPress={() => {
+            if (selectedDate) onSave(selectedDate, time.trim() || null);
+          }}
+          style={styles.modalButton}
+        />
+      </View>
+    </AppModal>
+  );
+}
+
 export default function SprintScreen() {
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [counts, setCounts] = useState<Map<string, number>>(new Map());
+  const [scheduled, setScheduled] = useState<TaskWithBreadcrumb[]>([]);
+  const [unscheduled, setUnscheduled] = useState<TaskWithBreadcrumb[]>([]);
+  const [collapsedDreams, setCollapsedDreams] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [scheduleTarget, setScheduleTarget] =
+    useState<TaskWithBreadcrumb | null>(null);
+
+  const weekDates = Array.from({ length: 7 }, (_, index) =>
+    addDays(weekStart, index),
+  );
+  const weekDayCells: WeekDay[] = weekDates.map((date) => {
+    const dateKey = toDateKey(date);
+    return {
+      count: counts.get(dateKey) ?? 0,
+      date: date.getDate(),
+      dateKey,
+      label: date
+        .toLocaleDateString("en-US", { weekday: "short" })
+        .toUpperCase(),
+      selected: dateKey === selectedDate,
+    };
+  });
+
+  const loadBoard = useCallback(async () => {
+    try {
+      const from = toDateKey(weekStart);
+      const to = toDateKey(addDays(weekStart, 6));
+      const [countMap, dayTasks, backlog] = await Promise.all([
+        getScheduledTaskCounts(from, to),
+        getScheduledTasks(selectedDate),
+        getUnscheduledTasks(),
+      ]);
+      setCounts(countMap);
+      setScheduled(dayTasks);
+      setUnscheduled(backlog);
+    } catch (cause) {
+      console.error("Failed to load the weekly plan", cause);
+    }
+  }, [selectedDate, weekStart]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBoard();
+    }, [loadBoard]),
+  );
+
+  const shiftWeek = (weeks: number) => {
+    const nextStart = addDays(weekStart, weeks * 7);
+    setWeekStart(nextStart);
+    setSelectedDate(toDateKey(nextStart));
+  };
+
+  const goToToday = () => {
+    setWeekStart(startOfWeek(new Date()));
+    setSelectedDate(todayKey());
+  };
+
+  const handleToggleDone = async (task: TaskWithBreadcrumb) => {
+    setScheduled((current) =>
+      current.map((entry) =>
+        entry.id === task.id ? { ...entry, isDone: !entry.isDone } : entry,
+      ),
+    );
+    try {
+      await setTaskDone(task.id, !task.isDone);
+    } catch (cause) {
+      console.error("Failed to toggle the task", cause);
+      await loadBoard();
+    }
+  };
+
+  const handleSchedule = async (date: string, time: string | null) => {
+    if (!scheduleTarget) return;
+    try {
+      await updateTask(scheduleTarget.id, {
+        scheduledDate: date,
+        scheduledTime: time,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to schedule the task", cause);
+    }
+    setScheduleTarget(null);
+  };
+
+  const handleUnschedule = async () => {
+    if (!scheduleTarget) return;
+    try {
+      await updateTask(scheduleTarget.id, {
+        scheduledDate: null,
+        scheduledTime: null,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to unschedule the task", cause);
+    }
+    setScheduleTarget(null);
+  };
+
+  const toggleDream = (dream: string) =>
+    setCollapsedDreams((current) => {
+      const next = new Set(current);
+      if (next.has(dream)) {
+        next.delete(dream);
+      } else {
+        next.add(dream);
+      }
+      return next;
+    });
+
+  const dreamGroups = groupUnscheduled(unscheduled);
+  const selectedHeading = new Date(
+    `${selectedDate}T12:00:00`,
+  ).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  });
+
   return (
     <ScreenScaffold
       backgroundGradient={SPRINT_BACKGROUND}
@@ -314,95 +534,165 @@ export default function SprintScreen() {
         leftAction={null}
         rightSlot={
           <IconButton
-            accessibilityLabel="Open calendar"
+            accessibilityLabel="Jump to today"
             icon={<CalendarIcon />}
-            onPress={() => {}}
+            onPress={goToToday}
           />
         }
         style={styles.header}
       />
 
       <View style={styles.weekStrip}>
-        {weekDays.map((day) => (
-          <DayCell day={day} key={day.label} />
+        {weekDayCells.map((day) => (
+          <DayCell
+            day={day}
+            key={day.dateKey}
+            onPress={() => setSelectedDate(day.dateKey)}
+          />
         ))}
       </View>
 
-      <AppText style={styles.dayHeading} variant="titleSm">
-        Friday, May 24
-      </AppText>
+      <View style={styles.dayHeadingRow}>
+        <IconButton
+          accessibilityLabel="Previous week"
+          icon={<ChevronIcon direction="left" />}
+          onPress={() => shiftWeek(-1)}
+          size="sm"
+        />
+        <AppText style={styles.dayHeading} variant="titleSm">
+          {selectedHeading}
+        </AppText>
+        <IconButton
+          accessibilityLabel="Next week"
+          icon={<ChevronIcon direction="right" />}
+          onPress={() => shiftWeek(1)}
+          size="sm"
+        />
+      </View>
 
-      {scheduledTasks.map((task) => (
-        <ScheduledTaskCard key={task.title} task={task} />
+      {scheduled.map((task) => (
+        <ScheduledTaskCard
+          key={task.id}
+          onReschedule={() => setScheduleTarget(task)}
+          onToggleDone={() => handleToggleDone(task)}
+          task={task}
+        />
       ))}
+
+      {scheduled.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <AppText align="center" variant="bodySmall">
+            Nothing planned for this day yet. Schedule a task from the backlog
+            below.
+          </AppText>
+        </Card>
+      ) : null}
 
       <View style={styles.sectionHeader}>
         <AppText variant="titleSm">Unscheduled this week</AppText>
         <View style={styles.countBadge}>
           <AppText color={colors.accentViolet} variant="caption">
-            {unscheduledGroup.tasks.length + collapsedDream.taskCount}
+            {unscheduled.length}
           </AppText>
         </View>
         <View style={styles.sectionHeaderSpacer} />
-        <ChevronIcon direction="up" />
       </View>
 
-      <Card padded={false} style={styles.treeCard}>
-        <View style={styles.treeRail} />
+      {dreamGroups.map((group) => {
+        const collapsed = collapsedDreams.has(group.dream);
 
-        <TreeRow
-          divider
-          eyebrow="DREAM"
-          eyebrowColor={colors.accentViolet}
-          icon={<DreamIcon />}
-          iconColor={colors.accentViolet}
-          title={unscheduledGroup.dream}
-          trailing={<ChevronIcon />}
-        />
-        <TreeRow
-          divider
-          eyebrow="MILESTONE"
-          eyebrowColor={colors.primary}
-          icon={<MilestoneIcon />}
-          iconColor={colors.primary}
-          title={unscheduledGroup.milestone}
-          trailing={<ChevronIcon />}
-        />
-        <TreeRow
-          eyebrow="QUEST"
-          eyebrowColor={colors.accentViolet}
-          icon={<QuestTargetIcon />}
-          iconColor={colors.accentVioletStrong}
-          meta={`${unscheduledGroup.quest.done} / ${unscheduledGroup.quest.total}`}
-          title={unscheduledGroup.quest.title}
-        />
+        if (collapsed) {
+          return (
+            <Card key={group.dream} padded={false} style={styles.treeCard}>
+              <Pressable
+                onPress={() => toggleDream(group.dream)}
+                style={styles.treeRow}
+              >
+                <View style={[styles.treeIconFrame, { borderColor: `${colors.accentViolet}66` }]}>
+                  <DreamIcon />
+                </View>
+                <View style={styles.treeRowCopy}>
+                  <AppText color={colors.accentViolet} variant="eyebrow">DREAM</AppText>
+                  <AppText numberOfLines={1} variant="pill">{group.dream}</AppText>
+                  <AppText color={colors.textMuted} variant="caption">
+                    {group.taskCount} task{group.taskCount === 1 ? "" : "s"}
+                  </AppText>
+                </View>
+                <ChevronIcon />
+              </Pressable>
+            </Card>
+          );
+        }
 
-        <View style={styles.unscheduledTaskBox}>
-          {unscheduledGroup.tasks.map((task, index) => (
-            <UnscheduledTaskRow
-              divider={index < unscheduledGroup.tasks.length - 1}
-              key={task.title}
-              task={task}
-            />
-          ))}
-        </View>
-      </Card>
+        return (
+          <Card key={group.dream} padded={false} style={styles.treeCard}>
+            <View style={styles.treeRail} />
 
-      <Card padded={false} style={styles.treeCard}>
-        <View style={styles.treeRow}>
-          <View style={[styles.treeIconFrame, { borderColor: `${colors.accentViolet}66` }]}>
-            <DreamIcon />
-          </View>
-          <View style={styles.treeRowCopy}>
-            <AppText color={colors.accentViolet} variant="eyebrow">DREAM</AppText>
-            <AppText numberOfLines={1} variant="pill">{collapsedDream.title}</AppText>
-            <AppText color={colors.textMuted} variant="caption">
-              {collapsedDream.taskCount} task{collapsedDream.taskCount === 1 ? "" : "s"}
-            </AppText>
-          </View>
-          <ChevronIcon />
-        </View>
-      </Card>
+            <Pressable onPress={() => toggleDream(group.dream)}>
+              <TreeRow
+                divider
+                eyebrow="DREAM"
+                eyebrowColor={colors.accentViolet}
+                icon={<DreamIcon />}
+                iconColor={colors.accentViolet}
+                title={group.dream}
+                trailing={<ChevronIcon direction="up" />}
+              />
+            </Pressable>
+
+            {group.milestones.map((milestoneGroup) => (
+              <View key={milestoneGroup.milestone}>
+                <TreeRow
+                  divider
+                  eyebrow="MILESTONE"
+                  eyebrowColor={colors.primary}
+                  icon={<MilestoneIcon />}
+                  iconColor={colors.primary}
+                  title={milestoneGroup.milestone}
+                />
+                {milestoneGroup.quests.map((questGroup) => (
+                  <View key={questGroup.quest}>
+                    <TreeRow
+                      eyebrow="QUEST"
+                      eyebrowColor={colors.accentViolet}
+                      icon={<QuestTargetIcon />}
+                      iconColor={colors.accentVioletStrong}
+                      meta={`${questGroup.tasks.length} task${questGroup.tasks.length === 1 ? "" : "s"}`}
+                      title={questGroup.quest}
+                    />
+                    <View style={styles.unscheduledTaskBox}>
+                      {questGroup.tasks.map((task, index) => (
+                        <UnscheduledTaskRow
+                          divider={index < questGroup.tasks.length - 1}
+                          key={task.id}
+                          onSchedule={() => setScheduleTarget(task)}
+                          task={task}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </Card>
+        );
+      })}
+
+      {unscheduled.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <AppText align="center" variant="bodySmall">
+            The backlog is clear — add tasks from a quest to plan your week.
+          </AppText>
+        </Card>
+      ) : null}
+
+      <ScheduleModal
+        onClose={() => setScheduleTarget(null)}
+        onSave={handleSchedule}
+        onUnschedule={handleUnschedule}
+        task={scheduleTarget}
+        weekDays={weekDayCells}
+      />
     </ScreenScaffold>
   );
 }
@@ -462,6 +752,13 @@ const styles = StyleSheet.create({
     borderColor: colors.borderFaint,
   },
   dayHeading: {
+    flex: 1,
+    textAlign: "center",
+  },
+  dayHeadingRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
     marginBottom: spacing.md,
     marginTop: spacing.lg,
   },
@@ -471,9 +768,38 @@ const styles = StyleSheet.create({
   dayNumber: {
     marginTop: 2,
   },
+  emptyCard: {
+    marginBottom: spacing.md,
+    paddingVertical: spacing.lg,
+  },
   header: {
     marginBottom: spacing.md,
     paddingHorizontal: 0,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  modalButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  modalDayChip: {
+    minWidth: 92,
+  },
+  modalDayGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    justifyContent: "center",
+    marginTop: spacing.lg,
+  },
+  modalSubtitle: {
+    marginTop: spacing.xs,
+  },
+  modalTimeInput: {
+    marginTop: spacing.lg,
   },
   scheduleButton: {
     alignItems: "center",

@@ -19,21 +19,27 @@ import Svg, {
 
 import {
   progressAccentLayout,
-  progressContent,
   type FulfillmentPoint,
   type ProgressAccent,
   type TimelineIconKey,
   type TimelineMoment,
 } from "@/data/progressData";
+import { addTimelineMoment } from "@/db";
+import { useProgressContent } from "@/hooks/useProgressContent";
 import {
+  AppButton,
+  AppInput,
+  AppModal,
   AppText,
   Badge,
   Card,
   ChevronIcon,
   IconButton,
   ListItem,
+  PlusIcon,
   ScreenScaffold,
 } from "@/shared/components";
+import { todayKey } from "@/utils/dates";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
@@ -614,13 +620,34 @@ export default function ProgressScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
 
+  const [goalKey, setGoalKey] = useState("");
+  const { content: progressContent, dreamId, refresh } =
+    useProgressContent(goalKey);
   const { forecast, fulfillmentTabs } = progressContent;
-  const [goalKey, setGoalKey] = useState(progressContent.goals[0].key);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [tabKey, setTabKey] = useState(fulfillmentTabs[0].key);
   const [rangeKey, setRangeKey] = useState(fulfillmentTabs[0].ranges[0].key);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(0);
+  const [momentModalOpen, setMomentModalOpen] = useState(false);
+  const [momentLabel, setMomentLabel] = useState("");
+
+  const handleAddMoment = async () => {
+    const label = momentLabel.trim();
+    if (!label || dreamId === null) return;
+    try {
+      await addTimelineMoment({
+        dreamId,
+        occurredOn: todayKey(),
+        label,
+      });
+      await refresh();
+    } catch (cause) {
+      console.error("Failed to add the moment", cause);
+    }
+    setMomentLabel("");
+    setMomentModalOpen(false);
+  };
 
   const selectedGoal =
     progressContent.goals.find((goal) => goal.key === goalKey) ??
@@ -893,6 +920,14 @@ export default function ProgressScreen() {
           />
         </View>
 
+        <IconButton
+          accessibilityLabel="Add a timeline moment"
+          icon={<PlusIcon size={20} />}
+          onPress={() => setMomentModalOpen(true)}
+          size="sm"
+          style={styles.addMomentButton}
+        />
+
         <View
           onLayout={(event) =>
             setTimelineWidth(event.nativeEvent.layout.width - spacing.lg * 2)
@@ -911,13 +946,75 @@ export default function ProgressScreen() {
               <TimelineMomentItem moment={lastMoment} />
             </>
           ) : null}
+          {moments.length === 0 && timelineWidth > 0 ? (
+            <AppText
+              align="center"
+              color={colors.textSecondary}
+              style={styles.timelineEmpty}
+              variant="caption"
+            >
+              Capture your first meaningful moment with the + button.
+            </AppText>
+          ) : null}
         </View>
       </Card>
+
+      <AppModal
+        onClose={() => setMomentModalOpen(false)}
+        visible={momentModalOpen}
+      >
+        <AppText align="center" variant="titleSm">
+          Add a moment
+        </AppText>
+        <AppInput
+          autoFocus
+          containerStyle={styles.momentInput}
+          onChangeText={setMomentLabel}
+          placeholder="What just became real?"
+          value={momentLabel}
+        />
+        <View style={styles.momentActions}>
+          <AppButton
+            label="Cancel"
+            onPress={() => setMomentModalOpen(false)}
+            style={styles.momentButton}
+            variant="secondary"
+          />
+          <AppButton
+            disabled={!momentLabel.trim() || dreamId === null}
+            label="Add"
+            onPress={handleAddMoment}
+            style={styles.momentButton}
+          />
+        </View>
+      </AppModal>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
+  addMomentButton: {
+    position: "absolute",
+    right: spacing.md,
+    top: spacing.md,
+    zIndex: 2,
+  },
+  momentActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  momentButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  momentInput: {
+    marginTop: spacing.lg,
+  },
+  timelineEmpty: {
+    flex: 1,
+    paddingVertical: spacing.lg,
+  },
   barAxisLabel: {
     bottom: 0,
     fontSize: fontSizes.md,

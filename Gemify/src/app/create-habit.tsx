@@ -1,8 +1,20 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import {
+  createHabit,
+  getDreams,
+  getHabitById,
+  getHabitDetails,
+  getHabitScheduleDays,
+  setHabitDetails,
+  setHabitScheduleDays,
+  updateHabit,
+  type HabitDetailSection,
+  type HabitTimeOfDay,
+} from "@/db";
 import {
   AppButton,
   AppInput,
@@ -288,20 +300,146 @@ type FormValues = {
   habitName: string;
 };
 
+const TIME_OF_DAY_BY_LABEL: Record<TimeOfDay, HabitTimeOfDay> = {
+  Morning: "morning",
+  "After lunch": "after_lunch",
+  Evening: "evening",
+};
+
+const LABEL_BY_TIME_OF_DAY: Record<HabitTimeOfDay, TimeOfDay> = {
+  morning: "Morning",
+  after_lunch: "After lunch",
+  evening: "Evening",
+};
+
+const SECTION_BY_INPUT: Partial<Record<FormStep["input"], HabitDetailSection>> =
+  {
+    easyStart: "easy_start",
+    badDay: "easy_version",
+    backupPlan: "backup_plan",
+  };
+
+const EMPTY_FORM: FormValues = {
+  backupPlan: "",
+  badDay: "",
+  cue: "",
+  easyStart: "",
+  habitName: "",
+};
+
 export default function CreateHabitScreen() {
   const router = useRouter();
+  const { dreamId: dreamIdParam, habitId: habitIdParam } =
+    useLocalSearchParams<{ dreamId?: string; habitId?: string }>();
+  const editHabitId = Number(habitIdParam);
+  const isEditMode = Number.isFinite(editHabitId) && editHabitId > 0;
+
   const [selectedDays, setSelectedDays] = useState<ReadonlySet<Day>>(
-    () => new Set(["Mon", "Tue", "Wed", "Fri"] as Day[]),
+    () => new Set(),
   );
-  const [selectedTime, setSelectedTime] = useState<TimeOfDay>("After lunch");
-  const [values, setValues] = useState<FormValues>({
-    backupPlan:
-      "If I don't have vegetables ready, I will add frozen vegetables or order a salad.",
-    badDay: "Eat just 1 vegetable serving.",
-    cue: "After lunch",
-    easyStart: "Put vegetables on the lunch plate before I start eating.",
-    habitName: "Eat 5 vegetables",
-  });
+  const [selectedTime, setSelectedTime] = useState<TimeOfDay>("Morning");
+  const [values, setValues] = useState<FormValues>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Edit mode: prefill the form from the stored habit.
+  useEffect(() => {
+    if (!isEditMode) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [habit, scheduleDays, details] = await Promise.all([
+          getHabitById(editHabitId),
+          getHabitScheduleDays(editHabitId),
+          getHabitDetails(editHabitId),
+        ]);
+        if (cancelled || !habit) return;
+
+        const bySection = new Map(
+          details.map((entry) => [entry.section, entry.content]),
+        );
+        setValues({
+          habitName: habit.title,
+          cue: habit.cue ?? "",
+          easyStart: bySection.get("easy_start") ?? "",
+          badDay: bySection.get("easy_version") ?? "",
+          backupPlan: bySection.get("backup_plan") ?? "",
+        });
+        setSelectedDays(new Set(scheduleDays.map((weekday) => DAYS[weekday])));
+        if (habit.timeOfDay) {
+          setSelectedTime(LABEL_BY_TIME_OF_DAY[habit.timeOfDay]);
+        }
+      } catch (cause) {
+        console.error("Failed to load the habit", cause);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editHabitId, isEditMode]);
+
+  const details = (): { content: string; section: HabitDetailSection }[] =>
+    (Object.keys(SECTION_BY_INPUT) as FormStep["input"][]).map((input) => ({
+      content: values[input as keyof FormValues],
+      section: SECTION_BY_INPUT[input] as HabitDetailSection,
+    }));
+
+  async function handleSave() {
+    if (saving) return;
+    if (!values.habitName.trim()) {
+      setFormError("Give your habit a name.");
+      return;
+    }
+    if (selectedDays.size === 0) {
+      setFormError("Pick at least one day.");
+      return;
+    }
+
+    setSaving(true);
+    setFormError(null);
+    const scheduleDays = DAYS.reduce<number[]>(
+      (list, day, index) => (selectedDays.has(day) ? [...list, index] : list),
+      [],
+    );
+
+    try {
+      if (isEditMode) {
+        await updateHabit(editHabitId, {
+          title: values.habitName,
+          cue: values.cue || null,
+          timeOfDay: TIME_OF_DAY_BY_LABEL[selectedTime],
+        });
+        await setHabitScheduleDays(editHabitId, scheduleDays);
+        await setHabitDetails(editHabitId, details());
+      } else {
+        let dreamId = Number(dreamIdParam);
+        if (!Number.isFinite(dreamId) || dreamId <= 0) {
+          const [firstDream] = await getDreams();
+          if (!firstDream) {
+            setFormError("Create a dream first — habits live inside one.");
+            setSaving(false);
+            return;
+          }
+          dreamId = firstDream.id;
+        }
+        await createHabit({
+          dreamId,
+          title: values.habitName,
+          cue: values.cue || null,
+          timeOfDay: TIME_OF_DAY_BY_LABEL[selectedTime],
+          scheduleDays,
+          details: details(),
+        });
+      }
+      handleBack();
+    } catch (cause) {
+      console.error("Failed to save the habit", cause);
+      setFormError("Something went wrong while saving. Please try again.");
+      setSaving(false);
+    }
+  }
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -368,7 +506,7 @@ export default function CreateHabitScreen() {
           onPress: handleBack,
         }}
         style={styles.header}
-        title="Create Habit"
+        title={isEditMode ? "Edit Habit" : "Create Habit"}
       />
       <HeaderOrnament />
 
@@ -437,10 +575,22 @@ export default function CreateHabitScreen() {
         {textSteps.slice(2).map(renderTextStep)}
       </View>
 
+      {formError ? (
+        <AppText
+          align="center"
+          color={colors.danger}
+          style={styles.formErrorText}
+          variant="caption"
+        >
+          {formError}
+        </AppText>
+      ) : null}
+
       <AppButton
+        disabled={saving}
         icon={<SparkIcon color={colors.textOnPrimary} size={22} />}
-        label="Continue"
-        onPress={() => {}}
+        label={isEditMode ? "Save Habit" : "Create Habit"}
+        onPress={handleSave}
         size="lg"
         style={styles.continueButton}
         variant="primary"
@@ -465,6 +615,9 @@ const styles = StyleSheet.create({
   form: {
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
+    marginTop: spacing.md,
+  },
+  formErrorText: {
     marginTop: spacing.md,
   },
   formMain: {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Image,
   Pressable,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { createDream } from "@/db";
 import {
   AppInput,
   AppText,
@@ -59,13 +60,41 @@ export default function StateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const { name, description } = useLocalSearchParams<{
+    name?: string;
+    description?: string;
+  }>();
   const [customState, setCustomState] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([
     "Alive",
     "Magnetic",
     "Peaceful",
   ]);
   const compact = height < 760;
+
+  const finishDream = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const dream = await createDream({
+        title: name?.trim() || "My dream",
+        visionStatement: description?.trim() || null,
+        feelingStates: selected,
+      });
+      router.dismissAll();
+      router.push({
+        pathname: "/journey-map",
+        params: { dreamId: String(dream.id) },
+      });
+    } catch (error) {
+      console.error("Failed to save the dream", error);
+      setSaveError("Something went wrong while saving. Please try again.");
+      setSaving(false);
+    }
+  };
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
@@ -208,15 +237,12 @@ export default function StateScreen() {
         <Pressable
           accessibilityLabel="Continue"
           accessibilityRole="button"
-          onPress={() =>
-            router.navigate({
-              pathname: "/journey-map",
-              params: { edit: "1" },
-            })
-          }
+          disabled={saving}
+          onPress={finishDream}
           style={({ pressed: isPressed }) => [
             styles.continueImageButton,
-            isPressed && pressed,
+            saving && styles.continueImageButtonSaving,
+            isPressed && !saving && pressed,
           ]}
         >
           <Image
@@ -225,6 +251,12 @@ export default function StateScreen() {
             style={styles.continueImage}
           />
         </Pressable>
+
+        {saveError ? (
+          <AppText align="center" color={colors.danger} variant="caption">
+            {saveError}
+          </AppText>
+        ) : null}
 
         <AppText style={styles.footnote} variant="caption">
           ▣  You can change this anytime
@@ -267,6 +299,9 @@ const styles = StyleSheet.create({
   },
   continueImageButton: {
     marginTop: spacing.md,
+  },
+  continueImageButtonSaving: {
+    opacity: 0.5,
   },
   customInputText: {
     paddingRight: spacing.xl,

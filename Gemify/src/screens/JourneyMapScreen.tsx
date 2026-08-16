@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -34,12 +34,24 @@ import {
   JourneyMilestone,
   type JourneyMilestonePosition,
 } from "@/components/JourneyMilestone";
-import {
-  journeyMilestones,
-  type JourneyMilestoneBoardConfig,
-  type JourneyMilestoneData,
+import { journeyMilestoneBoardLayout } from "@/data/journeyMilestoneBoardLayout";
+import type {
+  JourneyMilestoneBoardConfig,
+  JourneyMilestoneData,
 } from "@/data/journeyMilestones";
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
+import {
+  deleteDream,
+  deleteMilestone,
+  getDreamById,
+  getDreams,
+  getMilestones,
+  insertMilestone,
+  updateDream,
+  updateMilestone,
+  type Dream,
+  type Milestone,
+} from "@/db";
 import {
   AppButton,
   AppModal,
@@ -732,26 +744,80 @@ function MilestoneModal({
   );
 }
 
-/** Renumbers milestones so ids always run 1..n in path order. */
-function resequenceMilestones(
-  list: readonly JourneyMilestoneData[],
-): JourneyMilestoneData[] {
-  return list.map((milestone, index) =>
-    milestone.id === index + 1 ? milestone : { ...milestone, id: index + 1 },
+/** DB milestone mapped to the board shape, keeping the DB id for mutations. */
+function toJourneyData(milestone: Milestone): JourneyMilestoneData {
+  const displayId = milestone.sequenceNumber + 1;
+  const layout = journeyMilestoneBoardLayout.find(
+    (config) => config.milestoneId === displayId,
   );
+  const { milestoneId: _milestoneId, ...visuals } = layout ?? {
+    milestoneId: displayId,
+    ...NEW_MILESTONE_VISUALS,
+  };
+
+  return {
+    ...visuals,
+    active: true,
+    artifact: milestone.artifact ?? undefined,
+    completed: milestone.status === "completed",
+    description: "",
+    id: displayId,
+    mentor: milestone.mentor ?? undefined,
+    reward: milestone.reward ?? undefined,
+    state: milestone.state ?? "",
+    subtitle: "",
+    title: milestone.title,
+  };
 }
 
 export function GoalJourneyMapScreen() {
   const router = useRouter();
-  // Goal-creation flow opens the map directly in edit mode (?edit=1); the
-  // dream can't be deleted there because it isn't created yet.
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  // Goal-creation flow used to open the map in edit mode (?edit=1); it now
+  // lands here right after the dream is created, with its id in the params.
+  const { dreamId: dreamIdParam, edit } = useLocalSearchParams<{
+    dreamId?: string;
+    edit?: string;
+  }>();
   const openedInEditFlow = edit === "1";
-  const [milestones, setMilestones] =
-    useState<readonly JourneyMilestoneData[]>(journeyMilestones);
+  const [dream, setDream] = useState<Dream | null>(null);
+  const [dbMilestones, setDbMilestones] = useState<Milestone[]>([]);
   const [isEditMode, setIsEditMode] = useState(openedInEditFlow);
   const [modalState, setModalState] = useState<MilestoneModalState | null>(
     null,
+  );
+
+  const loadJourney = useCallback(async () => {
+    try {
+      const resolved = dreamIdParam
+        ? await getDreamById(Number(dreamIdParam))
+        : ((await getDreams())[0] ?? null);
+      setDream(resolved);
+      setDbMilestones(resolved ? await getMilestones(resolved.id) : []);
+    } catch (cause) {
+      console.error("Failed to load the journey", cause);
+    }
+  }, [dreamIdParam]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadJourney();
+    }, [loadJourney]),
+  );
+
+  const milestones = useMemo(
+    () => dbMilestones.map(toJourneyData),
+    [dbMilestones],
+  );
+  /** Board display id (sequence + 1) → DB row id, for mutations. */
+  const dbIdByDisplayId = useMemo(
+    () =>
+      new Map(
+        dbMilestones.map((milestone) => [
+          milestone.sequenceNumber + 1,
+          milestone.id,
+        ]),
+      ),
+    [dbMilestones],
   );
 
   const currentConfig = journeyPageConfigs[0];
@@ -787,62 +853,77 @@ export function GoalJourneyMapScreen() {
   const handleMilestonePress = (milestone: JourneyMilestoneData) =>
     setModalState({ milestone, mode: isEditMode ? "edit" : "view" });
 
-  const handleSave = (values: MilestoneFormValues) => {
-    if (!modalState) {
+  const handleSave = async (values: MilestoneFormValues) => {
+    if (!modalState || !dream) {
       return;
     }
 
-    if (modalState.mode === "add") {
-      const created: JourneyMilestoneData = {
-        ...NEW_MILESTONE_VISUALS,
-        active: true,
-        artifact: values.artifact.trim() || undefined,
-        description: "",
-        id: 0,
-        mentor: values.mentor.trim() || undefined,
-        reward: values.reward.trim() || undefined,
-        state: values.state.trim(),
-        subtitle: "",
-        title: values.title.trim(),
-      };
-
-      setMilestones((current) => {
-        const next = [...current];
-        next.splice(modalState.insertIndex, 0, created);
-        return resequenceMilestones(next);
-      });
-    } else if (modalState.mode === "edit") {
-      setMilestones((current) =>
-        current.map((milestone) =>
-          milestone.id === modalState.milestone.id
-            ? {
-                ...milestone,
-                artifact: values.artifact.trim() || undefined,
-                mentor: values.mentor.trim() || undefined,
-                reward: values.reward.trim() || undefined,
-                state: values.state.trim() || milestone.state,
-              }
-            : milestone,
-        ),
-      );
+    try {
+      if (modalState.mode === "add") {
+        await insertMilestone(dream.id, modalState.insertIndex, {
+          title: values.title,
+          state: values.state,
+          artifact: values.artifact,
+          mentor: values.mentor,
+          reward: values.reward,
+        });
+      } else {
+        const dbId = dbIdByDisplayId.get(modalState.milestone.id);
+        if (dbId !== undefined) {
+          await updateMilestone(dbId, {
+            state: values.state,
+            artifact: values.artifact,
+            mentor: values.mentor,
+            reward: values.reward,
+          });
+        }
+      }
+      await loadJourney();
+    } catch (cause) {
+      console.error("Failed to save the milestone", cause);
     }
 
     setModalState(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!modalState || modalState.mode !== "edit") {
       return;
     }
 
-    setMilestones((current) =>
-      resequenceMilestones(
-        current.filter(
-          (milestone) => milestone.id !== modalState.milestone.id,
-        ),
-      ),
-    );
+    try {
+      const dbId = dbIdByDisplayId.get(modalState.milestone.id);
+      if (dbId !== undefined) {
+        await deleteMilestone(dbId);
+      }
+      await loadJourney();
+    } catch (cause) {
+      console.error("Failed to delete the milestone", cause);
+    }
     setModalState(null);
+  };
+
+  const handleSaveDream = async (name: string, vision: string) => {
+    if (!dream) return;
+    try {
+      const updated = await updateDream(dream.id, {
+        title: name,
+        visionStatement: vision || null,
+      });
+      if (updated) setDream(updated);
+    } catch (cause) {
+      console.error("Failed to save the dream", cause);
+    }
+  };
+
+  const handleDeleteDream = async () => {
+    if (!dream) return;
+    try {
+      await deleteDream(dream.id);
+      router.back();
+    } catch (cause) {
+      console.error("Failed to delete the dream", cause);
+    }
   };
 
   return (
@@ -899,18 +980,35 @@ export function GoalJourneyMapScreen() {
       </JourneyMapScroll>
 
       <JourneyMapControls
+        dreamId={dream?.id}
+        dreamName={dream?.title ?? ""}
         editMode={isEditMode}
+        onDeleteDream={handleDeleteDream}
         onEnterEditMode={() => setIsEditMode(true)}
         onExitEditMode={() => setIsEditMode(false)}
+        onSaveDream={handleSaveDream}
         showDeleteDream={!openedInEditFlow}
+        visionStatement={dream?.visionStatement ?? ""}
       />
 
       <MilestoneModal
         onClose={() => setModalState(null)}
         onDelete={handleDelete}
         onOpenQuests={() => {
+          const displayId =
+            modalState && modalState.mode !== "add"
+              ? modalState.milestone.id
+              : null;
+          const dbId =
+            displayId !== null ? dbIdByDisplayId.get(displayId) : undefined;
           setModalState(null);
-          router.push("/milestone-quests");
+          router.push({
+            pathname: "/milestone-quests",
+            params: {
+              milestoneId: dbId !== undefined ? String(dbId) : "",
+              dreamId: dream ? String(dream.id) : "",
+            },
+          });
         }}
         onSave={handleSave}
         state={modalState}

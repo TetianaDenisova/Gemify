@@ -91,9 +91,15 @@ export default function CreateGoalScreen() {
           />
 
           <AppButton
+            disabled={!dreamName.trim()}
             icon={<ArrowRightIcon color={colors.textOnPrimary} />}
             label="Continue"
-            onPress={() => router.navigate("/describe-dream")}
+            onPress={() =>
+              router.navigate({
+                pathname: "/describe-dream",
+                params: { name: dreamName.trim() },
+              })
+            }
             size="lg"
             variant="primary"
           />
