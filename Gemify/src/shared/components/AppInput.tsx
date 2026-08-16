@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { colors } from "@/theme/colors";
-import { radius, spacing, typography } from "@/theme/theme";
+import { inputFocusReset, radius, spacing, typography } from "@/theme/theme";
 
 import { AppText } from "./AppText";
 
@@ -117,9 +117,8 @@ const styles = StyleSheet.create({
   },
   input: {
     ...typography.input,
+    ...inputFocusReset,
     flex: 1,
-    outlineColor: colors.transparent,
-    outlineWidth: 0,
     padding: 0,
   },
   inputMultiline: {

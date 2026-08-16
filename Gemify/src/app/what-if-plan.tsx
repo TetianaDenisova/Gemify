@@ -43,6 +43,7 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   iconSizes,
+  inputFocusReset,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -964,6 +965,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   underlineInput: {
+    ...inputFocusReset,
     borderBottomColor: colors.borderSoft,
     borderBottomWidth: 1,
     paddingBottom: 2,

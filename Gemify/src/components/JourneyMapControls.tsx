@@ -25,6 +25,7 @@ import {
   fonts,
   fontSizes,
   iconSizes,
+  inputFocusReset,
   lineHeights,
   radius,
   shadows,
@@ -505,6 +506,7 @@ const styles = StyleSheet.create({
   },
   dreamNameInput: {
     ...typography.title,
+    ...inputFocusReset,
     borderBottomColor: colors.borderSoft,
     borderBottomWidth: 1,
     marginTop: spacing.xs,
@@ -515,6 +517,7 @@ const styles = StyleSheet.create({
   },
   visionInput: {
     ...typography.bodySerif,
+    ...inputFocusReset,
     flex: 1,
     color: colors.textPrimary,
     fontSize: fontSizes.lg,

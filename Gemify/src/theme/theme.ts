@@ -323,6 +323,16 @@ export const controls = {
   },
 } as const;
 
+/**
+ * Removes the browser's default focus outline on web TextInputs (no-op on
+ * native). "none" is valid in react-native-web but missing from RN's
+ * outlineStyle union, hence the cast.
+ */
+export const inputFocusReset = Platform.select({
+  default: {},
+  web: { outlineStyle: "none" },
+}) as unknown as TextStyle;
+
 /** Standard feedback style for pressed Pressables. */
 export const pressed = {
   opacity: 0.72,
@@ -366,6 +376,7 @@ export const theme = {
   fontSizes,
   gradients,
   iconSizes,
+  inputFocusReset,
   layout,
   lineHeights,
   pressed,

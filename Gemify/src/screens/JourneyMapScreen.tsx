@@ -64,6 +64,7 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   gradients,
+  inputFocusReset,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -1193,6 +1194,7 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     ...typography.titleSm,
+    ...inputFocusReset,
     borderBottomColor: colors.borderSoft,
     borderBottomWidth: 1,
     marginTop: spacing.xs,
