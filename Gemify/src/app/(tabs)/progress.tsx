@@ -47,8 +47,10 @@ import {
   lineHeights,
   pressed,
   radius,
+  shadowStyle,
   shadows,
   spacing,
+  textGlow,
 } from "@/theme/theme";
 
 const CHART_PLOT_HEIGHT = 150;
@@ -595,7 +597,8 @@ function TimelineMomentItem({ moment }: { moment: TimelineMoment }) {
       <View
         style={[
           styles.timelineCircle,
-          { borderColor: tint.main, shadowColor: tint.main },
+          { borderColor: tint.main },
+          shadowStyle({ color: tint.main, opacity: 0.45, radius: 10 }),
         ]}
       >
         <TimelineGlyph color={tint.main} icon={moment.icon} />
@@ -1277,11 +1280,7 @@ const styles = StyleSheet.create({
   tabActive: {
     backgroundColor: "rgba(183, 140, 255, 0.12)",
     borderColor: colors.accentViolet,
-    elevation: 6,
-    shadowColor: colors.accentViolet,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    ...shadowStyle({ color: colors.accentViolet, elevation: 6, opacity: 0.4, radius: 10 }),
   },
   tabLabelCompact: {
     fontSize: fontSizes.sm,
@@ -1311,9 +1310,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     height: 64,
     justifyContent: "center",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
     width: 64,
   },
   timelineConnector: {
@@ -1354,9 +1350,7 @@ const styles = StyleSheet.create({
     top: 0,
   },
   title: {
-    textShadowColor: colors.primaryGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+    ...textGlow(colors.primaryGlow, 12),
   },
   titleBlock: {
     flex: 1,

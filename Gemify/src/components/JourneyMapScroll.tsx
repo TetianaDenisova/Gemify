@@ -121,10 +121,10 @@ export function JourneyMapScroll({
           />
 
           <View
-            pointerEvents="box-none"
             style={{
               height: imageHeight,
               left: imageLeft,
+              pointerEvents: "box-none",
               position: "absolute",
               top: 0,
               width: imageWidth,
@@ -144,8 +144,7 @@ export function JourneyMapScroll({
             colors.overlayDark,
           ]}
           locations={[0, 0.28, 0.72, 1]}
-          pointerEvents="none"
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
         />
       ) : null}
     </View>

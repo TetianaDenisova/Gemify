@@ -74,7 +74,7 @@ export function ProgressRing({
         />
       </Svg>
       {resolvedLabel != null || meta ? (
-        <View pointerEvents="none" style={styles.labelBlock}>
+        <View style={[styles.labelBlock, { pointerEvents: "none" }]}>
           {resolvedLabel != null ? (
             <AppText
               align="center"

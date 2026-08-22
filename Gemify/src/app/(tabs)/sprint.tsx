@@ -40,61 +40,11 @@ type WeekDay = {
   selected: boolean;
 };
 
-/** Unscheduled tasks regrouped dream → milestone → quest for the tree card. */
-type DreamGroup = {
-  dream: string;
-  taskCount: number;
-  milestones: {
-    milestone: string;
-    quests: { quest: string; tasks: TaskWithBreadcrumb[] }[];
-  }[];
-};
-
-function groupUnscheduled(tasks: TaskWithBreadcrumb[]): DreamGroup[] {
-  const groups: DreamGroup[] = [];
-  for (const task of tasks) {
-    let dream = groups.find((entry) => entry.dream === task.dreamTitle);
-    if (!dream) {
-      dream = { dream: task.dreamTitle, taskCount: 0, milestones: [] };
-      groups.push(dream);
-    }
-    dream.taskCount += 1;
-
-    let milestone = dream.milestones.find(
-      (entry) => entry.milestone === task.milestoneTitle,
-    );
-    if (!milestone) {
-      milestone = { milestone: task.milestoneTitle, quests: [] };
-      dream.milestones.push(milestone);
-    }
-
-    let quest = milestone.quests.find(
-      (entry) => entry.quest === task.questTitle,
-    );
-    if (!quest) {
-      quest = { quest: task.questTitle, tasks: [] };
-      milestone.quests.push(quest);
-    }
-    quest.tasks.push(task);
-  }
-  return groups;
-}
-
 function CalendarIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
       <Rect fill="none" height={15} rx={2.4} stroke={color} strokeWidth={1.7} width={17} x={3.5} y={5.5} />
       <Path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function CalendarPlusIcon({ color = colors.primary, size = 18 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect fill="none" height={15} rx={2.4} stroke={color} strokeWidth={1.7} width={17} x={3.5} y={5.5} />
-      <Path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.7} />
-      <Path d="M9 15.5h6M12 12.5v6" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.7} />
     </Svg>
   );
 }
@@ -147,6 +97,18 @@ function QuestTargetIcon({ color = colors.accentVioletStrong, size = 22 }: { col
   );
 }
 
+function GripIcon({ color = colors.textSecondary, size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      {[9, 15].map((cx) =>
+        [6, 12, 18].map((cy) => (
+          <Circle cx={cx} cy={cy} fill={color} key={`${cx}-${cy}`} r={1.6} />
+        )),
+      )}
+    </Svg>
+  );
+}
+
 function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
   const hasTasks = day.count > 0;
   const dotColor = day.selected
@@ -192,121 +154,102 @@ function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
   );
 }
 
-function TaskBreadcrumb({ task }: { task: TaskWithBreadcrumb }) {
+function BreadcrumbPart({
+  color,
+  icon,
+  label,
+}: {
+  color: string;
+  icon: ReactNode;
+  label: string;
+}) {
   return (
-    <View style={styles.breadcrumb}>
-      <AppText color={colors.accentViolet} numberOfLines={1} variant="bodySmall">
-        {task.dreamTitle}
-      </AppText>
-      <AppText color={colors.textMuted} variant="bodySmall">/</AppText>
-      <AppText color={colors.primary} numberOfLines={1} variant="bodySmall">
-        {task.milestoneTitle}
-      </AppText>
-      <AppText color={colors.textMuted} variant="bodySmall">/</AppText>
-      <AppText color={colors.accentViolet} numberOfLines={1} variant="bodySmall">
-        {task.questTitle}
+    <View style={styles.breadcrumbPart}>
+      {icon}
+      <AppText
+        color={color}
+        numberOfLines={1}
+        style={styles.breadcrumbLabel}
+        variant="bodySmall"
+      >
+        {label}
       </AppText>
     </View>
   );
 }
 
-function ScheduledTaskCard({
-  onReschedule,
+function TaskBreadcrumb({ task }: { task: TaskWithBreadcrumb }) {
+  return (
+    <View style={styles.breadcrumb}>
+      <BreadcrumbPart
+        color={colors.textSecondary}
+        icon={<DreamIcon size={16} />}
+        label={task.dreamTitle}
+      />
+      <ChevronIcon color={colors.textMuted} direction="right" size={13} />
+      <BreadcrumbPart
+        color={colors.textSecondary}
+        icon={<MilestoneIcon size={16} />}
+        label={task.milestoneTitle}
+      />
+      <ChevronIcon color={colors.textMuted} direction="right" size={13} />
+      <BreadcrumbPart
+        color={colors.textSecondary}
+        icon={<QuestTargetIcon size={16} />}
+        label={task.questTitle}
+      />
+    </View>
+  );
+}
+
+/**
+ * A weekly-plan task item: grip (opens the schedule modal) · title with the
+ * dream › milestone › quest breadcrumb · circle done-toggle.
+ */
+function TaskItemCard({
+  onOpenSchedule,
   onToggleDone,
+  showTime = false,
   task,
 }: {
-  onReschedule: () => void;
+  onOpenSchedule: () => void;
   onToggleDone: () => void;
+  showTime?: boolean;
   task: TaskWithBreadcrumb;
 }) {
   return (
     <Card style={styles.taskCard}>
       <View style={styles.taskCardRow}>
-        <Pressable accessibilityRole="checkbox" hitSlop={8} onPress={onToggleDone}>
-          <Checkbox checked={task.isDone} shape="circle" size={32} />
+        <Pressable
+          accessibilityLabel="Schedule task"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onOpenSchedule}
+          style={({ pressed: isPressed }) => [styles.gripButton, isPressed && pressed]}
+        >
+          <GripIcon />
         </Pressable>
         <View style={styles.taskCardCopy}>
-          <AppText numberOfLines={1} variant="pill">{task.title}</AppText>
-          <View style={styles.taskMeta}>
-            <ClockIcon />
-            <AppText color={colors.textSecondary} variant="bodySmall">
-              {task.scheduledTime ?? "Anytime"}
-            </AppText>
-          </View>
+          <AppText numberOfLines={2} variant="button">{task.title}</AppText>
+          {showTime ? (
+            <View style={styles.taskMeta}>
+              <ClockIcon />
+              <AppText color={colors.textSecondary} variant="bodySmall">
+                {task.scheduledTime ?? "Anytime"}
+              </AppText>
+            </View>
+          ) : null}
           <TaskBreadcrumb task={task} />
         </View>
-        <IconButton
-          accessibilityLabel="Reschedule task"
-          icon={<CalendarPlusIcon />}
-          onPress={onReschedule}
-          size="sm"
+        <Checkbox
+          accessibilityLabel="Mark task done"
+          checked={task.isDone}
+          onPress={onToggleDone}
+          shape="circle"
+          size={44}
         />
       </View>
     </Card>
-  );
-}
-
-function TreeRow({
-  divider,
-  eyebrow,
-  eyebrowColor,
-  icon,
-  iconColor,
-  meta,
-  title,
-  trailing,
-}: {
-  divider?: boolean;
-  eyebrow: string;
-  eyebrowColor: string;
-  icon: ReactNode;
-  iconColor: string;
-  meta?: string;
-  title: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <View style={[styles.treeRow, divider && styles.treeRowDivider]}>
-      <View style={[styles.treeIconFrame, { borderColor: `${iconColor}66` }]}>
-        {icon}
-      </View>
-      <View style={styles.treeRowCopy}>
-        <AppText color={eyebrowColor} variant="eyebrow">{eyebrow}</AppText>
-        <View style={styles.treeRowTitleLine}>
-          <AppText numberOfLines={1} variant="pill">{title}</AppText>
-          {meta ? (
-            <AppText color={colors.primary} variant="bodySmall"> · {meta}</AppText>
-          ) : null}
-        </View>
-      </View>
-      {trailing}
-    </View>
-  );
-}
-
-function UnscheduledTaskRow({
-  divider,
-  onSchedule,
-  task,
-}: {
-  divider?: boolean;
-  onSchedule: () => void;
-  task: TaskWithBreadcrumb;
-}) {
-  return (
-    <View style={[styles.unscheduledTaskRow, divider && styles.unscheduledTaskRowDivider]}>
-      <View style={styles.taskCardCopy}>
-        <AppText numberOfLines={2} variant="pill">{task.title}</AppText>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onSchedule}
-        style={({ pressed: isPressed }) => [styles.scheduleButton, isPressed && pressed]}
-      >
-        <CalendarPlusIcon />
-        <AppText color={colors.primary} variant="controlLabel">Schedule</AppText>
-      </Pressable>
-    </View>
   );
 }
 
@@ -402,9 +345,6 @@ export default function SprintScreen() {
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [scheduled, setScheduled] = useState<TaskWithBreadcrumb[]>([]);
   const [unscheduled, setUnscheduled] = useState<TaskWithBreadcrumb[]>([]);
-  const [collapsedDreams, setCollapsedDreams] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
   const [scheduleTarget, setScheduleTarget] =
     useState<TaskWithBreadcrumb | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -461,11 +401,13 @@ export default function SprintScreen() {
   };
 
   const handleToggleDone = async (task: TaskWithBreadcrumb) => {
-    setScheduled((current) =>
-      current.map((entry) =>
+    // Optimistic flip in whichever list holds the task; reload fixes drift.
+    const flip = (list: TaskWithBreadcrumb[]) =>
+      list.map((entry) =>
         entry.id === task.id ? { ...entry, isDone: !entry.isDone } : entry,
-      ),
-    );
+      );
+    setScheduled(flip);
+    setUnscheduled(flip);
     try {
       await setTaskDone(task.id, !task.isDone);
     } catch (cause) {
@@ -502,18 +444,6 @@ export default function SprintScreen() {
     setScheduleTarget(null);
   };
 
-  const toggleDream = (dream: string) =>
-    setCollapsedDreams((current) => {
-      const next = new Set(current);
-      if (next.has(dream)) {
-        next.delete(dream);
-      } else {
-        next.add(dream);
-      }
-      return next;
-    });
-
-  const dreamGroups = groupUnscheduled(unscheduled);
   const selectedHeading = new Date(
     `${selectedDate}T12:00:00`,
   ).toLocaleDateString("en-US", {
@@ -574,10 +504,11 @@ export default function SprintScreen() {
       </View>
 
       {scheduled.map((task) => (
-        <ScheduledTaskCard
+        <TaskItemCard
           key={task.id}
-          onReschedule={() => setScheduleTarget(task)}
+          onOpenSchedule={() => setScheduleTarget(task)}
           onToggleDone={() => handleToggleDone(task)}
+          showTime
           task={task}
         />
       ))}
@@ -601,85 +532,14 @@ export default function SprintScreen() {
         <View style={styles.sectionHeaderSpacer} />
       </View>
 
-      {dreamGroups.map((group) => {
-        const collapsed = collapsedDreams.has(group.dream);
-
-        if (collapsed) {
-          return (
-            <Card key={group.dream} padded={false} style={styles.treeCard}>
-              <Pressable
-                onPress={() => toggleDream(group.dream)}
-                style={styles.treeRow}
-              >
-                <View style={[styles.treeIconFrame, { borderColor: `${colors.accentViolet}66` }]}>
-                  <DreamIcon />
-                </View>
-                <View style={styles.treeRowCopy}>
-                  <AppText color={colors.accentViolet} variant="eyebrow">DREAM</AppText>
-                  <AppText numberOfLines={1} variant="pill">{group.dream}</AppText>
-                  <AppText color={colors.textMuted} variant="caption">
-                    {group.taskCount} task{group.taskCount === 1 ? "" : "s"}
-                  </AppText>
-                </View>
-                <ChevronIcon />
-              </Pressable>
-            </Card>
-          );
-        }
-
-        return (
-          <Card key={group.dream} padded={false} style={styles.treeCard}>
-            <View style={styles.treeRail} />
-
-            <Pressable onPress={() => toggleDream(group.dream)}>
-              <TreeRow
-                divider
-                eyebrow="DREAM"
-                eyebrowColor={colors.accentViolet}
-                icon={<DreamIcon />}
-                iconColor={colors.accentViolet}
-                title={group.dream}
-                trailing={<ChevronIcon direction="up" />}
-              />
-            </Pressable>
-
-            {group.milestones.map((milestoneGroup) => (
-              <View key={milestoneGroup.milestone}>
-                <TreeRow
-                  divider
-                  eyebrow="MILESTONE"
-                  eyebrowColor={colors.primary}
-                  icon={<MilestoneIcon />}
-                  iconColor={colors.primary}
-                  title={milestoneGroup.milestone}
-                />
-                {milestoneGroup.quests.map((questGroup) => (
-                  <View key={questGroup.quest}>
-                    <TreeRow
-                      eyebrow="QUEST"
-                      eyebrowColor={colors.accentViolet}
-                      icon={<QuestTargetIcon />}
-                      iconColor={colors.accentVioletStrong}
-                      meta={`${questGroup.tasks.length} task${questGroup.tasks.length === 1 ? "" : "s"}`}
-                      title={questGroup.quest}
-                    />
-                    <View style={styles.unscheduledTaskBox}>
-                      {questGroup.tasks.map((task, index) => (
-                        <UnscheduledTaskRow
-                          divider={index < questGroup.tasks.length - 1}
-                          key={task.id}
-                          onSchedule={() => setScheduleTarget(task)}
-                          task={task}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ))}
-          </Card>
-        );
-      })}
+      {unscheduled.map((task) => (
+        <TaskItemCard
+          key={task.id}
+          onOpenSchedule={() => setScheduleTarget(task)}
+          onToggleDone={() => handleToggleDone(task)}
+          task={task}
+        />
+      ))}
 
       {unscheduled.length === 0 ? (
         <Card style={styles.emptyCard}>
@@ -710,15 +570,22 @@ export default function SprintScreen() {
   );
 }
 
-const RAIL_LEFT = spacing.md + 24;
-
 const styles = StyleSheet.create({
   breadcrumb: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: spacing.xs,
     marginTop: spacing.sm,
+  },
+  breadcrumbLabel: {
+    flexShrink: 1,
+  },
+  breadcrumbPart: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: spacing.xs,
+    minWidth: 0,
   },
   countBadge: {
     alignItems: "center",
@@ -814,15 +681,11 @@ const styles = StyleSheet.create({
   modalTimeInput: {
     marginTop: spacing.lg,
   },
-  scheduleButton: {
+  gripButton: {
     alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
+    height: 44,
+    justifyContent: "center",
+    width: 36,
   },
   sectionHeader: {
     alignItems: "center",
@@ -851,68 +714,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs + 2,
     marginTop: spacing.xs,
-  },
-  treeCard: {
-    marginBottom: spacing.md,
-    overflow: "hidden",
-    paddingBottom: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  treeIconFrame: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceDeep,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: "center",
-    width: 48,
-  },
-  treeRail: {
-    backgroundColor: colors.divider,
-    bottom: spacing.lg,
-    left: RAIL_LEFT,
-    position: "absolute",
-    top: 64,
-    width: 1,
-  },
-  treeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + spacing.xs,
-  },
-  treeRowCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  treeRowDivider: {
-    borderBottomColor: colors.divider,
-    borderBottomWidth: 1,
-  },
-  treeRowTitleLine: {
-    alignItems: "baseline",
-    flexDirection: "row",
-    minWidth: 0,
-  },
-  unscheduledTaskBox: {
-    borderColor: colors.borderFaint,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    marginLeft: RAIL_LEFT + 24 + spacing.md,
-    marginRight: spacing.md,
-    marginTop: spacing.xs,
-  },
-  unscheduledTaskRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm + spacing.xs,
-    paddingVertical: spacing.sm + spacing.xs,
-  },
-  unscheduledTaskRowDivider: {
-    borderBottomColor: colors.divider,
-    borderBottomWidth: 1,
   },
   weekStrip: {
     flexDirection: "row",

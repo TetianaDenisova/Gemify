@@ -128,11 +128,11 @@ export function JourneyMilestone({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[
         styles.group,
         {
           left,
+          pointerEvents: "box-none",
           top,
           width: groupWidth,
           height: groupHeight,

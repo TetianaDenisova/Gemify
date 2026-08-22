@@ -52,7 +52,7 @@ import {
   lineHeights,
   pressed,
   radius,
-  shadows,
+  shadowStyle,
   spacing,
 } from "@/theme/theme";
 
@@ -858,9 +858,7 @@ const styles = StyleSheet.create({
     paddingBottom: 23,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
+    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.18, radius: 18 }),
   },
   habitCardCompact: {
     paddingBottom: spacing.md,

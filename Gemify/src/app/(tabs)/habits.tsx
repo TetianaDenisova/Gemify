@@ -26,8 +26,9 @@ import {
   layout,
   lineHeights,
   radius,
-  shadows,
+  shadowStyle,
   spacing,
+  textGlow,
 } from "@/theme/theme";
 
 /** Bespoke deep-night gradient behind the habits board. */
@@ -69,7 +70,7 @@ function MenuIcon() {
 
 function HeaderOrnament({ compact }: { compact: boolean }) {
   return (
-    <View style={styles.ornamentRow} pointerEvents="none">
+    <View style={styles.ornamentRow}>
       <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
       <SparkIcon size={compact ? 24 : 32} />
       <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
@@ -535,9 +536,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: 6,
     paddingHorizontal: spacing.lg,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
+    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.18, radius: 18 }),
   },
   header: {
     alignItems: "center",
@@ -564,11 +563,10 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "center",
     marginTop: 5,
+    pointerEvents: "none",
   },
   title: {
-    textShadowColor: colors.primaryGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+    ...textGlow(colors.primaryGlow, 12),
   },
   titleBlock: {
     flex: 1,

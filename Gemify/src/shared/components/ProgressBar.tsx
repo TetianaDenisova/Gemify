@@ -1,7 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { colors } from "@/theme/colors";
-import { radius } from "@/theme/theme";
+import { radius, shadowStyle } from "@/theme/theme";
 
 export type ProgressBarProps = {
   color?: string;
@@ -35,13 +35,7 @@ export function ProgressBar({
         style={[
           styles.fill,
           { backgroundColor: color, width: `${clamped}%` },
-          glow && {
-            elevation: 4,
-            shadowColor: color,
-            shadowOffset: { height: 0, width: 0 },
-            shadowOpacity: 0.6,
-            shadowRadius: 6,
-          },
+          glow && shadowStyle({ color, elevation: 4, opacity: 0.6, radius: 6 }),
         ]}
       />
     </View>

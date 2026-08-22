@@ -16,6 +16,7 @@ import {
   lineHeights,
   pressed,
   radius,
+  shadowStyle,
   spacing,
 } from "@/theme/theme";
 
@@ -261,11 +262,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     maxWidth: 420,
     alignSelf: "center",
-    shadowColor: colors.accentViolet,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 12,
+    ...shadowStyle({ color: colors.accentViolet, elevation: 12, opacity: 0.35, radius: 24 }),
   },
   closeButton: {
     alignItems: "center",
@@ -334,11 +331,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentVioletStrong,
     borderColor: colors.accentViolet,
     marginTop: spacing.lg,
-    shadowColor: colors.accentViolet,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 8,
+    ...shadowStyle({ color: colors.accentViolet, elevation: 8, opacity: 0.5, radius: 14 }),
   },
   selectButtonLabel: {
     color: colors.textPrimary,

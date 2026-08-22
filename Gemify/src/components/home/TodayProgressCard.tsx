@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { AppText, Card, ProgressBar, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { shadows, spacing } from "@/theme/theme";
+import { shadowStyle, spacing } from "@/theme/theme";
 
 const RING_SIZE = 72;
 
@@ -60,8 +60,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     overflow: "hidden",
-    ...shadows.goldGlow,
-    shadowOpacity: 0.12,
+    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.12, radius: 12 }),
   },
   percent: {
     alignItems: "center",

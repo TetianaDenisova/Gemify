@@ -4,7 +4,7 @@ import Svg, { Line } from "react-native-svg";
 
 import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, shadows } from "@/theme/theme";
+import { fonts, shadows, textGlow } from "@/theme/theme";
 
 export type JourneyMilestoneLabelSide = "left" | "right";
 
@@ -26,7 +26,7 @@ function GoldenConnector() {
   return (
     <Svg
       height={12}
-      pointerEvents="none"
+      style={{ pointerEvents: "none" }}
       viewBox={`0 0 ${CONNECTOR_WIDTH} 12`}
       width={CONNECTOR_WIDTH}
     >
@@ -68,9 +68,9 @@ export function JourneyMilestoneLabel({
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
       style={[
         styles.container,
+        { pointerEvents: "none" },
         isLeft && styles.containerLeft,
         style,
       ]}
@@ -80,7 +80,7 @@ export function JourneyMilestoneLabel({
       </View>
 
       <View style={styles.badge}>
-        <View pointerEvents="none" style={styles.badgeInnerRing} />
+        <View style={[styles.badgeInnerRing, { pointerEvents: "none" }]} />
         <AppText style={styles.badgeText}>{displayNumber}</AppText>
       </View>
 
@@ -151,9 +151,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 21,
     textAlign: "center",
-    textShadowColor: colors.primaryGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
+    ...textGlow(colors.primaryGlow, 5),
   },
   textBlock: {
     flex: 1,
@@ -178,9 +176,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
     lineHeight: 18,
     textAlign: "left",
-    textShadowColor: colors.primaryGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    ...textGlow(colors.primaryGlow, 4),
   },
   subtitle: {
     marginTop: 1,

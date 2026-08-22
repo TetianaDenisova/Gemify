@@ -71,6 +71,7 @@ import {
   lineHeights,
   pressed as pressedStyle,
   radius,
+  shadowStyle,
   shadows,
   spacing,
   typography,
@@ -193,8 +194,7 @@ function QuestButtonShimmer() {
       onLayout={({ nativeEvent }) =>
         setButtonWidth(nativeEvent.layout.width)
       }
-      pointerEvents="none"
-      style={styles.shimmerClip}
+      style={[styles.shimmerClip, { pointerEvents: "none" }]}
     >
       {buttonWidth > 0 ? (
         <>
@@ -686,7 +686,7 @@ function MilestoneModal({
                     onPress={onOpenQuests}
                     size={isCompact ? "md" : "lg"}
                   />
-                  <View pointerEvents="none" style={styles.questShimmerOverlay}>
+                  <View style={[styles.questShimmerOverlay, { pointerEvents: "none" }]}>
                     <QuestButtonShimmer />
                   </View>
                 </View>
@@ -1193,10 +1193,10 @@ export function GoalJourneyMapScreen() {
                   />
                 </Pressable>
                 <View
-                  pointerEvents="none"
                   style={[
                     styles.guidedHint,
                     {
+                      pointerEvents: "none",
                       left: imageWidth / 2 - GUIDED_HINT_WIDTH / 2,
                       top:
                         guidedPlusY * imageHeight + PLUS_TOUCH_SIZE / 2 + 6,
@@ -1292,11 +1292,13 @@ const styles = StyleSheet.create({
     width: "100%",
     borderRadius: radius.sheet,
     backgroundColor: colors.backgroundSoft,
-    shadowColor: colors.background,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.48,
-    shadowRadius: 28,
-    elevation: 12,
+    ...shadowStyle({
+      color: colors.background,
+      elevation: 12,
+      offsetY: 18,
+      opacity: 0.48,
+      radius: 28,
+    }),
   },
   sheet: {
     overflow: "hidden",

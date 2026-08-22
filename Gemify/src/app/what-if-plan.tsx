@@ -49,6 +49,7 @@ import {
   radius,
   shadows,
   spacing,
+  textGlow,
   typography,
 } from "@/theme/theme";
 
@@ -944,8 +945,7 @@ const styles = StyleSheet.create({
   },
   riskTitle: {
     marginTop: spacing.md,
-    textShadowColor: "rgba(0, 0, 0, 0.7)",
-    textShadowRadius: 8,
+    ...textGlow("rgba(0, 0, 0, 0.7)", 8),
   },
   riskTitleCompact: {
     fontSize: fontSizes.xl,
@@ -1034,7 +1034,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   title: {
-    textShadowColor: "rgba(0, 0, 0, 0.45)",
-    textShadowRadius: 6,
+    ...textGlow("rgba(0, 0, 0, 0.45)", 6),
   },
 });

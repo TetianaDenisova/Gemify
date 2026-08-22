@@ -8,7 +8,7 @@ import {
 } from "react-native";
 
 import { colors } from "@/theme/colors";
-import { controls, radius, shadows, spacing } from "@/theme/theme";
+import { controls, radius, shadowStyle, spacing } from "@/theme/theme";
 
 import { AppText } from "./AppText";
 
@@ -66,7 +66,7 @@ export function IconButton({
           pressed && styles.pressed,
         ]}
       >
-        <View pointerEvents="none" style={styles.innerEdge} />
+        <View style={[styles.innerEdge, { pointerEvents: "none" }]} />
         {icon}
         {label ? (
           <AppText color={colors.primary} style={styles.label} variant="controlLabel">
@@ -96,9 +96,7 @@ const styles = StyleSheet.create({
   },
   glow: {
     backgroundColor: colors.surfaceGlass,
-    ...shadows.goldGlow,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.2, radius: 8 }),
   },
   innerEdge: {
     ...StyleSheet.absoluteFill,

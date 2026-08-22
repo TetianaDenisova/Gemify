@@ -339,21 +339,82 @@ export const pressed = {
   transform: [{ scale: 0.98 }],
 } satisfies ViewStyle;
 
+/** `color` at `opacity`, as an rgba() string (accepts #rgb, #rrggbb, rgb/rgba). */
+function withOpacity(color: string, opacity: number): string {
+  const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    const full =
+      hex.length === 3 ? hex.split("").map((char) => char + char).join("") : hex;
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  const inner = color.match(/^rgba?\(([^)]+)\)$/)?.[1];
+  if (inner) {
+    const [r, g, b, a = "1"] = inner.split(",").map((part) => part.trim());
+    return `rgba(${r}, ${g}, ${b}, ${Number(a) * opacity})`;
+  }
+  return color;
+}
+
+/**
+ * Platform-correct drop shadow: web gets a `boxShadow` string (react-native-web
+ * deprecates the shadow* props), native keeps the classic shadow props.
+ */
+export function shadowStyle({
+  color,
+  elevation,
+  offsetX = 0,
+  offsetY = 0,
+  opacity,
+  radius,
+}: {
+  color: string;
+  elevation?: number;
+  offsetX?: number;
+  offsetY?: number;
+  opacity: number;
+  radius: number;
+}): ViewStyle {
+  if (Platform.OS === "web") {
+    return {
+      boxShadow: `${offsetX}px ${offsetY}px ${radius}px ${withOpacity(color, opacity)}`,
+    } as ViewStyle;
+  }
+  return {
+    shadowColor: color,
+    shadowOffset: { width: offsetX, height: offsetY },
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    ...(elevation === undefined ? null : { elevation }),
+  };
+}
+
+/** Platform-correct text glow (web: `textShadow` string; native: textShadow* props). */
+export function textGlow(color: string, radius: number): TextStyle {
+  if (Platform.OS === "web") {
+    return { textShadow: `0px 0px ${radius}px ${color}` } as unknown as TextStyle;
+  }
+  return {
+    textShadowColor: color,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: radius,
+  };
+}
+
 export const shadows = {
-  goldGlow: {
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+  goldGlow: shadowStyle({
+    color: colors.primary,
     elevation: 8,
-  } satisfies ViewStyle,
-  softDark: {
-    shadowColor: colors.background,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32,
-    shadowRadius: 16,
+    opacity: 0.35,
+    radius: 12,
+  }),
+  softDark: shadowStyle({
+    color: colors.background,
     elevation: 6,
-  } satisfies ViewStyle,
+    offsetY: 6,
+    opacity: 0.32,
+    radius: 16,
+  }),
 } as const;
 
 export const gradients = {

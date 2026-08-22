@@ -26,7 +26,7 @@ import {
   SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { gradients, radius, spacing } from "@/theme/theme";
+import { gradients, radius, shadowStyle, spacing } from "@/theme/theme";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const TIMES = ["Morning", "After lunch", "Evening"] as const;
@@ -96,7 +96,7 @@ const textSteps: readonly FormStep[] = [
 
 function HeaderOrnament() {
   return (
-    <View style={styles.ornamentRow} pointerEvents="none">
+    <View style={[styles.ornamentRow, { pointerEvents: "none" }]}>
       <View style={styles.ornamentLine} />
       <Svg height={24} viewBox="0 0 32 32" width={24}>
         <Path
@@ -286,7 +286,7 @@ function MoonIcon() {
 function StepIcon({ name }: { name: StepIconName }) {
   return (
     <View style={styles.stepIcon}>
-      <View pointerEvents="none" style={styles.stepIconRing} />
+      <View style={[styles.stepIconRing, { pointerEvents: "none" }]} />
       <Icon name={name} />
     </View>
   );
@@ -660,10 +660,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 70,
     justifyContent: "center",
-    shadowColor: colors.accentVioletStrong,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.26,
-    shadowRadius: 11,
+    ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.26, radius: 11 }),
     width: 70,
   },
   stepIconRing: {

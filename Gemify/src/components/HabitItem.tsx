@@ -13,6 +13,7 @@ import {
   controls,
   fontSizes,
   lineHeights,
+  shadowStyle,
   typography,
 } from "@/theme/theme";
 
@@ -93,7 +94,8 @@ function HabitArt({
       style={[
         styles.habitArt,
         compact && styles.habitArtCompact,
-        { borderColor: `${accent}A8`, shadowColor: accent },
+        { borderColor: `${accent}A8` },
+        shadowStyle({ color: accent, opacity: 0.5, radius: 16 }),
       ]}
     >
       <Svg height={artSize} viewBox="0 0 90 90" width={artSize}>
@@ -315,7 +317,7 @@ export function HabitProgress({
             </AppText>
             <DayStatus status={progress[index] ?? "missed"} />
             {expanded && progress[index] === "done" ? (
-              <View pointerEvents="none" style={styles.dayCheck}>
+              <View style={styles.dayCheck}>
                 <CheckIcon color={colors.primaryBright} size={18} strokeWidth={2.4} />
               </View>
             ) : null}
@@ -407,15 +409,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(116, 62, 170, 0.34)",
     borderColor: colors.accentVioletStrong,
     borderWidth: 1.2,
-    shadowColor: colors.accentVioletStrong,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.62,
-    shadowRadius: 14,
+    ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.62, radius: 14 }),
   },
   dayCheck: {
     alignItems: "center",
     height: 30,
     justifyContent: "center",
+    pointerEvents: "none",
     position: "absolute",
     top: 40,
     width: 30,
@@ -433,10 +433,7 @@ const styles = StyleSheet.create({
   },
   dayDotDone: {
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.72,
-    shadowRadius: 11,
+    ...shadowStyle({ color: colors.primary, opacity: 0.72, radius: 11 }),
   },
   dayDotMissed: {
     borderColor: colors.textMuted,
@@ -459,9 +456,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.1,
     height: ART_SIZE + 12,
     justifyContent: "center",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
     width: ART_SIZE + 12,
   },
   habitArtCompact: {

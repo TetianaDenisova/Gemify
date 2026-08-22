@@ -221,8 +221,9 @@ export function HabitBoardRow({
   trailing?: ReactNode;
 }) {
   return (
+    // No accessibilityRole="button": on web that renders a <button>, and the
+    // nested day-cell/menu/footer buttons would be invalid HTML inside it.
     <Pressable
-      accessibilityRole="button"
       accessibilityState={{ expanded }}
       onPress={onPress}
       style={({ pressed: isPressed }) => [containerStyle, isPressed && pressed]}

@@ -1,17 +1,29 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { initDatabase } from "@/db";
 import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
+  const pathname = usePathname();
+
   useEffect(() => {
     initDatabase().catch((cause) => {
       console.error("Failed to initialize the database", cause);
     });
   }, []);
+
+  useEffect(() => {
+    // On web, navigation hides the previous scene with aria-hidden while the
+    // tapped button keeps focus, which the browser flags. Drop focus on route
+    // change so hidden scenes never contain the focused element.
+    if (Platform.OS !== "web") return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  }, [pathname]);
 
   return (
     <GestureHandlerRootView style={{ backgroundColor: colors.background, flex: 1 }}>
