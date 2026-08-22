@@ -72,6 +72,8 @@ function TimeTab({
   compact: boolean;
   onPress: () => void;
 }) {
+  const taskCount = block.actions.length;
+
   return (
     <Pressable
       accessibilityRole="tab"
@@ -90,17 +92,35 @@ function TimeTab({
         icon={block.icon}
         size={compact ? 22 : 28}
       />
-      <AppText
-        color={colors.textSecondary}
-        numberOfLines={1}
-        style={[
-          compact && styles.timeTabLabelCompact,
-          active && styles.timeTabLabelActive,
-        ]}
-        variant="pill"
-      >
-        {block.label}
-      </AppText>
+      <View style={styles.timeTabLabelRow}>
+        <AppText
+          color={colors.textSecondary}
+          numberOfLines={1}
+          style={[
+            compact && styles.timeTabLabelCompact,
+            active && styles.timeTabLabelActive,
+          ]}
+          variant="pill"
+        >
+          {block.label}
+        </AppText>
+        {taskCount > 0 ? (
+          <View
+            style={[
+              styles.countBadge,
+              compact && styles.countBadgeCompact,
+              active && styles.countBadgeActive,
+            ]}
+          >
+            <AppText
+              color={active ? colors.textPrimary : colors.textSecondary}
+              variant="caption"
+            >
+              {taskCount}
+            </AppText>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -217,6 +237,25 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
 }
 
 const styles = StyleSheet.create({
+  countBadge: {
+    alignItems: "center",
+    borderColor: colors.borderSoft,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: "center",
+    minWidth: 24,
+    paddingHorizontal: 6,
+  },
+  countBadgeActive: {
+    backgroundColor: "rgba(90, 55, 140, 0.55)",
+    borderColor: colors.accentVioletGlow,
+  },
+  countBadgeCompact: {
+    height: 20,
+    minWidth: 20,
+    paddingHorizontal: 5,
+  },
   tabsArrow: {
     alignItems: "center",
     height: 48,
@@ -289,6 +328,11 @@ const styles = StyleSheet.create({
   timeTabLabelCompact: {
     fontSize: fontSizes.md,
     lineHeight: lineHeights.md,
+  },
+  timeTabLabelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   timeTabSlot: {
     alignItems: "center",

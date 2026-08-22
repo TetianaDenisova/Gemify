@@ -1,17 +1,37 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import {
+  Gesture,
+  GestureDetector,
+  type PanGesture,
+} from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  type SharedValue,
+  useSharedValue,
+} from "react-native-reanimated";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
+import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   getScheduledTaskCounts,
   getScheduledTasks,
+  getTimeBlocks,
   getUnscheduledTasks,
   setTaskDone,
   updateTask,
   type TaskWithBreadcrumb,
+  type TimeBlockRecord,
 } from "@/db";
+import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
   AppInput,
@@ -21,7 +41,10 @@ import {
   Checkbox,
   ChevronIcon,
   Chip,
+  DreamIcon,
+  HintRow,
   IconButton,
+  MilestoneIcon,
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
@@ -32,6 +55,9 @@ import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 /** Bespoke night-sky gradient behind the sprint board. */
 const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
 
+/** How long a press must be held before a task card lifts into a drag. */
+const DRAG_ACTIVATION_MS = 220;
+
 type WeekDay = {
   count: number;
   date: number;
@@ -39,6 +65,36 @@ type WeekDay = {
   label: string;
   selected: boolean;
 };
+
+/** Window-coordinate rect of a drop target (day cell or section header). */
+type DropRect = { height: number; width: number; x: number; y: number };
+
+/**
+ * Key of the block a task belongs to — same bucketing as My Day: the timed
+ * block whose start time most recently precedes the task's time; a time-less
+ * task belongs to the flexible block.
+ */
+function blockKeyForTask(
+  task: Pick<TaskWithBreadcrumb, "scheduledTime">,
+  blocks: readonly TimeBlockRecord[],
+): string | undefined {
+  const flexibleKey =
+    blocks.find((block) => block.startTime === null)?.key ?? blocks[0]?.key;
+  if (!task.scheduledTime) return flexibleKey;
+  let key = flexibleKey;
+  let latest: string | null = null;
+  for (const block of blocks) {
+    if (
+      block.startTime !== null &&
+      block.startTime <= task.scheduledTime &&
+      (latest === null || block.startTime > latest)
+    ) {
+      latest = block.startTime;
+      key = block.key;
+    }
+  }
+  return key;
+}
 
 function CalendarIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (
@@ -58,45 +114,6 @@ function ClockIcon({ color = colors.textSecondary, size = 15 }: { color?: string
   );
 }
 
-function DreamIcon({ color = colors.accentViolet, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M4 6c3.2 0 5.3 1 8 3.4C14.7 7 16.8 6 20 6v12c-3.2 0-5.3 1-8 3.4C9.3 19 7.2 18 4 18V6Z"
-        fill="none"
-        stroke={color}
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-      />
-      <Path d="M12 9.4v12" stroke={color} strokeLinecap="round" strokeWidth={1.8} />
-    </Svg>
-  );
-}
-
-function MilestoneIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M4.5 8.5 8 12l4-5.5L16 12l3.5-3.5V17a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 17V8.5Z"
-        fill="none"
-        stroke={color}
-        strokeLinejoin="round"
-        strokeWidth={1.8}
-      />
-    </Svg>
-  );
-}
-
-function QuestTargetIcon({ color = colors.accentVioletStrong, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={12} cy={12} fill="none" r={8.5} stroke={color} strokeWidth={1.8} />
-      <Circle cx={12} cy={12} fill="none" r={4} stroke={color} strokeWidth={1.8} />
-      <Circle cx={12} cy={12} fill={color} r={1.3} />
-    </Svg>
-  );
-}
-
 function GripIcon({ color = colors.textSecondary, size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -109,7 +126,19 @@ function GripIcon({ color = colors.textSecondary, size = 22 }: { color?: string;
   );
 }
 
-function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
+function DayCell({
+  cellRef,
+  day,
+  hoveredDay,
+  index,
+  onPress,
+}: {
+  cellRef: (cell: View | null) => void;
+  day: WeekDay;
+  hoveredDay: SharedValue<number>;
+  index: number;
+  onPress: () => void;
+}) {
   const hasTasks = day.count > 0;
   const dotColor = day.selected
     ? colors.primary
@@ -117,10 +146,15 @@ function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
       ? colors.accentVioletStrong
       : colors.textMuted;
 
+  const dropHighlightStyle = useAnimatedStyle(() => ({
+    opacity: hoveredDay.value === index ? 1 : 0,
+  }));
+
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
+      ref={cellRef}
       style={({ pressed: isPressed }) => [
         styles.dayCell,
         day.selected && styles.dayCellSelected,
@@ -150,6 +184,9 @@ function DayCell({ day, onPress }: { day: WeekDay; onPress: () => void }) {
           {day.count}
         </AppText>
       </View>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.dayDropTarget, dropHighlightStyle]}
+      />
     </Pressable>
   );
 }
@@ -192,64 +229,155 @@ function TaskBreadcrumb({ task }: { task: TaskWithBreadcrumb }) {
         icon={<MilestoneIcon size={16} />}
         label={task.milestoneTitle}
       />
-      <ChevronIcon color={colors.textMuted} direction="right" size={13} />
-      <BreadcrumbPart
-        color={colors.textSecondary}
-        icon={<QuestTargetIcon size={16} />}
-        label={task.questTitle}
-      />
     </View>
+  );
+}
+
+/**
+ * Tappable header of a collapsible task section: icon · label · task count,
+ * with a chevron pointing down while wrapped and up while expanded.
+ */
+function SectionToggleHeader({
+  count,
+  expanded,
+  headerRef,
+  hoveredSection,
+  icon,
+  index,
+  label,
+  onToggle,
+}: {
+  count: number;
+  expanded: boolean;
+  headerRef: (view: View | null) => void;
+  hoveredSection: SharedValue<number>;
+  icon: ReactNode;
+  index: number;
+  label: string;
+  onToggle: () => void;
+}) {
+  const dropHighlightStyle = useAnimatedStyle(() => ({
+    opacity: hoveredSection.value === index ? 1 : 0,
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={onToggle}
+      ref={headerRef}
+      style={({ pressed: isPressed }) => [
+        styles.sectionToggle,
+        isPressed && pressed,
+      ]}
+    >
+      {icon}
+      <AppText color={colors.primary} variant="eyebrow">
+        {label}
+      </AppText>
+      <View style={styles.sectionToggleDivider} />
+      <AppText color={colors.textSecondary} variant="bodySmall">
+        {count} {count === 1 ? "task" : "tasks"}
+      </AppText>
+      <View style={styles.sectionToggleSpacer} />
+      <ChevronIcon
+        color={colors.textSecondary}
+        direction={expanded ? "up" : "down"}
+        size={18}
+      />
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.sectionDropTarget, dropHighlightStyle]}
+      />
+    </Pressable>
   );
 }
 
 /**
  * A weekly-plan task item: grip (opens the schedule modal) · title with the
  * dream › milestone › quest breadcrumb · circle done-toggle.
+ *
+ * Long-pressing anywhere on the card lifts it into a drag; dropping it on a
+ * week-strip day cell schedules the task for that day.
  */
 function TaskItemCard({
+  dragGesture,
+  dragging,
   onOpenSchedule,
   onToggleDone,
   showTime = false,
   task,
 }: {
+  dragGesture: PanGesture;
+  dragging: boolean;
   onOpenSchedule: () => void;
   onToggleDone: () => void;
   showTime?: boolean;
   task: TaskWithBreadcrumb;
 }) {
   return (
-    <Card style={styles.taskCard}>
-      <View style={styles.taskCardRow}>
-        <Pressable
-          accessibilityLabel="Schedule task"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onOpenSchedule}
-          style={({ pressed: isPressed }) => [styles.gripButton, isPressed && pressed]}
-        >
-          <GripIcon />
-        </Pressable>
-        <View style={styles.taskCardCopy}>
-          <AppText numberOfLines={2} variant="button">{task.title}</AppText>
-          {showTime ? (
-            <View style={styles.taskMeta}>
-              <ClockIcon />
-              <AppText color={colors.textSecondary} variant="bodySmall">
-                {task.scheduledTime ?? "Anytime"}
-              </AppText>
-            </View>
-          ) : null}
-          <TaskBreadcrumb task={task} />
+    <GestureDetector gesture={dragGesture}>
+      <Card style={[styles.taskCard, dragging && styles.taskCardDragging]}>
+        <View style={styles.taskCardRow}>
+          <Pressable
+            accessibilityLabel="Schedule task"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={onOpenSchedule}
+            style={({ pressed: isPressed }) => [styles.gripButton, isPressed && pressed]}
+          >
+            <GripIcon />
+          </Pressable>
+          <View style={styles.taskCardCopy}>
+            <AppText numberOfLines={2} variant="button">{task.title}</AppText>
+            {showTime ? (
+              <View style={styles.taskMeta}>
+                <ClockIcon />
+                <AppText color={colors.textSecondary} variant="bodySmall">
+                  {task.scheduledTime ?? "Anytime"}
+                </AppText>
+              </View>
+            ) : null}
+            <TaskBreadcrumb task={task} />
+          </View>
+          <Checkbox
+            accessibilityLabel="Mark task done"
+            checked={task.isDone}
+            onPress={onToggleDone}
+            shape="circle"
+            size={44}
+          />
         </View>
-        <Checkbox
-          accessibilityLabel="Mark task done"
-          checked={task.isDone}
-          onPress={onToggleDone}
-          shape="circle"
-          size={44}
-        />
-      </View>
-    </Card>
+      </Card>
+    </GestureDetector>
+  );
+}
+
+/** Floating copy of the dragged task that follows the finger. */
+function DragGhost({
+  dragX,
+  dragY,
+  task,
+  width,
+}: {
+  dragX: SharedValue<number>;
+  dragY: SharedValue<number>;
+  task: TaskWithBreadcrumb;
+  width: number;
+}) {
+  const followStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: dragX.value - width / 2 },
+      { translateY: dragY.value - 36 },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[styles.dragGhost, { width }, followStyle]}>
+      <Card style={styles.dragGhostCard} variant="strong">
+        <AppText numberOfLines={2} variant="button">{task.title}</AppText>
+        <TaskBreadcrumb task={task} />
+      </Card>
+    </Animated.View>
   );
 }
 
@@ -345,9 +473,30 @@ export default function SprintScreen() {
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [scheduled, setScheduled] = useState<TaskWithBreadcrumb[]>([]);
   const [unscheduled, setUnscheduled] = useState<TaskWithBreadcrumb[]>([]);
+  const [blocks, setBlocks] = useState<TimeBlockRecord[]>([]);
+  // Every section starts wrapped; a key's presence here means it is expanded.
+  const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const [backlogExpanded, setBacklogExpanded] = useState(false);
   const [scheduleTarget, setScheduleTarget] =
     useState<TaskWithBreadcrumb | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [draggingTask, setDraggingTask] =
+    useState<TaskWithBreadcrumb | null>(null);
+
+  const { width: windowWidth } = useWindowDimensions();
+  const ghostWidth = Math.min(windowWidth - spacing.lg * 2, 360);
+
+  // Drag plumbing shared by every task card: finger position, drop-target
+  // rects (measured at lift), and the currently hovered day cell / section
+  // header. Section index blocks.length is the unscheduled backlog.
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const hoveredDay = useSharedValue(-1);
+  const hoveredSection = useSharedValue(-1);
+  const dayRects = useSharedValue<DropRect[]>([]);
+  const sectionRects = useSharedValue<DropRect[]>([]);
+  const dayCellRefs = useRef<(View | null)[]>([]);
+  const sectionHeaderRefs = useRef<(View | null)[]>([]);
 
   const weekDates = Array.from({ length: 7 }, (_, index) =>
     addDays(weekStart, index),
@@ -369,14 +518,16 @@ export default function SprintScreen() {
     try {
       const from = toDateKey(weekStart);
       const to = toDateKey(addDays(weekStart, 6));
-      const [countMap, dayTasks, backlog] = await Promise.all([
+      const [countMap, dayTasks, backlog, blockDefs] = await Promise.all([
         getScheduledTaskCounts(from, to),
         getScheduledTasks(selectedDate),
         getUnscheduledTasks(),
+        getTimeBlocks(),
       ]);
       setCounts(countMap);
       setScheduled(dayTasks);
       setUnscheduled(backlog);
+      setBlocks(blockDefs);
     } catch (cause) {
       console.error("Failed to load the weekly plan", cause);
     }
@@ -387,6 +538,138 @@ export default function SprintScreen() {
       loadBoard();
     }, [loadBoard]),
   );
+
+  /**
+   * Snapshot every drop target in window coordinates (drag just lifted):
+   * the week-strip cells and the section headers.
+   */
+  const measureDropTargets = () => {
+    const emptyRect = () => ({ height: 0, width: 0, x: -1, y: -1 });
+    const cellRects: DropRect[] = Array.from({ length: 7 }, emptyRect);
+    dayCellRefs.current.forEach((cell, index) => {
+      cell?.measureInWindow((x, y, width, height) => {
+        cellRects[index] = { height, width, x, y };
+        dayRects.value = [...cellRects];
+      });
+    });
+
+    const sectionCount = blocks.length + 1;
+    const headerRects: DropRect[] = Array.from({ length: sectionCount }, emptyRect);
+    sectionHeaderRefs.current.slice(0, sectionCount).forEach((header, index) => {
+      header?.measureInWindow((x, y, width, height) => {
+        headerRects[index] = { height, width, x, y };
+        sectionRects.value = [...headerRects];
+      });
+    });
+  };
+
+  const handleDragStart = (task: TaskWithBreadcrumb) => {
+    setDraggingTask(task);
+    measureDropTargets();
+  };
+
+  const handleDragRelease = () => {
+    setDraggingTask(null);
+  };
+
+  const handleDrop = async (
+    task: TaskWithBreadcrumb,
+    dayIndex: number,
+    sectionIndex: number,
+  ) => {
+    setDraggingTask(null);
+    try {
+      // A week-strip day cell: move the task to that day, keeping its time.
+      if (dayIndex >= 0) {
+        const dateKey = toDateKey(addDays(weekStart, dayIndex));
+        if (task.scheduledDate === dateKey) return;
+        await updateTask(task.id, { scheduledDate: dateKey });
+        await loadBoard();
+        return;
+      }
+      if (sectionIndex < 0) return;
+
+      // The backlog header: unschedule the task.
+      if (sectionIndex >= blocks.length) {
+        setBacklogExpanded(true);
+        if (task.scheduledDate === null) return;
+        await updateTask(task.id, { scheduledDate: null, scheduledTime: null });
+        await loadBoard();
+        return;
+      }
+
+      // A time-block header: schedule on the selected day at the block's start.
+      const block = blocks[sectionIndex];
+      setExpandedBlocks((current) => new Set(current).add(block.key));
+      const alreadyThere =
+        task.scheduledDate === selectedDate &&
+        blockKeyForTask(task, blocks) === block.key;
+      if (alreadyThere) return;
+      await updateTask(task.id, {
+        scheduledDate: selectedDate,
+        scheduledTime: block.startTime,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to move the task", cause);
+      await loadBoard();
+    }
+  };
+
+  /**
+   * Long-press-to-lift pan gesture for one task card. Tracks the finger in
+   * window coordinates, hit-tests the week-strip cells, and reports the drop.
+   */
+  const makeDragGesture = (task: TaskWithBreadcrumb) =>
+    Gesture.Pan()
+      .activateAfterLongPress(DRAG_ACTIVATION_MS)
+      .maxPointers(1)
+      .onStart((event) => {
+        dragX.value = event.absoluteX;
+        dragY.value = event.absoluteY;
+        runOnJS(handleDragStart)(task);
+      })
+      .onUpdate((event) => {
+        dragX.value = event.absoluteX;
+        dragY.value = event.absoluteY;
+        const hitTest = (rects: DropRect[]) => {
+          for (let index = 0; index < rects.length; index += 1) {
+            const rect = rects[index];
+            if (
+              event.absoluteX >= rect.x &&
+              event.absoluteX <= rect.x + rect.width &&
+              event.absoluteY >= rect.y &&
+              event.absoluteY <= rect.y + rect.height
+            ) {
+              return index;
+            }
+          }
+          return -1;
+        };
+        const hitDay = hitTest(dayRects.value);
+        hoveredDay.value = hitDay;
+        hoveredSection.value = hitDay >= 0 ? -1 : hitTest(sectionRects.value);
+      })
+      .onEnd(() => {
+        runOnJS(handleDrop)(task, hoveredDay.value, hoveredSection.value);
+      })
+      .onFinalize(() => {
+        hoveredDay.value = -1;
+        hoveredSection.value = -1;
+        runOnJS(handleDragRelease)();
+      });
+
+  // Gestures must be constructed at render time for GestureDetector. The lint
+  // sees shared-value access in the worklet closures as a render-time ref
+  // read, but the values are only touched on the UI thread mid-gesture.
+  /* eslint-disable react-hooks/refs */
+  const dragGestures = new Map<number, PanGesture>(
+    [...scheduled, ...unscheduled].map((task) => [
+      task.id,
+      makeDragGesture(task),
+    ]),
+  );
+  /* eslint-enable react-hooks/refs */
 
   const shiftWeek = (weeks: number) => {
     const nextStart = addDays(weekStart, weeks * 7);
@@ -452,125 +735,237 @@ export default function SprintScreen() {
     weekday: "long",
   });
 
+  const tasksByBlock = new Map<string, TaskWithBreadcrumb[]>();
+  for (const task of scheduled) {
+    const key = blockKeyForTask(task, blocks);
+    if (key === undefined) continue;
+    const list = tasksByBlock.get(key) ?? [];
+    list.push(task);
+    tasksByBlock.set(key, list);
+  }
+
+  const backlogSectionIndex = blocks.length;
+  const backlogHighlightStyle = useAnimatedStyle(() => ({
+    opacity: hoveredSection.value === backlogSectionIndex ? 1 : 0,
+  }));
+
+  const toggleBlock = (key: string) =>
+    setExpandedBlocks((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   return (
-    <ScreenScaffold
-      backgroundGradient={SPRINT_BACKGROUND}
-      tabClearance
-      topInset
-    >
-      <ScreenHeader
-        centerSlot={
-          <AppText color={colors.primary} numberOfLines={1} variant="screenTitle">
-            Weekly Plan
-          </AppText>
-        }
-        leftAction={null}
-        rightSlot={
-          <IconButton
-            accessibilityLabel="Open calendar"
-            icon={<CalendarIcon />}
-            onPress={() => setCalendarOpen(true)}
-          />
-        }
-        style={styles.header}
-      />
-
-      <View style={styles.weekStrip}>
-        {weekDayCells.map((day) => (
-          <DayCell
-            day={day}
-            key={day.dateKey}
-            onPress={() => setSelectedDate(day.dateKey)}
-          />
-        ))}
-      </View>
-
-      <View style={styles.dayHeadingRow}>
-        <IconButton
-          accessibilityLabel="Previous week"
-          icon={<ChevronIcon direction="left" />}
-          onPress={() => shiftWeek(-1)}
-          size="sm"
+    <View style={styles.screenWrap}>
+      <ScreenScaffold
+        backgroundGradient={SPRINT_BACKGROUND}
+        scrollProps={{ scrollEnabled: draggingTask === null }}
+        tabClearance
+        topInset
+      >
+        <ScreenHeader
+          centerSlot={
+            <AppText color={colors.primary} numberOfLines={1} variant="screenTitle">
+              Weekly Plan
+            </AppText>
+          }
+          leftAction={null}
+          rightSlot={
+            <IconButton
+              accessibilityLabel="Open calendar"
+              icon={<CalendarIcon />}
+              onPress={() => setCalendarOpen(true)}
+            />
+          }
+          style={styles.header}
         />
-        <AppText style={styles.dayHeading} variant="titleSm">
-          {selectedHeading}
-        </AppText>
-        <IconButton
-          accessibilityLabel="Next week"
-          icon={<ChevronIcon direction="right" />}
-          onPress={() => shiftWeek(1)}
-          size="sm"
-        />
-      </View>
 
-      {scheduled.map((task) => (
-        <TaskItemCard
-          key={task.id}
-          onOpenSchedule={() => setScheduleTarget(task)}
-          onToggleDone={() => handleToggleDone(task)}
-          showTime
-          task={task}
-        />
-      ))}
-
-      {scheduled.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <AppText align="center" variant="bodySmall">
-            Nothing planned for this day yet. Schedule a task from the backlog
-            below.
-          </AppText>
-        </Card>
-      ) : null}
-
-      <View style={styles.sectionHeader}>
-        <AppText variant="titleSm">Unscheduled this week</AppText>
-        <View style={styles.countBadge}>
-          <AppText color={colors.accentViolet} variant="caption">
-            {unscheduled.length}
-          </AppText>
+        <View style={styles.weekStrip}>
+          {weekDayCells.map((day, index) => (
+            <DayCell
+              cellRef={(cell) => {
+                dayCellRefs.current[index] = cell;
+              }}
+              day={day}
+              hoveredDay={hoveredDay}
+              index={index}
+              key={day.dateKey}
+              onPress={() => setSelectedDate(day.dateKey)}
+            />
+          ))}
         </View>
-        <View style={styles.sectionHeaderSpacer} />
-      </View>
 
-      {unscheduled.map((task) => (
-        <TaskItemCard
-          key={task.id}
-          onOpenSchedule={() => setScheduleTarget(task)}
-          onToggleDone={() => handleToggleDone(task)}
-          task={task}
-        />
-      ))}
-
-      {unscheduled.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <AppText align="center" variant="bodySmall">
-            The backlog is clear — add tasks from a quest to plan your week.
+        <View style={styles.dayHeadingRow}>
+          <IconButton
+            accessibilityLabel="Previous week"
+            icon={<ChevronIcon direction="left" />}
+            onPress={() => shiftWeek(-1)}
+            size="sm"
+          />
+          <AppText style={styles.dayHeading} variant="titleSm">
+            {selectedHeading}
           </AppText>
-        </Card>
-      ) : null}
+          <IconButton
+            accessibilityLabel="Next week"
+            icon={<ChevronIcon direction="right" />}
+            onPress={() => shiftWeek(1)}
+            size="sm"
+          />
+        </View>
 
-      <ScheduleModal
-        onClose={() => setScheduleTarget(null)}
-        onSave={handleSchedule}
-        onUnschedule={handleUnschedule}
-        task={scheduleTarget}
-        weekDays={weekDayCells}
-      />
+        {blocks.map((block, blockIndex) => {
+          const blockTasks = tasksByBlock.get(block.key) ?? [];
+          const expanded = expandedBlocks.has(block.key);
+          return (
+            <View key={block.key} style={styles.blockSection}>
+              <SectionToggleHeader
+                count={blockTasks.length}
+                expanded={expanded}
+                headerRef={(view) => {
+                  sectionHeaderRefs.current[blockIndex] = view;
+                }}
+                hoveredSection={hoveredSection}
+                icon={
+                  <BlockIconArt
+                    color={colors.primary}
+                    icon={block.iconKey as BlockIcon}
+                    size={20}
+                  />
+                }
+                index={blockIndex}
+                label={block.label}
+                onToggle={() => toggleBlock(block.key)}
+              />
+              {expanded ? (
+                blockTasks.length > 0 ? (
+                  blockTasks.map((task) => (
+                    <TaskItemCard
+                      dragGesture={dragGestures.get(task.id)!}
+                      dragging={draggingTask?.id === task.id}
+                      key={task.id}
+                      onOpenSchedule={() => setScheduleTarget(task)}
+                      onToggleDone={() => handleToggleDone(task)}
+                      showTime
+                      task={task}
+                    />
+                  ))
+                ) : (
+                  <AppText
+                    color={colors.textMuted}
+                    style={styles.blockEmpty}
+                    variant="bodySmall"
+                  >
+                    Nothing planned here yet.
+                  </AppText>
+                )
+              ) : null}
+            </View>
+          );
+        })}
 
-      {calendarOpen ? (
-        <DatePickerModal
-          initialDate={new Date(`${selectedDate}T12:00:00`)}
-          onClose={() => setCalendarOpen(false)}
-          onSelect={jumpToDate}
-          today={new Date()}
-          visible={calendarOpen}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: backlogExpanded }}
+          onPress={() => setBacklogExpanded((current) => !current)}
+          ref={(view) => {
+            sectionHeaderRefs.current[backlogSectionIndex] = view;
+          }}
+          style={({ pressed: isPressed }) => [
+            styles.sectionHeader,
+            isPressed && pressed,
+          ]}
+        >
+          <AppText variant="titleSm">Unscheduled this week</AppText>
+          <View style={styles.countBadge}>
+            <AppText color={colors.accentViolet} variant="caption">
+              {unscheduled.length}
+            </AppText>
+          </View>
+          <View style={styles.sectionHeaderSpacer} />
+          <ChevronIcon
+            color={colors.textSecondary}
+            direction={backlogExpanded ? "up" : "down"}
+            size={18}
+          />
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.sectionDropTarget,
+              backlogHighlightStyle,
+            ]}
+          />
+        </Pressable>
+
+        {backlogExpanded ? (
+          <>
+            {unscheduled.map((task) => (
+              <TaskItemCard
+                dragGesture={dragGestures.get(task.id)!}
+                dragging={draggingTask?.id === task.id}
+                key={task.id}
+                onOpenSchedule={() => setScheduleTarget(task)}
+                onToggleDone={() => handleToggleDone(task)}
+                task={task}
+              />
+            ))}
+
+            {unscheduled.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <AppText align="center" variant="bodySmall">
+                  The backlog is clear — add tasks from a quest to plan your
+                  week.
+                </AppText>
+              </Card>
+            ) : (
+              <HintRow
+                style={styles.hintRow}
+                text="Hold a task, then drag it onto a day or a time section to schedule it."
+              />
+            )}
+          </>
+        ) : null}
+
+        <ScheduleModal
+          onClose={() => setScheduleTarget(null)}
+          onSave={handleSchedule}
+          onUnschedule={handleUnschedule}
+          task={scheduleTarget}
+          weekDays={weekDayCells}
+        />
+
+        {calendarOpen ? (
+          <DatePickerModal
+            initialDate={new Date(`${selectedDate}T12:00:00`)}
+            onClose={() => setCalendarOpen(false)}
+            onSelect={jumpToDate}
+            today={new Date()}
+            visible={calendarOpen}
+          />
+        ) : null}
+      </ScreenScaffold>
+
+      {draggingTask ? (
+        <DragGhost
+          dragX={dragX}
+          dragY={dragY}
+          task={draggingTask}
+          width={ghostWidth}
         />
       ) : null}
-    </ScreenScaffold>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  blockEmpty: {
+    marginBottom: spacing.md,
+    paddingLeft: spacing.xl,
+  },
+  blockSection: {
+    marginBottom: spacing.sm,
+  },
   breadcrumb: {
     alignItems: "center",
     flexDirection: "row",
@@ -631,6 +1026,12 @@ const styles = StyleSheet.create({
   dayCountPillSelected: {
     borderColor: colors.borderFaint,
   },
+  dayDropTarget: {
+    borderColor: colors.accentVioletStrong,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    pointerEvents: "none",
+  },
   dayHeading: {
     flex: 1,
     textAlign: "center",
@@ -648,6 +1049,16 @@ const styles = StyleSheet.create({
   dayNumber: {
     marginTop: 2,
   },
+  dragGhost: {
+    left: 0,
+    pointerEvents: "none",
+    position: "absolute",
+    top: 0,
+    zIndex: 20,
+  },
+  dragGhostCard: {
+    opacity: 0.95,
+  },
   emptyCard: {
     marginBottom: spacing.md,
     paddingVertical: spacing.lg,
@@ -655,6 +1066,9 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.md,
     paddingHorizontal: 0,
+  },
+  hintRow: {
+    marginBottom: spacing.md,
   },
   modalActions: {
     flexDirection: "row",
@@ -687,6 +1101,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
   },
+  screenWrap: {
+    flex: 1,
+  },
   sectionHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -697,12 +1114,38 @@ const styles = StyleSheet.create({
   sectionHeaderSpacer: {
     flex: 1,
   },
+  sectionDropTarget: {
+    borderColor: colors.accentVioletStrong,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    pointerEvents: "none",
+  },
+  sectionToggle: {
+    alignItems: "center",
+    borderBottomColor: colors.divider,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  sectionToggleDivider: {
+    backgroundColor: colors.divider,
+    height: 18,
+    width: 1,
+  },
+  sectionToggleSpacer: {
+    flex: 1,
+  },
   taskCard: {
     marginBottom: spacing.md,
   },
   taskCardCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  taskCardDragging: {
+    opacity: 0.35,
   },
   taskCardRow: {
     alignItems: "center",

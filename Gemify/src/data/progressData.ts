@@ -66,5 +66,10 @@ export interface ProgressContent {
   fulfillmentTabs: readonly FulfillmentTab[];
   /** Label above the overall progress bar under the goal line chart. */
   overallLabel: string;
+  /**
+   * Whether the selected dream has any completed tasks to chart. When false
+   * the chart area shows the "Your journey starts here" empty state instead.
+   */
+  hasChartData: boolean;
 }
 

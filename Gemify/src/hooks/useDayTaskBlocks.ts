@@ -53,10 +53,10 @@ export function currentBlockKey(
 function toAction(task: TaskWithBreadcrumb): TaskBlockView["actions"][number] {
   return {
     done: task.isDone,
+    dreamTitle: task.dreamTitle,
     icon: "focus",
-    subtitle: task.scheduledTime
-      ? `${task.scheduledTime} · ${task.questTitle}`
-      : task.questTitle,
+    milestoneTitle: task.milestoneTitle,
+    subtitle: "",
     taskId: task.id,
     title: task.title,
   };

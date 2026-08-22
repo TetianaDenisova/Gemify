@@ -9,7 +9,15 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { ActionIcon, DayAction, TimeBlock } from "@/dto/timeBlocks";
-import { AppText, Card, Checkbox, SparkIcon } from "@/shared/components";
+import {
+  AppText,
+  Card,
+  Checkbox,
+  ChevronIcon,
+  DreamIcon,
+  MilestoneIcon,
+  SparkIcon,
+} from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { fontSizes, layout, lineHeights, spacing } from "@/theme/theme";
 
@@ -122,12 +130,40 @@ function ActionRow({
         >
           {action.title}
         </AppText>
-        <AppText
-          style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}
-          variant="subtitle"
-        >
-          {action.subtitle}
-        </AppText>
+        {action.dreamTitle && action.milestoneTitle ? (
+          <View style={[styles.actionBreadcrumb, compact && styles.actionBreadcrumbCompact]}>
+            <View style={styles.breadcrumbPart}>
+              <DreamIcon size={compact ? 14 : 16} />
+              <AppText
+                color={colors.textSecondary}
+                numberOfLines={1}
+                style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
+                variant="subtitle"
+              >
+                {action.dreamTitle}
+              </AppText>
+            </View>
+            <ChevronIcon color={colors.textMuted} direction="right" size={compact ? 11 : 13} />
+            <View style={styles.breadcrumbPart}>
+              <MilestoneIcon size={compact ? 14 : 16} />
+              <AppText
+                color={colors.textSecondary}
+                numberOfLines={1}
+                style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
+                variant="subtitle"
+              >
+                {action.milestoneTitle}
+              </AppText>
+            </View>
+          </View>
+        ) : (
+          <AppText
+            style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}
+            variant="subtitle"
+          >
+            {action.subtitle}
+          </AppText>
+        )}
       </View>
       <Checkbox
         accessibilityLabel={
@@ -249,6 +285,15 @@ export function TimeBlockCard({
 }
 
 const styles = StyleSheet.create({
+  actionBreadcrumb: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginTop: 3,
+  },
+  actionBreadcrumbCompact: {
+    marginTop: 2,
+  },
   actionCopy: {
     flex: 1,
     minWidth: 0,
@@ -300,6 +345,16 @@ const styles = StyleSheet.create({
   actionTitleCompact: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
+  },
+  breadcrumbLabel: {
+    flexShrink: 1,
+  },
+  breadcrumbPart: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: spacing.xs,
+    minWidth: 0,
   },
   card: {
     borderColor: colors.accentVioletGlow,

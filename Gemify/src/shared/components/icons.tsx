@@ -132,6 +132,45 @@ export function PlusIcon({
   );
 }
 
+/** Open book — marks a dream in breadcrumbs and journey UI. */
+export function DreamIcon({
+  color = colors.accentViolet,
+  size = 22,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4 6c3.2 0 5.3 1 8 3.4C14.7 7 16.8 6 20 6v12c-3.2 0-5.3 1-8 3.4C9.3 19 7.2 18 4 18V6Z"
+        fill="none"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path d="M12 9.4v12" stroke={color} strokeLinecap="round" strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+/** Crown — marks a milestone in breadcrumbs and journey UI. */
+export function MilestoneIcon({
+  color = colors.primary,
+  size = 22,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4.5 8.5 8 12l4-5.5L16 12l3.5-3.5V17a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 17V8.5Z"
+        fill="none"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 /** Filled four-point star used across progress cards and ornaments. */
 export function SparkIcon({ color = colors.primary, size = 26 }: IconProps) {
   return (

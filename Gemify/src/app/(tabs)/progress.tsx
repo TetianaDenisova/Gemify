@@ -73,6 +73,7 @@ const TIMELINE_CONNECTOR_WIDTH = 26;
 const TIMELINE_ELLIPSIS_MIN_WIDTH = 34;
 
 const PROGRESS_BACK = require("../../data/images/progress-map-img.png");
+const NO_PROGRESS_ART = require("../../data/images/no-progress.png");
 
 const accentTints: Record<ProgressAccent, { glow: string; main: string }> = {
   ember: { glow: "rgba(184, 92, 74, 0.4)", main: colors.danger },
@@ -824,72 +825,101 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
-          {selectedTab.chart === "bars" ? (
-            <TaskBarsChart compact={compact} points={selectedRange.points} />
-          ) : (
-            <FulfillmentChart compact={compact} points={selectedRange.points} />
-          )}
-          {selectedRange.summary ? (
-            <>
-              <View style={styles.panelDivider} />
-              <View
-                style={[
-                  styles.summaryPanel,
-                  compact && styles.summaryPanelCompact,
-                ]}
-              >
-                <AppText align="center" variant="eyebrow">
-                  {selectedRange.summary.eyebrow}
-                </AppText>
-                <AppText
-                  color={colors.accentPink}
-                  style={[
-                    styles.summaryValue,
-                    compact && styles.summaryValueCompact,
-                  ]}
-                  variant="stat"
-                >
-                  {selectedRange.summary.percent}%
-                </AppText>
-                <AppText
-                  align="center"
-                  color={colors.textPrimary}
-                  style={styles.summaryCaption}
-                  variant="body"
-                >
-                  {selectedRange.summary.caption}
-                </AppText>
-              </View>
-            </>
-          ) : null}
-        </View>
-
-        {selectedTab.chart === "line" ? (
+        {!progressContent.hasChartData ? (
+          <View
+            style={[styles.emptyState, compact && styles.emptyStateCompact]}
+          >
+            <Image
+              contentFit="contain"
+              source={NO_PROGRESS_ART}
+              style={[styles.emptyArt, compact && styles.emptyArtCompact]}
+            />
+            <AppText
+              align="center"
+              style={styles.emptyTitle}
+              variant="screenTitle"
+            >
+              Your journey starts here
+            </AppText>
+            <AppText
+              align="center"
+              color={colors.textSecondary}
+              style={styles.emptyCaption}
+              variant="body"
+            >
+              Complete your first task to reveal your progress.
+            </AppText>
+          </View>
+        ) : (
           <>
-            <View style={styles.overallDivider} />
-            <View style={styles.overallRow}>
-              <View style={styles.overallBlock}>
-                <AppText color={colors.textMuted} variant="eyebrow">
-                  {progressContent.overallLabel}
-                </AppText>
-                <View style={styles.overallTrack}>
-                  <ExpoLinearGradient
-                    colors={[
-                      colors.accentVioletStrong,
-                      colors.accentViolet,
-                      colors.accentPink,
+            <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
+              {selectedTab.chart === "bars" ? (
+                <TaskBarsChart compact={compact} points={selectedRange.points} />
+              ) : (
+                <FulfillmentChart compact={compact} points={selectedRange.points} />
+              )}
+              {selectedRange.summary ? (
+                <>
+                  <View style={styles.panelDivider} />
+                  <View
+                    style={[
+                      styles.summaryPanel,
+                      compact && styles.summaryPanelCompact,
                     ]}
-                    end={{ x: 1, y: 0 }}
-                    start={{ x: 0, y: 0 }}
-                    style={[styles.overallFill, { width: `${currentPercent}%` }]}
-                  />
-                </View>
-              </View>
-              <AppText variant="title">{currentPercent}%</AppText>
+                  >
+                    <AppText align="center" variant="eyebrow">
+                      {selectedRange.summary.eyebrow}
+                    </AppText>
+                    <AppText
+                      color={colors.accentPink}
+                      style={[
+                        styles.summaryValue,
+                        compact && styles.summaryValueCompact,
+                      ]}
+                      variant="stat"
+                    >
+                      {selectedRange.summary.percent}%
+                    </AppText>
+                    <AppText
+                      align="center"
+                      color={colors.textPrimary}
+                      style={styles.summaryCaption}
+                      variant="body"
+                    >
+                      {selectedRange.summary.caption}
+                    </AppText>
+                  </View>
+                </>
+              ) : null}
             </View>
+
+            {selectedTab.chart === "line" ? (
+              <>
+                <View style={styles.overallDivider} />
+                <View style={styles.overallRow}>
+                  <View style={styles.overallBlock}>
+                    <AppText color={colors.textMuted} variant="eyebrow">
+                      {progressContent.overallLabel}
+                    </AppText>
+                    <View style={styles.overallTrack}>
+                      <ExpoLinearGradient
+                        colors={[
+                          colors.accentVioletStrong,
+                          colors.accentViolet,
+                          colors.accentPink,
+                        ]}
+                        end={{ x: 1, y: 0 }}
+                        start={{ x: 0, y: 0 }}
+                        style={[styles.overallFill, { width: `${currentPercent}%` }]}
+                      />
+                    </View>
+                  </View>
+                  <AppText variant="title">{currentPercent}%</AppText>
+                </View>
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </Card>
 
       <Card padded={false} style={styles.forecastCard} variant="glass">
@@ -1090,6 +1120,32 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     position: "absolute",
     width: 62,
+  },
+  emptyArt: {
+    aspectRatio: 3 / 2,
+    maxWidth: 360,
+    width: "78%",
+  },
+  emptyArtCompact: {
+    width: "88%",
+  },
+  emptyCaption: {
+    marginTop: spacing.sm,
+    maxWidth: 320,
+  },
+  emptyState: {
+    alignItems: "center",
+    marginTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyStateCompact: {
+    marginTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  emptyTitle: {
+    marginTop: spacing.lg,
+    ...textGlow(colors.primaryGlow, 12),
   },
   etaPill: {
     borderColor: colors.border,

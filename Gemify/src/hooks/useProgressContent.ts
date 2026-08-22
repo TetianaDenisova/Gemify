@@ -326,6 +326,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
         },
       ],
       overallLabel: "Overall Goal Progress",
+      hasChartData: tasks.some((task) => task.isDone),
     };
   }, [dreams, moments, tasks]);
 

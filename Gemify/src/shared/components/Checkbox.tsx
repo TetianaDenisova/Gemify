@@ -13,6 +13,11 @@ import { CheckIcon } from "./icons";
 
 export type CheckboxProps = {
   accessibilityLabel?: string;
+  /**
+   * "solid" (default) fills gold with a dark check when checked; "outline"
+   * keeps a transparent body with a gold ring and a gold check.
+   */
+  appearance?: "solid" | "outline";
   checked: boolean;
   onPress?: () => void;
   shape?: "circle" | "square";
@@ -26,12 +31,14 @@ export type CheckboxProps = {
  */
 export function Checkbox({
   accessibilityLabel,
+  appearance = "solid",
   checked,
   onPress,
   shape = "circle",
   size = 24,
   style,
 }: CheckboxProps) {
+  const outline = appearance === "outline";
   const box: ViewStyle = {
     borderRadius: shape === "circle" ? radius.round : radius.sm,
     height: size,
@@ -40,9 +47,20 @@ export function Checkbox({
 
   const inner = (
     <View
-      style={[styles.base, box, checked && styles.checked, !onPress && style]}
+      style={[
+        styles.base,
+        box,
+        outline && styles.outline,
+        checked && (outline ? styles.checkedOutline : styles.checked),
+        !onPress && style,
+      ]}
     >
-      {checked ? <CheckIcon size={Math.round(size * 0.6)} /> : null}
+      {checked ? (
+        <CheckIcon
+          color={outline ? colors.primary : undefined}
+          size={Math.round(size * 0.6)}
+        />
+      ) : null}
     </View>
   );
 
@@ -77,6 +95,13 @@ const styles = StyleSheet.create({
   checked: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  checkedOutline: {
+    borderColor: colors.primary,
+  },
+  outline: {
+    backgroundColor: colors.transparent,
+    borderColor: colors.borderStrong,
   },
   pressed: {
     opacity: 0.72,
