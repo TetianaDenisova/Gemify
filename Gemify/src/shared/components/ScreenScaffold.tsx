@@ -35,6 +35,11 @@ export type ScreenScaffoldProps = {
   /** Extra styles merged into the scroll content container. */
   contentStyle?: StyleProp<ViewStyle>;
   /**
+   * Pinned below the scroll area (above the tab bar when tabClearance is on).
+   * Takes over the bottom safe-area/tab clearance padding from the content.
+   */
+  footer?: ReactNode;
+  /**
    * Center content and cap it at layout.contentMaxWidth with the standard
    * horizontal screen padding (compact-aware). Default true.
    */
@@ -64,6 +69,7 @@ export function ScreenScaffold({
   children,
   constrained = true,
   contentStyle,
+  footer,
   keyboardAvoiding = false,
   overlayOpacity = 0.45,
   scroll = true,
@@ -81,12 +87,15 @@ export function ScreenScaffold({
     : Math.max(insets.bottom, spacing.lg);
   const paddingTop = topInset ? insets.top + spacing.lg : undefined;
 
+  const horizontalPadding = constrained
+    ? { paddingHorizontal: compact ? spacing.md : layout.screenPaddingH }
+    : null;
+
   const contentStyles: StyleProp<ViewStyle> = [
     constrained && styles.constrained,
-    constrained && {
-      paddingHorizontal: compact ? spacing.md : layout.screenPaddingH,
-    },
-    { paddingBottom },
+    horizontalPadding,
+    // With a pinned footer, the footer owns the bottom clearance.
+    { paddingBottom: footer ? spacing.md : paddingBottom },
     paddingTop != null && { paddingTop },
     contentStyle,
   ];
@@ -135,6 +144,17 @@ export function ScreenScaffold({
       ) : (
         body
       )}
+      {footer ? (
+        <View
+          style={[
+            constrained && styles.constrained,
+            horizontalPadding,
+            { paddingBottom },
+          ]}
+        >
+          {footer}
+        </View>
+      ) : null}
     </View>
   );
 }

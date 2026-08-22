@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -212,10 +212,13 @@ export function HabitItemHeader({
   compact = false,
   expanded = false,
   habit,
+  trailing,
 }: {
   compact?: boolean;
   expanded?: boolean;
   habit: Habit;
+  /** Extra control between the day counter and the chevron (e.g. a menu). */
+  trailing?: ReactNode;
 }) {
   return (
     <View style={[styles.habitTop, compact && styles.habitTopCompact]}>
@@ -252,6 +255,7 @@ export function HabitItemHeader({
             {" "}/ {habit.goal}
           </AppText>
         </View>
+        {trailing}
         <ChevronIcon
           direction={expanded ? "up" : "down"}
           size={compact ? 20 : 25}
@@ -328,16 +332,23 @@ export function HabitItemRow({
   expanded = false,
   habit,
   onDayPress,
+  trailing,
 }: {
   activeDayIndex?: number;
   compact?: boolean;
   expanded?: boolean;
   habit: Habit;
   onDayPress?: (dayIndex: number) => void;
+  trailing?: ReactNode;
 }) {
   return (
     <View>
-      <HabitItemHeader compact={compact} expanded={expanded} habit={habit} />
+      <HabitItemHeader
+        compact={compact}
+        expanded={expanded}
+        habit={habit}
+        trailing={trailing}
+      />
       <HabitProgress
         activeDayIndex={activeDayIndex}
         compact={compact}

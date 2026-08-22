@@ -62,7 +62,16 @@ export default function HomeScreen() {
     blocks.find((block) => block.key === focusKey) ?? blocks[0];
 
   return (
-    <ScreenScaffold tabClearance topInset>
+    <ScreenScaffold
+      footer={
+        <TodayProgressCard
+          completedActions={completedTasks}
+          totalActions={totalTasks}
+        />
+      }
+      tabClearance
+      topInset
+    >
       <HomeHeader
         greeting={greetingForNow(new Date())}
         subtitle="You become who you repeatedly choose to be."
@@ -143,11 +152,6 @@ export default function HomeScreen() {
           </View>
         </Card>
       )}
-
-      <TodayProgressCard
-        completedActions={completedTasks}
-        totalActions={totalTasks}
-      />
     </ScreenScaffold>
   );
 }

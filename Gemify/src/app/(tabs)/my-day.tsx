@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePickerModal";
 import { TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
+import { TimeBlockSettingsModal } from "@/components/TimeBlockSettingsModal";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
 import { useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
 import { AppText, Card, ScreenHeader, ScreenScaffold } from "@/shared/components";
@@ -32,6 +33,22 @@ function CalendarIcon({ color = colors.primary, size = 20 }: { color?: string; s
   );
 }
 
+function GearIcon({ color = colors.primary, size = 20 }: { color?: string; size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Circle cx={12} cy={12} fill="none" r={3.1} stroke={color} strokeWidth={1.6} />
+      <Path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.6}
+      />
+    </Svg>
+  );
+}
+
 export default function MyDayScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -40,8 +57,9 @@ export default function MyDayScreen() {
   const [activeKey, setActiveKey] = useState("wake-up");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [blockSettingsOpen, setBlockSettingsOpen] = useState(false);
 
-  const { blocks, completedTasks, totalTasks, toggleTask } =
+  const { blocks, completedTasks, refresh, totalTasks, toggleTask } =
     useDayTaskBlocks(toDateKey(selectedDate));
 
   const today = new Date();
@@ -62,11 +80,15 @@ export default function MyDayScreen() {
         topInset
       >
         <ScreenHeader
-          leftAction={null}
-          rightAction={{
+          leftAction={{
             accessibilityLabel: "Open calendar",
             icon: <CalendarIcon size={compact ? 20 : 24} />,
             onPress: () => setCalendarOpen(true),
+          }}
+          rightAction={{
+            accessibilityLabel: "Configure time blocks",
+            icon: <GearIcon size={compact ? 20 : 24} />,
+            onPress: () => setBlockSettingsOpen(true),
           }}
           style={styles.header}
           subtitle="Focus only on what matters now."
@@ -80,25 +102,24 @@ export default function MyDayScreen() {
           style={compact ? styles.tabsCompact : styles.tabs}
         />
 
-        {activeBlock ? (
+        {activeBlock && activeBlock.actions.length > 0 ? (
           <TimeBlockCard
             block={activeBlock}
             onToggleAction={(index) => {
               const action = activeBlock.actions[index];
               if (action) toggleTask(action.taskId, !action.done);
             }}
+            showIntro={false}
             style={compact ? styles.blockSectionCompact : styles.blockSection}
           />
-        ) : null}
-
-        {activeBlock && activeBlock.actions.length === 0 ? (
+        ) : (
           <Card style={styles.emptyBlockCard}>
             <AppText align="center" variant="bodySmall">
               No tasks scheduled for this block. Plan your week in the Sprint
               tab and they will show up here.
             </AppText>
           </Card>
-        ) : null}
+        )}
       </ScreenScaffold>
 
       <View
@@ -114,6 +135,14 @@ export default function MyDayScreen() {
           totalActions={totalTasks}
         />
       </View>
+
+      {blockSettingsOpen ? (
+        <TimeBlockSettingsModal
+          onChanged={refresh}
+          onClose={() => setBlockSettingsOpen(false)}
+          visible={blockSettingsOpen}
+        />
+      ) : null}
 
       {calendarOpen ? (
         <DatePickerModal

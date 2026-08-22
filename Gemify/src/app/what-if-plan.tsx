@@ -227,19 +227,33 @@ export default function WhatIfPlanScreen() {
           </AppText>
         </View>
 
-        <View style={styles.cardList}>
-          {plans.map((plan) => (
-            <RiskCard
-              key={plan.id}
-              compact={compact}
-              editMode={isEditMode}
-              onChange={updatePlan}
-              onRequestDelete={() => setConfirmDeleteId(plan.id)}
-              plan={plan}
-              showRiskImage={!verySmall}
+        {plans.length === 0 ? (
+          <View style={styles.emptyState}>
+            <AppText align="center" variant="helper">
+              No plans yet. Think about what could get in the way,{"\n"}and
+              decide now how you’ll respond.
+            </AppText>
+            <AppButton
+              disabled={dreamId === null}
+              label="Create a Plan"
+              onPress={() => setModalVisible(true)}
             />
-          ))}
-        </View>
+          </View>
+        ) : (
+          <View style={styles.cardList}>
+            {plans.map((plan) => (
+              <RiskCard
+                key={plan.id}
+                compact={compact}
+                editMode={isEditMode}
+                onChange={updatePlan}
+                onRequestDelete={() => setConfirmDeleteId(plan.id)}
+                plan={plan}
+                showRiskImage={!verySmall}
+              />
+            ))}
+          </View>
+        )}
       </ScreenScaffold>
 
       <AddRiskModal
@@ -770,6 +784,11 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    gap: spacing.lg,
+    width: "100%",
   },
   dividerColumn: {
     alignItems: "center",

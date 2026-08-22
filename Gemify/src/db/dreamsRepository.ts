@@ -1,7 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { getDatabase } from "./database";
-import { DEFAULT_RISK_PLANS, MILESTONE_SKELETON } from "./seeds";
 import type { Dream, DreamPatch, FeelingState, NewDream } from "./types";
 
 const MAX_FEELING_STATES = 3;
@@ -30,9 +29,9 @@ function toDream(row: DreamRow): Dream {
 }
 
 /**
- * Creates a dream plus its per-dream seeds in one transaction: the six-step
- * milestone skeleton, the default What-If risk plans, and the selected
- * feeling states (at most three; unknown labels are added to the catalog).
+ * Creates a dream plus its selected feeling states (at most three; unknown
+ * labels are added to the catalog) in one transaction. Milestones and What-If
+ * risk plans start empty — the user creates them from scratch.
  */
 export async function createDream(input: NewDream): Promise<Dream> {
   const title = input.title.trim();
@@ -49,27 +48,6 @@ export async function createDream(input: NewDream): Promise<Dream> {
       [title, input.visionStatement?.trim() || null],
     );
     dreamId = inserted.lastInsertRowId;
-
-    for (const [index, milestone] of MILESTONE_SKELETON.entries()) {
-      await db.runAsync(
-        `INSERT INTO milestones (dream_id, sequence_number, title, state)
-         VALUES (?, ?, ?, ?)`,
-        [dreamId, index, milestone.title, milestone.state],
-      );
-    }
-
-    for (const plan of DEFAULT_RISK_PLANS) {
-      const risk = await db.runAsync(
-        "INSERT INTO risks (dream_id, title, prompt) VALUES (?, ?, ?)",
-        [dreamId, plan.title, plan.prompt],
-      );
-      for (const action of plan.actions) {
-        await db.runAsync(
-          "INSERT INTO risk_actions (risk_id, content) VALUES (?, ?)",
-          [risk.lastInsertRowId, action],
-        );
-      }
-    }
 
     if (input.feelingStates?.length) {
       await linkFeelingStates(db, dreamId, input.feelingStates);

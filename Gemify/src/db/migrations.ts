@@ -216,29 +216,21 @@ export const migrations: Migration[] = [
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */
 async function seedReferenceData(db: SQLiteDatabase): Promise<void> {
   for (const [blockPosition, block] of TIME_BLOCK_SEEDS.entries()) {
-    const inserted = await db.runAsync(
+    // routine_title is NOT NULL; mirroring the label marks "no custom copy"
+    // (updateTimeBlock keeps mirrored titles in sync on rename).
+    await db.runAsync(
       `INSERT INTO time_blocks
-         (key, label, icon_key, start_time, identity, routine_title, routine_subtitle, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (key, label, icon_key, start_time, routine_title, position)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         block.key,
         block.label,
         block.iconKey,
         block.startTime,
-        block.identity,
-        block.routineTitle,
-        block.routineSubtitle,
+        block.label,
         blockPosition,
       ],
     );
-
-    for (const [actionPosition, action] of block.actions.entries()) {
-      await db.runAsync(
-        `INSERT INTO time_block_actions (time_block_id, title, subtitle, icon_key, position)
-         VALUES (?, ?, ?, ?, ?)`,
-        [inserted.lastInsertRowId, action.title, action.subtitle, action.iconKey, actionPosition],
-      );
-    }
   }
 
   for (const label of FEELING_STATE_LABELS) {

@@ -118,6 +118,13 @@ export function JourneyMilestone({
     labelSide === "left"
       ? { right: groupWidth - LABEL_RING_OVERLAP }
       : { left: groupWidth - LABEL_RING_OVERLAP };
+  // Let the label use all the space between the ring and the map edge so
+  // longer titles stay untruncated when the screen is wide enough.
+  const availableLabelWidth =
+    labelSide === "left"
+      ? left + LABEL_RING_OVERLAP - MAP_EDGE_PADDING
+      : imageWidth - (left + groupWidth) + LABEL_RING_OVERLAP - MAP_EDGE_PADDING;
+  const labelWidth = Math.max(LABEL_WIDTH, availableLabelWidth);
 
   return (
     <View
@@ -139,7 +146,7 @@ export function JourneyMilestone({
         style={[
           styles.label,
           labelPosition,
-          { width: LABEL_WIDTH },
+          { width: labelWidth },
         ]}
         subtitle={milestone.subtitle}
         title={milestone.title}

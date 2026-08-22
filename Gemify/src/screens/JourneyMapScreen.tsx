@@ -41,6 +41,8 @@ import type {
 } from "@/data/journeyMilestones";
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
 import {
+  createQuest,
+  createTask,
   deleteDream,
   deleteMilestone,
   getDreamById,
@@ -54,6 +56,7 @@ import {
 } from "@/db";
 import {
   AppButton,
+  AppInput,
   AppModal,
   AppText,
   ArrowRightIcon,
@@ -72,7 +75,6 @@ import {
   spacing,
   typography,
 } from "@/theme/theme";
-import { getMilestoneRingY } from "@/utils/milestonePagination";
 
 type MilestoneModalMode = "view" | "edit" | "add";
 
@@ -102,6 +104,7 @@ const MILESTONE_DOOR_SOURCE = require("../../assets/create-goal/milestone-door.p
 const PLUS_SOURCE = require("../../assets/plus.png");
 const PLUS_IMAGE_SIZE = 52;
 const PLUS_TOUCH_SIZE = 60;
+const GUIDED_HINT_WIDTH = 276;
 const SHIMMER_DURATION = 2200;
 const SHIMMER_PAUSE = 2500;
 /** Bespoke night-sky gradient behind the milestone sheet (feature art). */
@@ -244,6 +247,7 @@ type MilestoneDetailField = {
   key: MilestoneDetailKey;
   label: string;
   placeholder: string;
+  required?: boolean;
 };
 
 const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
@@ -261,6 +265,7 @@ const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
     key: "state",
     label: "STATE",
     placeholder: "How do you want to feel at this stage?",
+    required: true,
   },
   {
     description: "",
@@ -479,12 +484,10 @@ function MilestoneModal({
   const isDirty = MILESTONE_DETAIL_FIELDS.some(
     (field) => draft[field.key] !== initialValues[field.key],
   );
-  // Every field is mandatory except reward; add mode also requires the
-  // title/subtitle pair that edit mode keeps read-only.
+  // Only title and state are mandatory (title is read-only in edit mode);
+  // artifact, mentor, and reward are optional.
   const requiredKeys: readonly (keyof MilestoneFormValues)[] =
-    mode === "add"
-      ? ["title", "artifact", "state", "mentor"]
-      : ["artifact", "state", "mentor"];
+    mode === "add" ? ["title", "state"] : ["state"];
   const requiredComplete = requiredKeys.every(
     (key) => draft[key].trim().length > 0,
   );
@@ -560,16 +563,26 @@ function MilestoneModal({
 
                 <View style={styles.modalTitleBlock}>
                   {mode === "add" ? (
-                    <MilestoneFieldInput
-                      onChangeText={(text) => setDraftField("title", text)}
-                      placeholder="Milestone title"
-                      style={[
-                        styles.titleInput,
-                        isCompact && styles.modalTitleCompact,
-                        isShort && styles.modalTitleShort,
-                      ]}
-                      value={draft.title}
-                    />
+                    <View style={styles.requiredInputRow}>
+                      <MilestoneFieldInput
+                        onChangeText={(text) => setDraftField("title", text)}
+                        placeholder="Milestone title"
+                        style={[
+                          styles.titleInput,
+                          styles.requiredInput,
+                          isCompact && styles.modalTitleCompact,
+                          isShort && styles.modalTitleShort,
+                        ]}
+                        value={draft.title}
+                      />
+                      <AppText
+                        color={colors.primary}
+                        style={styles.requiredMark}
+                        variant="titleSm"
+                      >
+                        *
+                      </AppText>
+                    </View>
                   ) : (
                     <AppText
                       style={[
@@ -622,6 +635,11 @@ function MilestoneModal({
                         variant="eyebrow"
                       >
                         {field.label}
+                        {mode !== "view" && field.required ? (
+                          <AppText color={colors.primary} variant="eyebrow">
+                            {" *"}
+                          </AppText>
+                        ) : null}
                       </AppText>
                       {mode === "view" ? (
                         <AppText
@@ -745,6 +763,142 @@ function MilestoneModal({
   );
 }
 
+const FIRST_STEPS_QUEST_TITLE = "First steps";
+
+type FirstStepModalProps = {
+  onClose: () => void;
+  onSave: (taskTitles: string[]) => void;
+  visible: boolean;
+};
+
+/**
+ * Shown when the guided dream initialization ends: offers to capture a few
+ * tiny tasks that become the "First steps" quest on the first milestone.
+ */
+function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
+  const [asking, setAsking] = useState(true);
+  const [tasks, setTasks] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
+  const [wasVisible, setWasVisible] = useState(false);
+
+  // Reset to the question phase each time the modal opens.
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setAsking(true);
+      setTasks([]);
+      setDraft("");
+    }
+  }
+
+  const pendingTasks = draft.trim() ? [...tasks, draft.trim()] : tasks;
+
+  return (
+    <AppModal onClose={onClose} visible={visible}>
+      <AppText align="center" variant="titleSm">
+        Begin your journey
+      </AppText>
+
+      {asking ? (
+        <>
+          <AppText
+            align="center"
+            style={styles.firstStepBody}
+            variant="bodySerif"
+          >
+            Would you like to add a small first step — a task you can complete
+            in just a few minutes — to begin your journey?
+          </AppText>
+          <View style={styles.formActionsRow}>
+            <AppButton
+              label="Not now"
+              onPress={onClose}
+              style={styles.formActionButton}
+              textStyle={styles.formActionLabel}
+              variant="secondary"
+            />
+            <AppButton
+              label="Yes, add it"
+              onPress={() => setAsking(false)}
+              style={styles.formActionButton}
+              textStyle={styles.formActionLabel}
+            />
+          </View>
+        </>
+      ) : (
+        <>
+          <AppText
+            align="center"
+            style={styles.firstStepBody}
+            variant="bodySmall"
+          >
+            These tasks become the “{FIRST_STEPS_QUEST_TITLE}” quest on your
+            first milestone.
+          </AppText>
+
+          {tasks.map((task, index) => (
+            <View key={`${task}-${index}`} style={styles.firstStepTaskRow}>
+              <View style={styles.firstStepBullet} />
+              <AppText
+                numberOfLines={1}
+                style={styles.firstStepTaskTitle}
+                variant="pill"
+              >
+                {task}
+              </AppText>
+              <IconButton
+                accessibilityLabel={`Remove ${task}`}
+                icon={<CloseIcon size={16} />}
+                onPress={() =>
+                  setTasks((current) =>
+                    current.filter((_, taskIndex) => taskIndex !== index),
+                  )
+                }
+                size="sm"
+              />
+            </View>
+          ))}
+
+          <AppInput
+            containerStyle={styles.firstStepInput}
+            label={tasks.length === 0 ? "First tiny task" : "Another tiny task"}
+            onChangeText={setDraft}
+            placeholder="e.g. Write one sentence about why this matters"
+            value={draft}
+          />
+          <AppButton
+            disabled={!draft.trim()}
+            label="+ Add another"
+            onPress={() => {
+              setTasks((current) => [...current, draft.trim()]);
+              setDraft("");
+            }}
+            style={styles.firstStepAddButton}
+            variant="ghost"
+          />
+
+          <View style={styles.formActionsRow}>
+            <AppButton
+              label="Cancel"
+              onPress={onClose}
+              style={styles.formActionButton}
+              textStyle={styles.formActionLabel}
+              variant="secondary"
+            />
+            <AppButton
+              disabled={pendingTasks.length === 0}
+              label="Save"
+              onPress={() => onSave(pendingTasks)}
+              style={styles.formActionButton}
+              textStyle={styles.formActionLabel}
+            />
+          </View>
+        </>
+      )}
+    </AppModal>
+  );
+}
+
 /** DB milestone mapped to the board shape, keeping the DB id for mutations. */
 function toJourneyData(milestone: Milestone): JourneyMilestoneData {
   const displayId = milestone.sequenceNumber + 1;
@@ -783,6 +937,10 @@ export function GoalJourneyMapScreen() {
   const [dream, setDream] = useState<Dream | null>(null);
   const [dbMilestones, setDbMilestones] = useState<Milestone[]>([]);
   const [isEditMode, setIsEditMode] = useState(openedInEditFlow);
+  // Guided reverse planning: the journey is built backwards from the dream —
+  // one plus at a time, growing down from the castle. Ends with edit mode.
+  const [isGuidedAdd, setIsGuidedAdd] = useState(openedInEditFlow);
+  const [firstStepVisible, setFirstStepVisible] = useState(false);
   const [modalState, setModalState] = useState<MilestoneModalState | null>(
     null,
   );
@@ -822,31 +980,46 @@ export function GoalJourneyMapScreen() {
   );
 
   const currentConfig = journeyPageConfigs[0];
-  // The whole journey renders on a single page: milestones squeeze closer
-  // together as the path grows and the map is panned to see them all.
+  // The path anchors at the castle gates and grows downward with a fixed
+  // step: the chronologically last milestone sits at the entrance, earlier
+  // ones below it. Once five rings exist the spacing matches the stretched
+  // full-path layout, so long journeys still reach the bottom of the map.
+  const ringStep =
+    (currentConfig.bottomY - currentConfig.castleY) /
+    Math.max(4, milestones.length - 1);
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
       milestones.map((_, index) => ({
         x: 0.5,
-        y: getMilestoneRingY(index, milestones.length, currentConfig),
+        y:
+          currentConfig.castleY +
+          ringStep * (milestones.length - 1 - index),
       })),
-    [currentConfig, milestones],
+    [currentConfig, ringStep, milestones],
   );
-  const ringStep =
-    milestones.length > 1
-      ? (currentConfig.bottomY - currentConfig.castleY) /
-        (milestones.length - 1)
-      : (currentConfig.bottomY - currentConfig.castleY) / 2;
-  const insertSlots = isEditMode
-    ? Array.from({ length: milestones.length + 1 }, (_, index) => index)
-    : [];
+  const insertSlots =
+    isEditMode && !isGuidedAdd
+      ? Array.from({ length: milestones.length + 1 }, (_, index) => index)
+      : [];
+  /** Map Y for the guided plus: at the gates when empty, else one step below
+   * the newest (lowest) milestone. */
+  const guidedPlusY = Math.min(
+    Math.max(
+      currentConfig.castleY + ringStep * milestones.length,
+      0.03,
+    ),
+    0.97,
+  );
   /** Map Y for the plus that inserts at `slot`: midway between neighbours. */
   const getInsertSlotY = (slot: number) => {
     if (milestones.length === 0) {
-      return (currentConfig.bottomY + currentConfig.castleY) / 2;
+      return currentConfig.castleY;
     }
 
-    const y = currentConfig.bottomY - ringStep * (slot - 0.5);
+    const y =
+      currentConfig.castleY +
+      ringStep * (milestones.length - 1 - slot) +
+      ringStep / 2;
 
     return Math.min(Math.max(y, 0.03), 0.97);
   };
@@ -917,6 +1090,24 @@ export function GoalJourneyMapScreen() {
     }
   };
 
+  const handleSaveFirstSteps = async (taskTitles: string[]) => {
+    const firstMilestone = dbMilestones[0];
+    if (firstMilestone) {
+      try {
+        const quest = await createQuest(
+          firstMilestone.id,
+          FIRST_STEPS_QUEST_TITLE,
+        );
+        for (const title of taskTitles) {
+          await createTask({ questId: quest.id, title });
+        }
+      } catch (cause) {
+        console.error("Failed to save the first steps", cause);
+      }
+    }
+    setFirstStepVisible(false);
+  };
+
   const handleDeleteDream = async () => {
     if (!dream) return;
     try {
@@ -976,6 +1167,54 @@ export function GoalJourneyMapScreen() {
                 </Pressable>
               );
             })}
+
+            {isEditMode && isGuidedAdd ? (
+              <>
+                <Pressable
+                  accessibilityLabel="Add the milestone that comes before"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() =>
+                    setModalState({ insertIndex: 0, mode: "add" })
+                  }
+                  style={({ pressed }) => [
+                    styles.plusButton,
+                    {
+                      left: imageWidth / 2 - PLUS_TOUCH_SIZE / 2,
+                      top: guidedPlusY * imageHeight - PLUS_TOUCH_SIZE / 2,
+                    },
+                    pressed && pressedStyle,
+                  ]}
+                >
+                  <Image
+                    resizeMode="contain"
+                    source={PLUS_SOURCE}
+                    style={styles.plusImage}
+                  />
+                </Pressable>
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.guidedHint,
+                    {
+                      left: imageWidth / 2 - GUIDED_HINT_WIDTH / 2,
+                      top:
+                        guidedPlusY * imageHeight + PLUS_TOUCH_SIZE / 2 + 6,
+                    },
+                  ]}
+                >
+                  <AppText
+                    align="center"
+                    color={colors.textPrimary}
+                    variant="bodySerif"
+                  >
+                    {milestones.length === 0
+                      ? "What's the final milestone before your dream becomes reality?"
+                      : `What happened before “${milestones[0].title}”?`}
+                  </AppText>
+                </View>
+              </>
+            ) : null}
           </>
         )}
       </JourneyMapScroll>
@@ -985,8 +1224,20 @@ export function GoalJourneyMapScreen() {
         dreamName={dream?.title ?? ""}
         editMode={isEditMode}
         onDeleteDream={handleDeleteDream}
-        onEnterEditMode={() => setIsEditMode(true)}
-        onExitEditMode={() => setIsEditMode(false)}
+        onEnterEditMode={() => {
+          setIsEditMode(true);
+          // An empty journey restarts the guided backwards build.
+          if (dbMilestones.length === 0) setIsGuidedAdd(true);
+        }}
+        onExitEditMode={() => {
+          // Leaving the guided initialization with a path in place is the
+          // moment to offer a tiny first task.
+          if (isGuidedAdd && dbMilestones.length > 0) {
+            setFirstStepVisible(true);
+          }
+          setIsEditMode(false);
+          setIsGuidedAdd(false);
+        }}
         onSaveDream={handleSaveDream}
         showDeleteDream={!openedInEditFlow}
         visionStatement={dream?.visionStatement ?? ""}
@@ -1013,6 +1264,12 @@ export function GoalJourneyMapScreen() {
         }}
         onSave={handleSave}
         state={modalState}
+      />
+
+      <FirstStepModal
+        onClose={() => setFirstStepVisible(false)}
+        onSave={handleSaveFirstSteps}
+        visible={firstStepVisible}
       />
     </View>
   );
@@ -1218,6 +1475,16 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: 0,
   },
+  requiredInputRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  requiredInput: {
+    flex: 1,
+  },
+  requiredMark: {
+    marginLeft: spacing.xs,
+  },
   formActionsRow: {
     flexDirection: "row",
     gap: spacing.md,
@@ -1286,6 +1553,43 @@ const styles = StyleSheet.create({
   plusImage: {
     width: PLUS_IMAGE_SIZE,
     height: PLUS_IMAGE_SIZE,
+  },
+  firstStepBody: {
+    marginTop: spacing.sm,
+  },
+  firstStepTaskRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  firstStepBullet: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.round,
+    height: 6,
+    width: 6,
+  },
+  firstStepTaskTitle: {
+    flex: 1,
+  },
+  firstStepInput: {
+    marginTop: spacing.md,
+  },
+  firstStepAddButton: {
+    alignSelf: "center",
+    marginTop: spacing.xs,
+  },
+  guidedHint: {
+    position: "absolute",
+    width: GUIDED_HINT_WIDTH,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    zIndex: 30,
+    ...shadows.softDark,
   },
   shimmerBloom: {
     position: "absolute",

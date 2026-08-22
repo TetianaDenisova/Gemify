@@ -3,6 +3,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import { DatePickerModal } from "@/components/DatePickerModal";
 import {
   getScheduledTaskCounts,
   getScheduledTasks,
@@ -406,6 +407,7 @@ export default function SprintScreen() {
   );
   const [scheduleTarget, setScheduleTarget] =
     useState<TaskWithBreadcrumb | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const weekDates = Array.from({ length: 7 }, (_, index) =>
     addDays(weekStart, index),
@@ -452,9 +454,10 @@ export default function SprintScreen() {
     setSelectedDate(toDateKey(nextStart));
   };
 
-  const goToToday = () => {
-    setWeekStart(startOfWeek(new Date()));
-    setSelectedDate(todayKey());
+  const jumpToDate = (date: Date) => {
+    setWeekStart(startOfWeek(date));
+    setSelectedDate(toDateKey(date));
+    setCalendarOpen(false);
   };
 
   const handleToggleDone = async (task: TaskWithBreadcrumb) => {
@@ -534,9 +537,9 @@ export default function SprintScreen() {
         leftAction={null}
         rightSlot={
           <IconButton
-            accessibilityLabel="Jump to today"
+            accessibilityLabel="Open calendar"
             icon={<CalendarIcon />}
-            onPress={goToToday}
+            onPress={() => setCalendarOpen(true)}
           />
         }
         style={styles.header}
@@ -693,6 +696,16 @@ export default function SprintScreen() {
         task={scheduleTarget}
         weekDays={weekDayCells}
       />
+
+      {calendarOpen ? (
+        <DatePickerModal
+          initialDate={new Date(`${selectedDate}T12:00:00`)}
+          onClose={() => setCalendarOpen(false)}
+          onSelect={jumpToDate}
+          today={new Date()}
+          visible={calendarOpen}
+        />
+      ) : null}
     </ScreenScaffold>
   );
 }

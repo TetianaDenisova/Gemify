@@ -67,11 +67,7 @@ export default function StateScreen() {
   const [customState, setCustomState] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string[]>([
-    "Alive",
-    "Magnetic",
-    "Peaceful",
-  ]);
+  const [selected, setSelected] = useState<string[]>([]);
   const compact = height < 760;
 
   const finishDream = async () => {
@@ -87,7 +83,7 @@ export default function StateScreen() {
       router.dismissAll();
       router.push({
         pathname: "/journey-map",
-        params: { dreamId: String(dream.id) },
+        params: { dreamId: String(dream.id), edit: "1" },
       });
     } catch (error) {
       console.error("Failed to save the dream", error);

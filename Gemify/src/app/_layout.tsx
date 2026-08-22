@@ -54,6 +54,10 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="milestone-ideas"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="items-demo"
           options={{ headerShown: true, headerTransparent: true }}
         />

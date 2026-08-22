@@ -90,10 +90,17 @@ export function JourneyMilestoneLabel({
           isLeft ? styles.textBlockLeft : styles.textBlockRight,
         ]}
       >
-        <AppText numberOfLines={1} style={styles.title}>
+        <AppText
+          numberOfLines={1}
+          style={[styles.title, isLeft && styles.textAlignRight]}
+        >
           {title}
         </AppText>
-        <AppText numberOfLines={1} style={styles.subtitle} variant="caption">
+        <AppText
+          numberOfLines={1}
+          style={[styles.subtitle, isLeft && styles.textAlignRight]}
+          variant="caption"
+        >
           {subtitle}
         </AppText>
       </View>
@@ -149,8 +156,13 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
   },
   textBlock: {
-    width: 90,
+    flex: 1,
+    minWidth: 0,
     justifyContent: "center",
+  },
+  /** Left-side labels grow toward the map edge; keep text hugging the badge. */
+  textAlignRight: {
+    textAlign: "right",
   },
   textBlockLeft: {
     marginRight: 8,

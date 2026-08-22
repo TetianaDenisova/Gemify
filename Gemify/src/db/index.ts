@@ -86,11 +86,16 @@ export {
 
 // Daily routine time blocks
 export {
+  createTimeBlock,
+  deleteTimeBlock,
   getCurrentBlockKey,
   getDayProgress,
+  getTimeBlocks,
   getTimeBlocksForDate,
   setActionDone,
+  updateTimeBlock,
 } from "./timeBlocksRepository";
+export type { NewTimeBlock, TimeBlockPatch } from "./timeBlocksRepository";
 
 // Risks (What-If plans)
 export {
