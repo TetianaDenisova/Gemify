@@ -112,6 +112,7 @@ export {
   addTimelineMoment,
   deleteTimelineMoment,
   getTimelineMoments,
+  updateTimelineMoment,
 } from "./timelineRepository";
 
 export type {
@@ -148,4 +149,5 @@ export type {
   TimeBlockRecord,
   TimeBlockWithActions,
   TimelineMoment,
+  TimelineMomentPatch,
 } from "./types";

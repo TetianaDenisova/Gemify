@@ -36,7 +36,14 @@
         }
       ],
       "expo-asset",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gemify uses your photos to attach memories to your journey.",
+          "cameraPermission": "Gemify uses the camera to capture memories of your journey."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

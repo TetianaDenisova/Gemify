@@ -275,7 +275,15 @@ function buildForecast(tasks: Task[]): ProgressContent["forecast"] {
 }
 
 function toProgressMoment(
-  moment: { iconKey: string | null; id: number; isLocked: boolean; label: string; occurredOn: string },
+  moment: {
+    description: string | null;
+    iconKey: string | null;
+    id: number;
+    isLocked: boolean;
+    label: string;
+    occurredOn: string;
+    photoUris: string[];
+  },
   index: number,
 ): ProgressTimelineMoment {
   const iconKey = TIMELINE_ICONS.includes(moment.iconKey as TimelineIconKey)
@@ -284,12 +292,14 @@ function toProgressMoment(
   return {
     date: new Date(`${moment.occurredOn}T12:00:00`).toLocaleDateString(
       "en-US",
-      { day: "numeric", month: "short" },
+      { day: "numeric", month: "short", year: "numeric" },
     ),
+    description: moment.description,
     icon: iconKey,
     key: String(moment.id),
     label: moment.label,
     locked: moment.isLocked,
+    photoUris: moment.photoUris,
   };
 }
 

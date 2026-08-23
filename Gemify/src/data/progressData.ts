@@ -23,8 +23,10 @@ export interface TimelineMoment {
   key: string;
   date: string;
   label: string;
+  description: string | null;
   icon: TimelineIconKey;
   locked: boolean;
+  photoUris: readonly string[];
 }
 
 export interface FulfillmentPoint {

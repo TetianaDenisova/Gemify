@@ -239,16 +239,28 @@ export type TimelineMoment = {
   /** YYYY-MM-DD */
   occurredOn: string;
   label: string;
+  description: string | null;
   iconKey: string | null;
   isLocked: boolean;
+  /** Attached photo URIs, in display order. */
+  photoUris: string[];
 };
 
 export type NewTimelineMoment = {
   dreamId: number;
   occurredOn: string;
   label: string;
+  description?: string | null;
   iconKey?: string | null;
   isLocked?: boolean;
+  photoUris?: readonly string[];
+};
+
+export type TimelineMomentPatch = {
+  label?: string;
+  description?: string | null;
+  /** When provided, replaces the moment's full photo set. */
+  photoUris?: readonly string[];
 };
 
 // ---------------------------------------------------------------------------

@@ -211,6 +211,24 @@ export const migrations: Migration[] = [
       await seedReferenceData(db);
     },
   },
+  {
+    // Memories: moments gain a description and up to a few attached photos.
+    toVersion: 3,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE timeline_moments ADD COLUMN description TEXT;
+
+        CREATE TABLE IF NOT EXISTS timeline_moment_photos (
+          id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          moment_id INTEGER NOT NULL REFERENCES timeline_moments(id) ON DELETE CASCADE,
+          uri       TEXT NOT NULL,
+          position  INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_moment_photos
+          ON timeline_moment_photos (moment_id, position);
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */
