@@ -1,7 +1,9 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
+import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
 import type { DreamSummary } from "@/db";
@@ -11,6 +13,8 @@ import {
   AppButton,
   AppText,
   Card,
+  DotsIcon,
+  IconButton,
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
@@ -50,10 +54,16 @@ function toGoal(dream: DreamSummary, index: number): Goal {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [moreVisible, setMoreVisible] = useState(false);
   const today = todayKey();
-  const { dreams, loading } = useDreamSummaries();
-  const { blocks, totalTasks, completedTasks, toggleTask } =
-    useDayTaskBlocks(today);
+  const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
+  const {
+    blocks,
+    totalTasks,
+    completedTasks,
+    toggleTask,
+    refresh: refreshDay,
+  } = useDayTaskBlocks(today);
 
   // Current focus = the sprint tasks scheduled into the time block that
   // matches the clock right now.
@@ -73,6 +83,13 @@ export default function HomeScreen() {
       topInset
     >
       <HomeHeader
+        action={
+          <IconButton
+            accessibilityLabel="More options"
+            icon={<DotsIcon />}
+            onPress={() => setMoreVisible(true)}
+          />
+        }
         greeting={greetingForNow(new Date())}
         subtitle="You become who you repeatedly choose to be."
       />
@@ -152,6 +169,15 @@ export default function HomeScreen() {
           </View>
         </Card>
       )}
+
+      <MoreMenuSheet
+        onClose={() => setMoreVisible(false)}
+        onImported={() => {
+          refreshDreams();
+          refreshDay();
+        }}
+        visible={moreVisible}
+      />
     </ScreenScaffold>
   );
 }

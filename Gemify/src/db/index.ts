@@ -1,5 +1,9 @@
 export { getDatabase, initDatabase, resetDatabaseForDev } from "./database";
 
+// Backup (export / import the whole database as one JSON file)
+export { exportBackup, pickAndImportBackup } from "./backup";
+export type { ImportSummary } from "./backup";
+
 // Items (v1 demo slice)
 export {
   createItem,

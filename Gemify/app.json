@@ -37,6 +37,7 @@
       ],
       "expo-asset",
       "expo-sqlite",
+      "expo-sharing",
       [
         "expo-image-picker",
         {
@@ -48,6 +49,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "appVariant": "personal",
+      "router": {},
+      "eas": {
+        "projectId": "f2579b91-868b-4722-a311-433438cd3d78"
+      }
+    },
+    "owner": "taniashtrix15"
   }
 }

@@ -1,4 +1,4 @@
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import { colors } from "@/theme/colors";
 
@@ -197,6 +197,18 @@ export function PencilIcon({
         strokeLinejoin="round"
         strokeWidth={strokeWidth}
       />
+    </Svg>
+  );
+}
+
+/** Vertical ⋮ — opens overflow / "more" menus. */
+export function DotsIcon({ color = colors.primary, size = 20 }: IconProps) {
+  const dotRadius = 1.6;
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Circle cx={12} cy={5.5} fill={color} r={dotRadius} />
+      <Circle cx={12} cy={12} fill={color} r={dotRadius} />
+      <Circle cx={12} cy={18.5} fill={color} r={dotRadius} />
     </Svg>
   );
 }

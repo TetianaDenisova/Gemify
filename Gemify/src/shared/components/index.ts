@@ -21,6 +21,7 @@ export {
   CheckIcon,
   ChevronIcon,
   CloseIcon,
+  DotsIcon,
   DreamIcon,
   MilestoneIcon,
   PencilIcon,
