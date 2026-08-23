@@ -19,9 +19,6 @@ export interface HomeHeader {
 export interface Goal {
   id: string;
   title: string;
-  milestone: string;
-  completedTasks: number;
-  totalTasks: number;
   progressPercent: number;
   themeColor: ThemeColor;
   imageKey: GoalImageKey;

@@ -59,10 +59,6 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
             <AppText numberOfLines={2} variant="pill">
               {goal.title}
             </AppText>
-
-            <AppText color={accentColor} style={styles.milestone} variant="micro">
-              ⚑ Milestone: {goal.milestone}
-            </AppText>
           </View>
         </View>
 
@@ -73,14 +69,6 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
               height={3}
               value={goal.progressPercent}
             />
-
-            <AppText
-              color={colors.textSecondary}
-              style={styles.taskCount}
-              variant="micro"
-            >
-              {goal.completedTasks} of {goal.totalTasks} tasks completed
-            </AppText>
           </View>
 
           <ProgressRing
@@ -152,10 +140,6 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
 
-  milestone: {
-    marginTop: spacing.xs,
-  },
-
   bottomContent: {
     alignItems: "flex-end",
     flexDirection: "row",
@@ -165,9 +149,5 @@ const styles = StyleSheet.create({
   progressContent: {
     flex: 1,
     paddingRight: 16,
-  },
-
-  taskCount: {
-    marginTop: spacing.sm,
   },
 });

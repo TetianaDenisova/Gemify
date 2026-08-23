@@ -497,6 +497,15 @@ function MilestoneModal({
   const setDraftField = (key: keyof MilestoneFormValues, text: string) =>
     setDraft((current) => ({ ...current, [key]: text }));
 
+  // Read-only view hides optional sections (artifact, mentor, reward) the
+  // user left empty; add/edit modes always show every field for input.
+  const visibleFields =
+    mode === "view"
+      ? MILESTONE_DETAIL_FIELDS.filter(
+          (field) => (milestone?.[field.key] ?? "").trim().length > 0,
+        )
+      : MILESTONE_DETAIL_FIELDS;
+
   return (
     <AppModal
       onClose={onClose}
@@ -604,14 +613,14 @@ function MilestoneModal({
                 showsVerticalScrollIndicator={false}
                 style={styles.detailScroll}
               >
-                {MILESTONE_DETAIL_FIELDS.map((field, index) => (
+                {visibleFields.map((field, index) => (
                   <View
                     key={field.label}
                     style={[
                       styles.detailRow,
                       isCompact && styles.detailRowCompact,
                       isShort && styles.detailRowShort,
-                      index === MILESTONE_DETAIL_FIELDS.length - 1 &&
+                      index === visibleFields.length - 1 &&
                         styles.lastDetailRow,
                     ]}
                   >

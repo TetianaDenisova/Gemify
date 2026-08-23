@@ -77,7 +77,12 @@ export type DreamSummary = Dream & {
   currentMilestone: string | null;
   completedTasks: number;
   totalTasks: number;
-  /** 0..100, task-based; 0 when the dream has no tasks yet. */
+  /**
+   * 0..100, exact (unrounded) so partial shares still sum to 100. The dream's
+   * 100% is split equally across its milestones, each milestone's share
+   * equally across its active quests, and each quest's share equally across
+   * its tasks. Round only for display.
+   */
   progressPercent: number;
 };
 
@@ -89,9 +94,33 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
       current_milestone: string | null;
       completed_tasks: number;
       total_tasks: number;
+      progress_fraction: number;
     }
   >(
-    `SELECT d.id, d.seed_key, d.title, d.vision_statement, d.is_archived,
+    // Weighted progress: AVG at each level gives every milestone an equal
+    // slice of the dream, every active quest an equal slice of its milestone,
+    // and every task an equal slice of its quest. A milestone the user marked
+    // completed counts as its full slice regardless of quest state; empty
+    // levels count as 0.
+    `WITH quest_progress AS (
+       SELECT q.id, q.milestone_id,
+              COALESCE(AVG(t.is_done * 1.0), 0) AS progress
+       FROM quests q
+       LEFT JOIN tasks t ON t.quest_id = q.id
+       WHERE q.is_active = 1
+       GROUP BY q.id
+     ),
+     milestone_progress AS (
+       SELECT m.id, m.dream_id,
+              CASE WHEN m.status = 'completed' THEN 1.0
+                   ELSE COALESCE(
+                     (SELECT AVG(qp.progress) FROM quest_progress qp
+                      WHERE qp.milestone_id = m.id),
+                     0)
+              END AS progress
+       FROM milestones m
+     )
+     SELECT d.id, d.seed_key, d.title, d.vision_statement, d.is_archived,
             COALESCE(
               (SELECT m.title FROM milestones m
                WHERE m.dream_id = d.id AND m.status = 'active'
@@ -107,7 +136,11 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
             (SELECT COUNT(*) FROM tasks t
              JOIN quests q ON q.id = t.quest_id
              JOIN milestones m ON m.id = q.milestone_id
-             WHERE m.dream_id = d.id) AS total_tasks
+             WHERE m.dream_id = d.id) AS total_tasks,
+            COALESCE(
+              (SELECT AVG(mp.progress) FROM milestone_progress mp
+               WHERE mp.dream_id = d.id),
+              0) AS progress_fraction
      FROM dreams d
      WHERE d.is_archived = 0
      ORDER BY d.id`,
@@ -118,10 +151,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
     currentMilestone: row.current_milestone,
     completedTasks: row.completed_tasks,
     totalTasks: row.total_tasks,
-    progressPercent:
-      row.total_tasks > 0
-        ? Math.round((row.completed_tasks / row.total_tasks) * 100)
-        : 0,
+    progressPercent: row.progress_fraction * 100,
   }));
 }
 

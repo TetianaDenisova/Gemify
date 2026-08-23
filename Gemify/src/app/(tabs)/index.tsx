@@ -7,7 +7,7 @@ import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
 import type { DreamSummary } from "@/db";
-import { useDayTaskBlocks, currentBlockKey } from "@/hooks/useDayTaskBlocks";
+import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
 import {
   AppButton,
@@ -44,9 +44,6 @@ function toGoal(dream: DreamSummary, index: number): Goal {
   return {
     id: String(dream.id),
     title: dream.title,
-    milestone: dream.currentMilestone ?? "—",
-    completedTasks: dream.completedTasks,
-    totalTasks: dream.totalTasks,
     progressPercent: dream.progressPercent,
     ...visuals,
   };
@@ -91,7 +88,6 @@ export default function HomeScreen() {
           />
         }
         greeting={greetingForNow(new Date())}
-        subtitle="You become who you repeatedly choose to be."
       />
 
       <SectionHeader

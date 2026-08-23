@@ -9,7 +9,7 @@ interface HomeHeaderProps {
   /** Optional control rendered in the top-right corner (e.g. ⋮ menu). */
   action?: ReactNode;
   greeting: string;
-  subtitle: string;
+  subtitle?: string;
 }
 
 export function HomeHeader({ action, greeting, subtitle }: HomeHeaderProps) {
@@ -30,9 +30,11 @@ export function HomeHeader({ action, greeting, subtitle }: HomeHeaderProps) {
         </AppText>
         {action ? <View style={styles.action}>{action}</View> : null}
       </View>
-      <AppText color={colors.primary} style={styles.subtitle} variant="subtitle">
-        {subtitle}
-      </AppText>
+      {subtitle ? (
+        <AppText color={colors.primary} style={styles.subtitle} variant="subtitle">
+          {subtitle}
+        </AppText>
+      ) : null}
     </View>
   );
 }

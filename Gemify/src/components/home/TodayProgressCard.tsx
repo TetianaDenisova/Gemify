@@ -28,9 +28,8 @@ export function TodayProgressCard({
       <Image contentFit="cover" source={PORTAL_ART_SOURCE} style={styles.portalArt} />
       <View style={styles.body}>
         <AppText color={colors.textPrimary} variant="bodySmall">
-          You&apos;re showing up for your future.
+          Today&apos;s progress
         </AppText>
-        <AppText variant="bodySmall">Keep going, your future self is proud.</AppText>
         <ProgressBar glow style={styles.bar} value={percent} />
       </View>
       <View style={styles.percent}>

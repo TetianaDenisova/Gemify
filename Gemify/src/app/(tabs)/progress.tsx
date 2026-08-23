@@ -30,6 +30,7 @@ import {
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
+  controls,
   fontSizes,
   fonts,
   layout,
@@ -428,16 +429,6 @@ function MenuIcon() {
   );
 }
 
-function DotsGlyph({ color = colors.textSecondary, size = 20 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={5} cy={12} fill={color} r={1.7} />
-      <Circle cx={12} cy={12} fill={color} r={1.7} />
-      <Circle cx={19} cy={12} fill={color} r={1.7} />
-    </Svg>
-  );
-}
-
 export default function ProgressScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
@@ -483,12 +474,8 @@ export default function ProgressScreen() {
             {progressContent.title}
           </AppText>
         </View>
-        <IconButton
-          accessibilityLabel="More options"
-          icon={<DotsGlyph color={colors.primary} />}
-          onPress={() => {}}
-          size={compact ? "sm" : "md"}
-        />
+        {/* Spacer mirrors the menu button so the title stays centered. */}
+        <View style={{ width: controls.iconButton[compact ? "sm" : "md"] }} />
       </View>
 
       <Card padded={false} style={styles.goalPicker} variant="glass">
