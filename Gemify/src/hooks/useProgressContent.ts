@@ -102,6 +102,39 @@ function cumulativePoints(tasks: Task[], buckets: Bucket[]): FulfillmentPoint[] 
   }));
 }
 
+/** Cumulative goal-progress range with the "+10% closer" header data. */
+function goalRange(
+  tasks: Task[],
+  buckets: Bucket[],
+  key: string,
+  label: string,
+  eyebrow: string,
+): FulfillmentRange {
+  const points = cumulativePoints(tasks, buckets);
+  const delta =
+    points.length > 1 ? points[points.length - 1].percent - points[0].percent : 0;
+
+  const rangeStart = buckets[0].start;
+  const rangeEnd = buckets[buckets.length - 1].end;
+  const doneInRange = tasks.filter((task) => {
+    if (!task.isDone) return false;
+    const date = completedOn(task);
+    return date !== null && date >= rangeStart && date <= rangeEnd;
+  }).length;
+
+  return {
+    key,
+    label,
+    points,
+    highlight: {
+      eyebrow,
+      delta,
+      caption: "closer to your goal",
+      tasksLabel: `${doneInRange} ${doneInRange === 1 ? "task" : "tasks"}`,
+    },
+  };
+}
+
 /** Per-bucket completion rate of tasks scheduled inside the bucket. */
 function completionRange(
   tasks: Task[],
@@ -123,7 +156,9 @@ function completionRange(
     const done = scheduled.filter((task) => task.isDone).length;
     rangeDone += done;
     rangeTotal += scheduled.length;
+    const today = toDateKey(new Date());
     return {
+      current: bucket.start <= today && today <= bucket.end,
       key: bucket.key,
       label: bucket.label,
       percent:
@@ -291,21 +326,9 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
           label: "Goal Progress",
           chart: "line",
           ranges: [
-            {
-              key: "week",
-              label: "Week",
-              points: cumulativePoints(tasks, week),
-            },
-            {
-              key: "month",
-              label: "Month",
-              points: cumulativePoints(tasks, month),
-            },
-            {
-              key: "6months",
-              label: "6 Months",
-              points: cumulativePoints(tasks, sixMonths),
-            },
+            goalRange(tasks, week, "week", "Week", "This week"),
+            goalRange(tasks, month, "month", "Month", "This month"),
+            goalRange(tasks, sixMonths, "6months", "6 Months", "Last 6 months"),
           ],
         },
         {

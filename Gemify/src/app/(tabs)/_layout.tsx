@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import { StyleSheet } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
 import { colors } from "@/theme/colors";
@@ -9,10 +9,38 @@ import { layout, radius, shadows, spacing, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
-  tab: MenuTab | "habits";
+  tab: MenuTab | "habits" | "memories";
 }
 
 function TabIcon({ focused, tab }: TabIconProps) {
+  if (tab === "memories") {
+    const tint = focused ? colors.primary : colors.textMuted;
+
+    return (
+      <Svg height={28} viewBox="0 0 28 28" width={28} style={styles.tabIcon}>
+        <Rect
+          fill={focused ? "rgba(245, 184, 75, 0.14)" : colors.transparent}
+          height={19}
+          rx={4}
+          stroke={tint}
+          strokeWidth={1.4}
+          width={21}
+          x={3.5}
+          y={4.5}
+        />
+        <Circle cx={10} cy={10.5} fill="none" r={2.2} stroke={tint} strokeWidth={1.3} />
+        <Path
+          d="m5.5 20 5-5.5 3.5 3.6 3.6-4.1 4.9 6"
+          fill="none"
+          stroke={tint}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.4}
+        />
+      </Svg>
+    );
+  }
+
   if (tab === "habits") {
     const tint = focused ? colors.primary : colors.textMuted;
 
@@ -114,6 +142,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="habits"
+        options={{
+          headerShown: false,
+          tabBarLabel: "Habits",
+          title: "Habits",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} tab="habits" />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="progress"
         options={{
           headerShown: false,
@@ -125,13 +164,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="habits"
+        name="memories"
         options={{
           headerShown: false,
-          tabBarLabel: "Habits",
-          title: "Habits",
+          tabBarLabel: "Memories",
+          title: "Memories",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="habits" />
+            <TabIcon focused={focused} tab="memories" />
           ),
         }}
       />

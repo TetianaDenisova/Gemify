@@ -31,6 +31,8 @@ export interface FulfillmentPoint {
   key: string;
   label: string;
   percent: number;
+  /** True for the bucket containing today — highlighted in the bars chart. */
+  current?: boolean;
 }
 
 export type FulfillmentChartKind = "line" | "bars";
@@ -42,12 +44,23 @@ export interface FulfillmentSummary {
   caption: string;
 }
 
+/** Header above the goal line chart — "THIS WEEK · +10% closer to your goal". */
+export interface FulfillmentHighlight {
+  eyebrow: string;
+  /** Percent-point change across the range, signed. */
+  delta: number;
+  caption: string;
+  tasksLabel: string;
+}
+
 export interface FulfillmentRange {
   key: string;
   label: string;
   points: readonly FulfillmentPoint[];
   /** Average block shown beside the bars. Bar chart ranges only. */
   summary?: FulfillmentSummary;
+  /** Delta header above the chart. Line chart ranges only. */
+  highlight?: FulfillmentHighlight;
 }
 
 export interface FulfillmentTab {
