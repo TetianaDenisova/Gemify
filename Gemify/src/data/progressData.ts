@@ -30,6 +30,7 @@ export interface TimelineMoment {
 export interface FulfillmentPoint {
   key: string;
   label: string;
+  /** Exact value (may be fractional) — round only when displaying. */
   percent: number;
   /** True for the bucket containing today — highlighted in the bars chart. */
   current?: boolean;

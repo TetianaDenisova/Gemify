@@ -44,15 +44,19 @@ import {
 const CHART_PLOT_HEIGHT = 150;
 /** Headroom above the line chart for the endpoint percent labels. */
 const LINE_TOP_PAD = 44;
+/** Gap between the lowest dot and the baseline, so dots never touch the axis. */
+const LINE_BOTTOM_INSET = 18;
 const BAR_TOP_PAD = 12;
 const CHART_Y_AXIS_WIDTH = 34;
 const CHART_X_LABEL_HEIGHT = 26;
+/** Taller label band for the line chart so labels clear the pink baseline. */
+const LINE_X_LABEL_HEIGHT = 36;
 const CHART_POINT_INSET = 14;
 const CHART_Y_TICKS = [100, 75, 50, 25, 0] as const;
 
 const BAR_MAX_WIDTH = 34;
-/** Muted navy pill for non-current bars, like the mock. */
-const BAR_FILL = "rgba(133, 149, 199, 0.16)";
+/** Muted navy pill track shown for every day, even when progress is 0%. */
+const BAR_TRACK_FILL = "rgba(133, 149, 199, 0.18)";
 const BAR_AXIS_STROKE = "rgba(246, 232, 200, 0.32)";
 const CHART_GRID_STROKE = "rgba(246, 232, 200, 0.13)";
 const SECTION_BORDER = "rgba(183, 140, 255, 0.58)";
@@ -69,10 +73,15 @@ function smoothLinePath(dots: readonly { x: number; y: number }[]) {
     const p1 = dots[i];
     const p2 = dots[i + 1];
     const p3 = dots[i + 2] ?? p2;
+    // Clamp control points to the segment's y-range so the curve never
+    // overshoots past a flat run (e.g. dipping under the baseline).
+    const yLo = Math.min(p1.y, p2.y);
+    const yHi = Math.max(p1.y, p2.y);
+    const clampY = (y: number) => Math.min(yHi, Math.max(yLo, y));
     const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c1y = clampY(p1.y + (p2.y - p0.y) / 6);
     const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
+    const c2y = clampY(p2.y - (p3.y - p1.y) / 6);
     path += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
   return path;
@@ -104,10 +113,18 @@ function FulfillmentChart({
 
   const values = points.map((point) => point.percent);
   const maxValue = Math.max(...values);
-  const domainHi = Math.min(100, Math.max(60, Math.ceil(maxValue / 10) * 10));
+  const minValue = Math.min(...values);
+  // Zoom the y-domain to the data so the trend fills the plot: the lowest
+  // point sits just above the baseline, the highest just under the dotted
+  // guide — instead of squashing everything into a fixed 0–100 scale.
+  const span = Math.max(maxValue - minValue, 4);
+  const domainLo = Math.max(0, minValue - span * 0.3);
+  const domainHi = maxValue + span * 0.25;
 
   const yFor = (percent: number) =>
-    LINE_TOP_PAD + (1 - percent / domainHi) * CHART_PLOT_HEIGHT;
+    LINE_TOP_PAD +
+    (1 - (percent - domainLo) / (domainHi - domainLo)) *
+      (CHART_PLOT_HEIGHT - LINE_BOTTOM_INSET);
 
   const startX = CHART_POINT_INSET;
   const endX = chartWidth - CHART_POINT_INSET;
@@ -121,12 +138,12 @@ function FulfillmentChart({
   const firstDot = dots[0];
   const lastDot = dots[dots.length - 1];
 
-  const baselineY = yFor(0);
-  const guideY = yFor(domainHi >= 75 ? 75 : 50);
-  const linePath = smoothLinePath(dots);
+  const baselineY = LINE_TOP_PAD + CHART_PLOT_HEIGHT;
+  const guideY = yFor(maxValue) - 12;
+  const linePath = dots.length > 1 ? smoothLinePath(dots) : "";
   const areaPath =
-    dots.length > 1
-      ? `${linePath} L ${lastDot.x} ${baselineY} L ${dots[0].x} ${baselineY} Z`
+    linePath
+      ? `${linePath} L ${lastDot.x} ${baselineY} L ${firstDot.x} ${baselineY} Z`
       : "";
 
   return (
@@ -157,7 +174,7 @@ function FulfillmentChart({
             <Line
               stroke={colors.accentPink}
               strokeOpacity={0.55}
-              strokeWidth={1.4}
+              strokeWidth={1.6}
               x1={0}
               x2={chartWidth}
               y1={baselineY}
@@ -220,7 +237,7 @@ function FulfillmentChart({
                   },
                 ]}
               >
-                {dot.percent}%
+                {Math.round(dot.percent)}%
               </AppText>
             );
           })}
@@ -266,6 +283,7 @@ function TaskBarsChart({
   const bars = points.map((point, index) => ({
     ...point,
     center: plotLeft + slot * (index + 0.5),
+    fillHeight: yFor(0) - yFor(point.percent),
     top: yFor(point.percent),
   }));
 
@@ -308,16 +326,51 @@ function TaskBarsChart({
             />
             {bars.map((bar) => (
               <Rect
-                fill={bar.current ? colors.accentPink : BAR_FILL}
-                height={yFor(0) - bar.top}
-                key={`fill-${bar.key}`}
-                rx={Math.min(barWidth / 2, (yFor(0) - bar.top) / 2)}
+                fill={BAR_TRACK_FILL}
+                height={CHART_PLOT_HEIGHT}
+                key={`track-${bar.key}`}
+                rx={barWidth / 2}
                 width={barWidth}
                 x={bar.center - barWidth / 2}
-                y={bar.top}
+                y={yFor(100)}
               />
             ))}
+            {bars
+              .filter((bar) => bar.fillHeight > 0)
+              .map((bar) => (
+                <Rect
+                  fill={colors.accentPink}
+                  height={bar.fillHeight}
+                  key={`fill-${bar.key}`}
+                  rx={Math.min(barWidth / 2, bar.fillHeight / 2)}
+                  width={barWidth}
+                  x={bar.center - barWidth / 2}
+                  y={bar.top}
+                />
+              ))}
           </Svg>
+          {bars
+            .filter((bar) => bar.fillHeight > 0)
+            .map((bar) => {
+              const labelInside = bar.fillHeight >= 30;
+              return (
+                <AppText
+                  align="center"
+                  color={labelInside ? colors.textPrimary : colors.accentPink}
+                  key={`percent-${bar.key}`}
+                  style={[
+                    styles.barPercentLabel,
+                    compact && styles.barPercentLabelCompact,
+                    {
+                      left: bar.center - 32,
+                      top: labelInside ? bar.top + 8 : bar.top - 20,
+                    },
+                  ]}
+                >
+                  {Math.round(bar.percent)}%
+                </AppText>
+              );
+            })}
           {CHART_Y_TICKS.map((tick) => (
             <AppText
               color={colors.textMuted}
@@ -577,7 +630,7 @@ export default function ProgressScreen() {
             <FulfillmentChart compact={compact} points={lineRange.points} />
             <View style={styles.overallHeader}>
               <AppText variant="eyebrow">{progressContent.overallLabel}</AppText>
-              <AppText style={styles.overallPercent} variant="title">{currentPercent}%</AppText>
+              <AppText style={styles.overallPercent} variant="title">{Math.round(currentPercent)}%</AppText>
             </View>
             <View style={styles.overallTrack}>
               <ExpoLinearGradient
@@ -650,6 +703,17 @@ const styles = StyleSheet.create({
   },
   barsCanvas: {
     height: BAR_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
+  },
+  barPercentLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: "700",
+    lineHeight: lineHeights.sm,
+    position: "absolute",
+    width: 64,
+  },
+  barPercentLabelCompact: {
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
   },
   cardTitle: {
     fontSize: fontSizes.xxl,
@@ -775,15 +839,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   lineAxisLabel: {
-    bottom: 0,
     fontSize: fontSizes.md,
     fontWeight: "600",
     lineHeight: lineHeights.md,
     position: "absolute",
+    // Anchored below the baseline from the top, so a collapsed canvas
+    // height can never push the labels up into the axis line.
+    top: LINE_TOP_PAD + CHART_PLOT_HEIGHT + 12,
     width: 56,
   },
   lineCanvas: {
-    height: LINE_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 0,
+    height: LINE_TOP_PAD + CHART_PLOT_HEIGHT + LINE_X_LABEL_HEIGHT,
     marginTop: spacing.md,
   },
   overallFill: {

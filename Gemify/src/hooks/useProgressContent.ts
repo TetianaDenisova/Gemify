@@ -10,9 +10,13 @@ import type {
 } from "@/data/progressData";
 import {
   getDreams,
+  getMilestones,
+  getQuests,
   getTasksByDream,
   getTimelineMoments,
   type Dream,
+  type Milestone,
+  type Quest,
   type Task,
 } from "@/db";
 import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
@@ -80,39 +84,80 @@ function completedOn(task: Task): string | null {
   return task.completedAt ? task.completedAt.slice(0, 10) : null;
 }
 
-/** Cumulative "% of all dream tasks done by the end of each bucket". */
-function cumulativePoints(tasks: Task[], buckets: Bucket[]): FulfillmentPoint[] {
-  const total = tasks.length;
+/**
+ * Each task's contribution to the overall goal, as a fraction of 1: 100% is
+ * split equally across the dream's milestones, each milestone's share equally
+ * across its quests, and each quest's share equally across its tasks. Values
+ * stay exact (no rounding) so completing everything sums to exactly 1 —
+ * round only when displaying.
+ */
+function taskWeights(
+  milestones: Milestone[],
+  quests: Quest[],
+  tasks: Task[],
+): Map<number, number> {
+  const weights = new Map<number, number>();
+  if (milestones.length === 0) {
+    // No structure to weight by — fall back to equal task shares.
+    tasks.forEach((task) => weights.set(task.id, 1 / tasks.length));
+    return weights;
+  }
+
+  const milestoneShare = 1 / milestones.length;
+  for (const milestone of milestones) {
+    const milestoneQuests = quests.filter(
+      (quest) => quest.milestoneId === milestone.id,
+    );
+    if (milestoneQuests.length === 0) continue;
+    const questShare = milestoneShare / milestoneQuests.length;
+    for (const quest of milestoneQuests) {
+      const questTasks = tasks.filter((task) => task.questId === quest.id);
+      if (questTasks.length === 0) continue;
+      const taskShare = questShare / questTasks.length;
+      questTasks.forEach((task) => weights.set(task.id, taskShare));
+    }
+  }
+  return weights;
+}
+
+/** Cumulative "% of the goal done by the end of each bucket", exact. */
+function cumulativePoints(
+  tasks: Task[],
+  weights: Map<number, number>,
+  buckets: Bucket[],
+): FulfillmentPoint[] {
   return buckets.map((bucket) => ({
     key: bucket.key,
     label: bucket.label,
     percent:
-      total > 0
-        ? Math.round(
-            (tasks.filter((task) => {
-              if (!task.isDone) return false;
-              const date = completedOn(task);
-              // Tasks without a timestamp still count once done.
-              return date === null || date <= bucket.end;
-            }).length /
-              total) *
-              100,
-          )
-        : 0,
+      tasks
+        .filter((task) => {
+          if (!task.isDone) return false;
+          const date = completedOn(task);
+          // Tasks without a timestamp still count once done.
+          return date === null || date <= bucket.end;
+        })
+        .reduce((sum, task) => sum + (weights.get(task.id) ?? 0), 0) * 100,
   }));
 }
 
 /** Cumulative goal-progress range with the "+10% closer" header data. */
 function goalRange(
   tasks: Task[],
+  weights: Map<number, number>,
   buckets: Bucket[],
   key: string,
   label: string,
   eyebrow: string,
 ): FulfillmentRange {
-  const points = cumulativePoints(tasks, buckets);
+  const points = cumulativePoints(tasks, weights, buckets);
+  // Delta between the *displayed* endpoints, so the header always matches
+  // the rounded labels on the chart.
   const delta =
-    points.length > 1 ? points[points.length - 1].percent - points[0].percent : 0;
+    points.length > 1
+      ? Math.round(points[points.length - 1].percent) -
+        Math.round(points[0].percent)
+      : 0;
 
   const rangeStart = buckets[0].start;
   const rangeEnd = buckets[buckets.length - 1].end;
@@ -263,6 +308,8 @@ export type UseProgressContentResult = {
  */
 export function useProgressContent(goalKey: string): UseProgressContentResult {
   const [dreams, setDreams] = useState<Dream[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [moments, setMoments] = useState<ProgressTimelineMoment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,14 +327,22 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       const resolved =
         dreamList.find((dream) => dream.id === parsedKey) ?? dreamList[0];
       if (!resolved) {
+        setMilestones([]);
+        setQuests([]);
         setTasks([]);
         setMoments([]);
         return;
       }
-      const [taskList, momentList] = await Promise.all([
+      const [milestoneList, taskList, momentList] = await Promise.all([
+        getMilestones(resolved.id),
         getTasksByDream(resolved.id),
         getTimelineMoments(resolved.id),
       ]);
+      const questLists = await Promise.all(
+        milestoneList.map((milestone) => getQuests(milestone.id)),
+      );
+      setMilestones(milestoneList);
+      setQuests(questLists.flat());
       setTasks(taskList);
       setMoments(momentList.map(toProgressMoment));
     } catch (cause) {
@@ -307,6 +362,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
     const week = weekBuckets();
     const month = monthBuckets();
     const sixMonths = sixMonthBuckets();
+    const weights = taskWeights(milestones, quests, tasks);
 
     return {
       title: "Progress",
@@ -326,9 +382,16 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
           label: "Goal Progress",
           chart: "line",
           ranges: [
-            goalRange(tasks, week, "week", "Week", "This week"),
-            goalRange(tasks, month, "month", "Month", "This month"),
-            goalRange(tasks, sixMonths, "6months", "6 Months", "Last 6 months"),
+            goalRange(tasks, weights, week, "week", "Week", "This week"),
+            goalRange(tasks, weights, month, "month", "Month", "This month"),
+            goalRange(
+              tasks,
+              weights,
+              sixMonths,
+              "6months",
+              "6 Months",
+              "Last 6 months",
+            ),
           ],
         },
         {
@@ -351,7 +414,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       overallLabel: "Overall Goal Progress",
       hasChartData: tasks.some((task) => task.isDone),
     };
-  }, [dreams, moments, tasks]);
+  }, [dreams, milestones, moments, quests, tasks]);
 
   return { content, dreamId, loading, refresh };
 }
