@@ -259,6 +259,8 @@ export type NewTimelineMoment = {
 export type TimelineMomentPatch = {
   label?: string;
   description?: string | null;
+  /** YYYY-MM-DD */
+  occurredOn?: string;
   /** When provided, replaces the moment's full photo set. */
   photoUris?: readonly string[];
 };

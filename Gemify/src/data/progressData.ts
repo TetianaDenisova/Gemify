@@ -21,7 +21,10 @@ export interface AchievementForecast {
 
 export interface TimelineMoment {
   key: string;
+  /** Formatted display date, e.g. "Aug 23, 2026". */
   date: string;
+  /** Raw YYYY-MM-DD key backing `date` (edit form round-trips). */
+  occurredOn: string;
   label: string;
   description: string | null;
   icon: TimelineIconKey;

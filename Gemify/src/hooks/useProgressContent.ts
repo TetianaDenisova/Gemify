@@ -299,6 +299,7 @@ function toProgressMoment(
     key: String(moment.id),
     label: moment.label,
     locked: moment.isLocked,
+    occurredOn: moment.occurredOn,
     photoUris: moment.photoUris,
   };
 }

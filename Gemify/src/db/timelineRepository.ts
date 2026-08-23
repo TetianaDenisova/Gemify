@@ -158,6 +158,10 @@ export async function updateTimelineMoment(
     assignments.push("description = ?");
     values.push(patch.description?.trim() || null);
   }
+  if (patch.occurredOn !== undefined) {
+    assignments.push("occurred_on = ?");
+    values.push(patch.occurredOn);
+  }
   if (assignments.length > 0) {
     await db.runAsync(
       `UPDATE timeline_moments SET ${assignments.join(", ")} WHERE id = ?`,

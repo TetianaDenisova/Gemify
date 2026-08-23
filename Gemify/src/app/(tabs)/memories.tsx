@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import { DatePickerModal } from "@/components/DatePickerModal";
 import type { TimelineIconKey, TimelineMoment } from "@/data/progressData";
 import {
   addTimelineMoment,
@@ -43,7 +44,7 @@ import {
   spacing,
   textGlow,
 } from "@/theme/theme";
-import { todayKey } from "@/utils/dates";
+import { toDateKey, todayKey } from "@/utils/dates";
 import { deleteMemoryPhotos, persistMemoryPhoto } from "@/utils/memoryPhotos";
 
 const TIMELINE_ITEM_WIDTH = 104;
@@ -55,9 +56,42 @@ const TIMELINE_TURN_LEAD = (TIMELINE_ITEM_WIDTH - 64) / 2;
 const TIMELINE_TURN_WIDTH = 36;
 const MAX_MEMORY_PHOTOS = 5;
 
-const MEMORIES_BACK = require("../../data/images/progress-map-img.png");
+const MEMORIES_BACK = require("../../../assets/images/memory-custle.png");
 
 const goldTint = { glow: colors.primaryGlow, main: colors.primary };
+
+/** "Aug 23, 2026" for a YYYY-MM-DD key (noon guards against TZ day shifts). */
+function formatDateKey(dateKey: string): string {
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function CalendarGlyph({ color = colors.primary, size = 20 }: { color?: string; size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Rect
+        fill="none"
+        height={15}
+        rx={2.4}
+        stroke={color}
+        strokeWidth={1.6}
+        width={18}
+        x={3}
+        y={5}
+      />
+      <Path
+        d="M7 3v4M17 3v4M3 10h18"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={1.6}
+      />
+    </Svg>
+  );
+}
 
 function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: string; size?: number }) {
   return (
@@ -257,6 +291,8 @@ export default function MemoriesScreen() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [formDate, setFormDate] = useState(todayKey);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [formPhotos, setFormPhotos] = useState<string[]>([]);
   const [originalPhotos, setOriginalPhotos] = useState<string[]>([]);
   const [photoSourceOpen, setPhotoSourceOpen] = useState(false);
@@ -265,14 +301,28 @@ export default function MemoriesScreen() {
   const [detailKey, setDetailKey] = useState<string | null>(null);
   const [detailMenuOpen, setDetailMenuOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /** Thumbnail promoted to the hero spot; null = the moment's first photo. */
+  const [detailPhoto, setDetailPhoto] = useState<string | null>(null);
 
   const detailMoment =
     progressContent.moments.find((moment) => moment.key === detailKey) ?? null;
+  // With photos or a description the title leads the header (design mock);
+  // a bare title instead drops below the action buttons in a compact card.
+  const detailHasBody =
+    detailMoment !== null &&
+    (detailMoment.photoUris.length > 0 || Boolean(detailMoment.description));
+  // Falls back to the first photo whenever the promoted one is stale (other
+  // moment opened, or the photo was removed in an edit).
+  const detailHeroPhoto =
+    detailPhoto !== null && detailMoment?.photoUris.includes(detailPhoto)
+      ? detailPhoto
+      : detailMoment?.photoUris[0];
 
   const openAddForm = () => {
     setEditingKey(null);
     setFormName("");
     setFormDescription("");
+    setFormDate(todayKey());
     setFormPhotos([]);
     setOriginalPhotos([]);
     setFormOpen(true);
@@ -282,6 +332,7 @@ export default function MemoriesScreen() {
     setEditingKey(moment.key);
     setFormName(moment.label);
     setFormDescription(moment.description ?? "");
+    setFormDate(moment.occurredOn);
     setFormPhotos([...moment.photoUris]);
     setOriginalPhotos([...moment.photoUris]);
     setDetailKey(null);
@@ -293,12 +344,14 @@ export default function MemoriesScreen() {
   const closeForm = () => {
     setFormOpen(false);
     setPhotoSourceOpen(false);
+    setDatePickerOpen(false);
   };
 
   const closeDetail = () => {
     setDetailKey(null);
     setDetailMenuOpen(false);
     setConfirmingDelete(false);
+    setDetailPhoto(null);
   };
 
   const pickPhotos = async (source: "camera" | "library") => {
@@ -363,6 +416,7 @@ export default function MemoriesScreen() {
         await updateTimelineMoment(Number(editingKey), {
           description: formDescription,
           label: name,
+          occurredOn: formDate,
           photoUris: persisted,
         });
         await deleteMemoryPhotos(
@@ -373,7 +427,7 @@ export default function MemoriesScreen() {
           description: formDescription,
           dreamId,
           label: name,
-          occurredOn: todayKey(),
+          occurredOn: formDate,
           photoUris: persisted,
         });
       }
@@ -453,9 +507,9 @@ export default function MemoriesScreen() {
           </AppText>
         </View>
         <IconButton
-          accessibilityLabel="More options"
-          icon={<DotsGlyph />}
-          onPress={() => {}}
+          accessibilityLabel="Add a memory"
+          icon={<PlusIcon size={20} />}
+          onPress={openAddForm}
           size={compact ? "sm" : "md"}
         />
       </View>
@@ -493,46 +547,16 @@ export default function MemoriesScreen() {
         <Image
           contentFit="cover"
           source={MEMORIES_BACK}
-          style={styles.forecastBackground}
+          style={styles.heroImage}
         />
-        <View style={styles.forecastCopy}>
-          <AppText
-            color={colors.textPrimary}
-            style={styles.forecastHeadline}
-            variant="bodySerif"
-          >
-            Your{" "}
-            <AppText color={colors.primary} style={styles.forecastHeadline} variant="bodySerif">
-              dream
-            </AppText>{" "}
-            is becoming your{" "}
-            <AppText color={colors.primary} style={styles.forecastHeadline} variant="bodySerif">
-              life
-            </AppText>
-            .
-          </AppText>
-          <AppText
-            color={colors.textPrimary}
-            style={styles.forecastSubline}
-            variant="body"
-          >
-            Save the memories that show it’s already happening.
-          </AppText>
+        <View style={styles.countRow}>
           <Badge
             color={colors.primary}
             label={`${moments.length} ${moments.length === 1 ? "memory" : "memories"}`}
-            style={styles.etaPill}
+            style={styles.countPill}
             textStyle={styles.serifPillLabel}
           />
         </View>
-
-        <IconButton
-          accessibilityLabel="Add a memory"
-          icon={<PlusIcon size={20} />}
-          onPress={openAddForm}
-          size="sm"
-          style={styles.addMomentButton}
-        />
 
         <View
           onLayout={(event) =>
@@ -619,9 +643,31 @@ export default function MemoriesScreen() {
               style={styles.timelineEmpty}
               variant="caption"
             >
-              Capture your first meaningful moment with the + button.
+              Capture your first meaningful moment with the button below.
             </AppText>
           ) : null}
+        </View>
+
+        <View style={styles.addFooter}>
+          <View style={styles.addFooterCopy}>
+            <AppText color={colors.textPrimary} variant="controlLabel">
+              Add memories from your journey
+            </AppText>
+            <AppText
+              color={colors.textSecondary}
+              style={styles.addFooterSubtitle}
+              variant="bodySmall"
+            >
+              Save moments that show how this goal is changing your real life.
+            </AppText>
+          </View>
+          <AppButton
+            icon={<PlusIcon size={16} />}
+            iconPosition="before"
+            label="Add memory"
+            onPress={openAddForm}
+            variant="secondary"
+          />
         </View>
       </Card>
 
@@ -646,6 +692,22 @@ export default function MemoriesScreen() {
           placeholder="What changed in your life?"
           value={formDescription}
         />
+        <View style={styles.formField}>
+          <AppText color={colors.primary} style={styles.dateLabel} variant="label">
+            Date
+          </AppText>
+          <Pressable
+            accessibilityLabel="Choose the memory date"
+            accessibilityRole="button"
+            onPress={() => setDatePickerOpen(true)}
+            style={styles.dateField}
+          >
+            <CalendarGlyph />
+            <AppText color={colors.textPrimary} variant="body">
+              {formatDateKey(formDate)}
+            </AppText>
+          </Pressable>
+        </View>
         <View style={styles.photosHeader}>
           <AppText color={colors.primary} variant="label">
             Photos
@@ -698,13 +760,6 @@ export default function MemoriesScreen() {
             return <View key={`empty-${slot}`} style={styles.photoEmptyTile} />;
           })}
         </View>
-        <AppText
-          color={colors.textSecondary}
-          style={styles.photoHint}
-          variant="caption"
-        >
-          Camera or gallery · Up to {MAX_MEMORY_PHOTOS} photos
-        </AppText>
         <View style={styles.momentActions}>
           <AppButton
             label="Cancel"
@@ -720,6 +775,19 @@ export default function MemoriesScreen() {
           />
         </View>
       </AppModal>
+
+      {datePickerOpen ? (
+        <DatePickerModal
+          initialDate={new Date(`${formDate}T12:00:00`)}
+          onClose={() => setDatePickerOpen(false)}
+          onSelect={(date) => {
+            setFormDate(toDateKey(date));
+            setDatePickerOpen(false);
+          }}
+          today={new Date()}
+          visible
+        />
+      ) : null}
 
       <AppModal
         onClose={() => setPhotoSourceOpen(false)}
@@ -750,16 +818,22 @@ export default function MemoriesScreen() {
         {detailMoment ? (
           <>
             <View style={styles.detailHeader}>
-              <View style={styles.detailHeading}>
-                <AppText variant="titleSm">{detailMoment.label}</AppText>
-                <AppText
-                  color={colors.textSecondary}
-                  style={styles.detailDate}
-                  variant="caption"
-                >
-                  {detailMoment.date}
-                </AppText>
-              </View>
+              {detailHasBody ? (
+                <View style={styles.detailHeading}>
+                  <AppText variant="titleSm">{detailMoment.label}</AppText>
+                  <AppText
+                    color={colors.textSecondary}
+                    style={styles.detailDate}
+                    variant="caption"
+                  >
+                    {detailMoment.date}
+                  </AppText>
+                </View>
+              ) : (
+                <View style={[styles.detailHeading, styles.detailEyebrowSlot]}>
+                  <AppText variant="eyebrow">Memory</AppText>
+                </View>
+              )}
               <IconButton
                 accessibilityLabel="Memory actions"
                 icon={<DotsGlyph color={colors.primary} />}
@@ -773,6 +847,18 @@ export default function MemoriesScreen() {
                 size="sm"
               />
             </View>
+            {!detailHasBody ? (
+              <View style={styles.detailTitleBlock}>
+                <AppText variant="titleSm">{detailMoment.label}</AppText>
+                <AppText
+                  color={colors.textSecondary}
+                  style={styles.detailDate}
+                  variant="caption"
+                >
+                  {detailMoment.date}
+                </AppText>
+              </View>
+            ) : null}
             {detailMenuOpen ? (
               <Card padded={false} style={styles.detailMenu}>
                 <ListItem
@@ -793,7 +879,7 @@ export default function MemoriesScreen() {
             {detailMoment.photoUris.length > 0 ? (
               <Image
                 contentFit="cover"
-                source={{ uri: detailMoment.photoUris[0] }}
+                source={{ uri: detailHeroPhoto }}
                 style={styles.detailPhotoHero}
               />
             ) : null}
@@ -804,33 +890,38 @@ export default function MemoriesScreen() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.detailPhotos}
               >
-                {detailMoment.photoUris.slice(1).map((uri) => (
-                  <Image
-                    contentFit="cover"
-                    key={uri}
-                    source={{ uri }}
-                    style={styles.detailPhoto}
-                  />
-                ))}
+                {detailMoment.photoUris
+                  .filter((uri) => uri !== detailHeroPhoto)
+                  .map((uri) => (
+                    <Pressable
+                      accessibilityLabel="Show this photo"
+                      accessibilityRole="button"
+                      key={uri}
+                      onPress={() => setDetailPhoto(uri)}
+                    >
+                      <Image
+                        contentFit="cover"
+                        source={{ uri }}
+                        style={styles.detailPhoto}
+                      />
+                    </Pressable>
+                  ))}
               </ScrollView>
             ) : null}
-            <View style={styles.detailBody}>
-              <AppText color={colors.textSecondary} variant="eyebrow">
-                Memory
-              </AppText>
-              <AppText
-                color={
-                  detailMoment.description
-                    ? colors.textPrimary
-                    : colors.textSecondary
-                }
-                style={styles.detailDescription}
-                variant="bodySerif"
-              >
-                {detailMoment.description ??
-                  "No description yet — tap ⋯ then Edit to add one."}
-              </AppText>
-            </View>
+            {detailMoment.description ? (
+              <View style={styles.detailBody}>
+                <AppText color={colors.textSecondary} variant="eyebrow">
+                  Memory
+                </AppText>
+                <AppText
+                  color={colors.textPrimary}
+                  style={styles.detailDescription}
+                  variant="bodySerif"
+                >
+                  {detailMoment.description}
+                </AppText>
+              </View>
+            ) : null}
           </>
         ) : null}
       </AppModal>
@@ -839,14 +930,49 @@ export default function MemoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  addMomentButton: {
-    position: "absolute",
-    right: spacing.md,
-    top: spacing.md,
-    zIndex: 2,
+  addFooter: {
+    alignItems: "center",
+    borderTopColor: colors.borderSoft,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    padding: spacing.lg,
+  },
+  addFooterCopy: {
+    flexShrink: 1,
+    minWidth: 220,
+  },
+  addFooterSubtitle: {
+    marginTop: spacing.xs,
   },
   content: {
     gap: spacing.md,
+  },
+  /** Mirrors AppInput's field shell for the tap-to-pick date control. */
+  dateField: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceGlass,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 58,
+    paddingHorizontal: spacing.md,
+  },
+  dateLabel: {
+    marginBottom: spacing.sm,
+  },
+  /** Overlaps the hero image's dark lower slope, as in the design. */
+  countRow: {
+    alignItems: "flex-start",
+    marginTop: -(spacing.xl + spacing.lg + spacing.md),
+    paddingHorizontal: spacing.lg,
+  },
+  countPill: {
+    borderColor: colors.border,
   },
   descriptionInput: {
     minHeight: 140,
@@ -886,13 +1012,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   detailPanel: {
-    minHeight: 420,
     padding: spacing.xl,
   },
   detailPhoto: {
     borderRadius: radius.md,
     height: 96,
     width: 96,
+  },
+  /** Keeps the eyebrow on the action buttons' centreline in the compact card. */
+  detailEyebrowSlot: {
+    justifyContent: "center",
+  },
+  detailTitleBlock: {
+    marginTop: spacing.sm,
   },
   detailPhotoHero: {
     aspectRatio: 1,
@@ -907,44 +1039,19 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     marginTop: spacing.md,
   },
-  etaPill: {
-    borderColor: colors.border,
-    marginTop: spacing.md,
-  },
-  /**
-   * Pinned to the card's top at the source ratio (1698×926) so the castle
-   * composition survives however tall the timeline grows; the image's dark
-   * bottom blends into the card background below it.
-   */
-  forecastBackground: {
-    aspectRatio: 1698 / 926,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  /** Opaque, image-matched ground: the artwork's bottom edge (~rgb(0,6,14))
-   * dissolves into it, so the card can grow taller than the picture. */
+  /** Opaque, image-matched ground: the artwork's dark edges dissolve into
+   * it, so the content below the hero image sits on a seamless background. */
   forecastCard: {
     backgroundColor: colors.background,
     borderColor: colors.border,
     overflow: "hidden",
   },
-  forecastCopy: {
-    justifyContent: "center",
-    maxWidth: "70%",
-    minHeight: 200,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-  },
-  forecastHeadline: {
-    fontSize: fontSizes.xxl,
-    lineHeight: lineHeights.xxxl,
-  },
-  forecastSubline: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.md,
-    marginTop: spacing.sm,
+  /** Shallow banner crop of the panoramic art (source is 3:1), keeping the
+   * hero short so the whole card fits on one page; the centred castle stays
+   * in the middle of the crop. */
+  heroImage: {
+    aspectRatio: 2.6,
+    width: "100%",
   },
   formField: {
     marginTop: spacing.lg,
@@ -1106,7 +1213,9 @@ const styles = StyleSheet.create({
     rowGap: spacing.xl,
   },
   timelineTrack: {
-    padding: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   timelineTurn: {
     borderBottomWidth: 2,
