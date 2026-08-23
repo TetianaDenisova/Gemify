@@ -229,6 +229,18 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Weekly-plan membership: the sprint backlog shows only tasks explicitly
+    // added to the week ("Do this week"), tracked by is_planned. Existing
+    // tasks default to 1 so nothing disappears from the board on upgrade.
+    toVersion: 4,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE tasks ADD COLUMN is_planned INTEGER NOT NULL DEFAULT 1
+          CHECK (is_planned IN (0, 1));
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

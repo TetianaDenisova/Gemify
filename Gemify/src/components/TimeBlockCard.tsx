@@ -28,6 +28,12 @@ const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   water: colors.accentViolet,
   intention: colors.accentViolet,
   focus: colors.accentViolet,
+  star: colors.primary,
+  moon: colors.accentViolet,
+  crystal: colors.accentViolet,
+  wand: colors.primary,
+  key: colors.primary,
+  feather: colors.accentViolet,
 };
 
 function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number }) {
@@ -94,6 +100,92 @@ function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number })
         <Circle cx={16} cy={16} r={9.2} strokeWidth={1.9} {...stroke} />
         <Circle cx={16} cy={16} r={3.4} strokeWidth={1.9} {...stroke} />
         <Path d="M16 3v3.5M16 25.5V29M3 16h3.5M25.5 16H29" strokeWidth={1.6} {...stroke} />
+      </Svg>
+    );
+  }
+  if (icon === "star") {
+    // Four-point spark with a small companion star.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Path
+          d="M14 4.5c1.6 5 4 7.4 9 9-5 1.6-7.4 4-9 9-1.6-5-4-7.4-9-9 5-1.6 7.4-4 9-9Z"
+          fill={color}
+        />
+        <Path
+          d="M24.5 20c.7 2.4 1.9 3.6 4.3 4.3-2.4.7-3.6 1.9-4.3 4.3-.7-2.4-1.9-3.6-4.3-4.3 2.4-.7 3.6-1.9 4.3-4.3Z"
+          fill={color}
+          opacity={0.65}
+        />
+      </Svg>
+    );
+  }
+  if (icon === "moon") {
+    // Crescent moon with a tiny star.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Path
+          d="M18.5 4A11.6 11.6 0 1 0 27.8 21.5 12.6 12.6 0 0 1 18.5 4Z"
+          strokeWidth={2}
+          {...stroke}
+        />
+        <Path
+          d="M23.5 6.5c.4 1.5 1.1 2.2 2.6 2.6-1.5.4-2.2 1.1-2.6 2.6-.4-1.5-1.1-2.2-2.6-2.6 1.5-.4 2.2-1.1 2.6-2.6Z"
+          fill={color}
+        />
+      </Svg>
+    );
+  }
+  if (icon === "crystal") {
+    // Faceted gem.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Path d="M10 6h12l5.5 7L16 27 4.5 13 10 6Z" strokeWidth={1.9} {...stroke} />
+        <Path
+          d="M4.5 13h23M10 6l6 7 6-7M16 13v14"
+          strokeWidth={1.5}
+          {...stroke}
+          opacity={0.75}
+        />
+      </Svg>
+    );
+  }
+  if (icon === "wand") {
+    // Magic wand trailing sparkles.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Path d="M6.5 25.5 19 13" strokeWidth={2.6} {...stroke} />
+        <Path
+          d="M23.5 4.5c.8 2.7 2.3 4.2 5 5-2.7.8-4.2 2.3-5 5-.8-2.7-2.3-4.2-5-5 2.7-.8 4.2-2.3 5-5Z"
+          fill={color}
+        />
+        <Circle cx={26} cy={18} fill={color} opacity={0.7} r={1.5} />
+        <Circle cx={16} cy={7} fill={color} opacity={0.7} r={1.3} />
+      </Svg>
+    );
+  }
+  if (icon === "key") {
+    // Old key — the artifact that unlocks the next step.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Circle cx={10.5} cy={10.5} r={5} strokeWidth={2} {...stroke} />
+        <Path
+          d="M14.2 14.2 26.5 26.5M22.5 22.5l3.6-3.6M18.5 26l3-3"
+          strokeWidth={2}
+          {...stroke}
+        />
+      </Svg>
+    );
+  }
+  if (icon === "feather") {
+    // Quill feather.
+    return (
+      <Svg height={size} viewBox="0 0 32 32" width={size}>
+        <Path
+          d="M26.5 5C17 6.5 10.5 13 8.5 25.5c11-1.5 16.5-8 18-20.5Z"
+          strokeWidth={1.9}
+          {...stroke}
+        />
+        <Path d="M6 28c5.5-8 11-13.5 19-20" strokeWidth={1.5} {...stroke} opacity={0.75} />
       </Svg>
     );
   }

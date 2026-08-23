@@ -20,12 +20,15 @@ import Animated, {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
+import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
+  deleteTask,
   getScheduledTaskCounts,
   getScheduledTasks,
   getTimeBlocks,
   getUnscheduledTasks,
+  rolloverOverdueTasks,
   setTaskDone,
   updateTask,
   type TaskWithBreadcrumb,
@@ -41,9 +44,11 @@ import {
   Checkbox,
   ChevronIcon,
   Chip,
+  DotsIcon,
   DreamIcon,
   HintRow,
   IconButton,
+  ListItem,
   MilestoneIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -246,6 +251,7 @@ function SectionToggleHeader({
   index,
   label,
   onToggle,
+  time,
 }: {
   count: number;
   expanded: boolean;
@@ -255,6 +261,8 @@ function SectionToggleHeader({
   index: number;
   label: string;
   onToggle: () => void;
+  /** Block start time ("13:00"); omitted for the flexible block. */
+  time?: string | null;
 }) {
   const dropHighlightStyle = useAnimatedStyle(() => ({
     opacity: hoveredSection.value === index ? 1 : 0,
@@ -280,6 +288,11 @@ function SectionToggleHeader({
         {count} {count === 1 ? "task" : "tasks"}
       </AppText>
       <View style={styles.sectionToggleSpacer} />
+      {time ? (
+        <AppText color={colors.textSecondary} variant="bodySmall">
+          {time}
+        </AppText>
+      ) : null}
       <ChevronIcon
         color={colors.textSecondary}
         direction={expanded ? "up" : "down"}
@@ -302,6 +315,7 @@ function SectionToggleHeader({
 function TaskItemCard({
   dragGesture,
   dragging,
+  onOpenMenu,
   onOpenSchedule,
   onToggleDone,
   showTime = false,
@@ -309,6 +323,7 @@ function TaskItemCard({
 }: {
   dragGesture: PanGesture;
   dragging: boolean;
+  onOpenMenu: () => void;
   onOpenSchedule: () => void;
   onToggleDone: () => void;
   showTime?: boolean;
@@ -346,6 +361,18 @@ function TaskItemCard({
             shape="circle"
             size={44}
           />
+          <Pressable
+            accessibilityLabel="Task options"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={onOpenMenu}
+            style={({ pressed: isPressed }) => [
+              styles.taskMenuButton,
+              isPressed && pressed,
+            ]}
+          >
+            <DotsIcon color={colors.textSecondary} size={18} />
+          </Pressable>
         </View>
       </Card>
     </GestureDetector>
@@ -480,6 +507,8 @@ export default function SprintScreen() {
   const [scheduleTarget, setScheduleTarget] =
     useState<TaskWithBreadcrumb | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [moreVisible, setMoreVisible] = useState(false);
+  const [menuTask, setMenuTask] = useState<TaskWithBreadcrumb | null>(null);
   const [draggingTask, setDraggingTask] =
     useState<TaskWithBreadcrumb | null>(null);
 
@@ -516,6 +545,8 @@ export default function SprintScreen() {
 
   const loadBoard = useCallback(async () => {
     try {
+      // Undone tasks stuck on past weeks fall back into this week's backlog.
+      await rolloverOverdueTasks(toDateKey(startOfWeek(new Date())));
       const from = toDateKey(weekStart);
       const to = toDateKey(addDays(weekStart, 6));
       const [countMap, dayTasks, backlog, blockDefs] = await Promise.all([
@@ -583,7 +614,7 @@ export default function SprintScreen() {
       if (dayIndex >= 0) {
         const dateKey = toDateKey(addDays(weekStart, dayIndex));
         if (task.scheduledDate === dateKey) return;
-        await updateTask(task.id, { scheduledDate: dateKey });
+        await updateTask(task.id, { scheduledDate: dateKey, isPlanned: true });
         await loadBoard();
         return;
       }
@@ -593,7 +624,11 @@ export default function SprintScreen() {
       if (sectionIndex >= blocks.length) {
         setBacklogExpanded(true);
         if (task.scheduledDate === null) return;
-        await updateTask(task.id, { scheduledDate: null, scheduledTime: null });
+        await updateTask(task.id, {
+          scheduledDate: null,
+          scheduledTime: null,
+          isPlanned: true,
+        });
         await loadBoard();
         return;
       }
@@ -608,6 +643,7 @@ export default function SprintScreen() {
       await updateTask(task.id, {
         scheduledDate: selectedDate,
         scheduledTime: block.startTime,
+        isPlanned: true,
       });
       await loadBoard();
     } catch (cause) {
@@ -705,6 +741,7 @@ export default function SprintScreen() {
       await updateTask(scheduleTarget.id, {
         scheduledDate: date,
         scheduledTime: time,
+        isPlanned: true,
       });
       await loadBoard();
     } catch (cause) {
@@ -719,12 +756,56 @@ export default function SprintScreen() {
       await updateTask(scheduleTarget.id, {
         scheduledDate: null,
         scheduledTime: null,
+        isPlanned: true,
       });
       await loadBoard();
     } catch (cause) {
       console.error("Failed to unschedule the task", cause);
     }
     setScheduleTarget(null);
+  };
+
+  // ⋮ menu: drop the task off its day, back into the weekly backlog.
+  const handleUnscheduleFromMenu = async () => {
+    if (!menuTask) return;
+    setMenuTask(null);
+    try {
+      await updateTask(menuTask.id, {
+        scheduledDate: null,
+        scheduledTime: null,
+        isPlanned: true,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to unschedule the task", cause);
+    }
+  };
+
+  // ⋮ menu: take the task off the sprint board entirely (back to its quest).
+  const handleRemoveFromWeek = async () => {
+    if (!menuTask) return;
+    setMenuTask(null);
+    try {
+      await updateTask(menuTask.id, {
+        scheduledDate: null,
+        scheduledTime: null,
+        isPlanned: false,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to remove the task from the plan", cause);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!menuTask) return;
+    setMenuTask(null);
+    try {
+      await deleteTask(menuTask.id);
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to delete the task", cause);
+    }
   };
 
   const selectedHeading = new Date(
@@ -771,7 +852,11 @@ export default function SprintScreen() {
               Weekly Plan
             </AppText>
           }
-          leftAction={null}
+          leftAction={{
+            accessibilityLabel: "More options",
+            icon: <DotsIcon />,
+            onPress: () => setMoreVisible(true),
+          }}
           rightSlot={
             <IconButton
               accessibilityLabel="Open calendar"
@@ -837,6 +922,7 @@ export default function SprintScreen() {
                 index={blockIndex}
                 label={block.label}
                 onToggle={() => toggleBlock(block.key)}
+                time={block.startTime}
               />
               {expanded ? (
                 blockTasks.length > 0 ? (
@@ -845,6 +931,7 @@ export default function SprintScreen() {
                       dragGesture={dragGestures.get(task.id)!}
                       dragging={draggingTask?.id === task.id}
                       key={task.id}
+                      onOpenMenu={() => setMenuTask(task)}
                       onOpenSchedule={() => setScheduleTarget(task)}
                       onToggleDone={() => handleToggleDone(task)}
                       showTime
@@ -905,6 +992,7 @@ export default function SprintScreen() {
                 dragGesture={dragGestures.get(task.id)!}
                 dragging={draggingTask?.id === task.id}
                 key={task.id}
+                onOpenMenu={() => setMenuTask(task)}
                 onOpenSchedule={() => setScheduleTarget(task)}
                 onToggleDone={() => handleToggleDone(task)}
                 task={task}
@@ -926,6 +1014,42 @@ export default function SprintScreen() {
             )}
           </>
         ) : null}
+
+        <MoreMenuSheet
+          onClose={() => setMoreVisible(false)}
+          onImported={loadBoard}
+          visible={moreVisible}
+        />
+
+        <AppModal
+          onClose={() => setMenuTask(null)}
+          variant="sheet"
+          visible={menuTask !== null}
+        >
+          <AppText numberOfLines={2} variant="cardTitle">
+            {menuTask?.title}
+          </AppText>
+          <View style={styles.taskMenu}>
+            {menuTask?.scheduledDate ? (
+              <ListItem
+                onPress={handleUnscheduleFromMenu}
+                subtitle="Back to Unscheduled this week"
+                title="Unschedule"
+              />
+            ) : null}
+            <ListItem
+              onPress={handleRemoveFromWeek}
+              subtitle="Task stays in its quest"
+              title="Remove from this week plan"
+            />
+            <ListItem
+              last
+              onPress={handleDeleteTask}
+              title="Delete"
+              titleColor={colors.danger}
+            />
+          </View>
+        </AppModal>
 
         <ScheduleModal
           onClose={() => setScheduleTarget(null)}
@@ -1151,6 +1275,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
+  },
+  taskMenu: {
+    marginTop: spacing.sm,
+  },
+  taskMenuButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 28,
   },
   taskMeta: {
     alignItems: "center",

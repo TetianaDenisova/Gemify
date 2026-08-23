@@ -94,6 +94,8 @@ export type Task = {
   scheduledDate: string | null;
   /** HH:MM, null = no fixed time. */
   scheduledTime: string | null;
+  /** True once the task was added to the weekly plan ("Do this week"). */
+  isPlanned: boolean;
   isDone: boolean;
   completedAt: string | null;
 };
@@ -109,6 +111,7 @@ export type TaskPatch = {
   title?: string;
   scheduledDate?: string | null;
   scheduledTime?: string | null;
+  isPlanned?: boolean;
 };
 
 /** Task plus its Dream / Milestone / Quest breadcrumb (sprint board rows). */

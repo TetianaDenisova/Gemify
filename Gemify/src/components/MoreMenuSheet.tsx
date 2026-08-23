@@ -78,7 +78,6 @@ export function MoreMenuSheet({
   return (
     <>
       <AppModal onClose={onClose} variant="sheet" visible={visible}>
-        <AppText variant="cardTitle">More</AppText>
         <View style={styles.menu}>
           <ListItem onPress={handleExport} title="Export data" />
           <ListItem

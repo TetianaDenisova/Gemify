@@ -8,7 +8,7 @@ import { TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import { TimeBlockSettingsModal } from "@/components/TimeBlockSettingsModal";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
-import { useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
+import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
 import { AppText, Card, ScreenHeader, ScreenScaffold } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { layout, spacing } from "@/theme/theme";
@@ -54,7 +54,8 @@ export default function MyDayScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
 
-  const [activeKey, setActiveKey] = useState("wake-up");
+  // No explicit selection yet → the block matching the clock right now.
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [blockSettingsOpen, setBlockSettingsOpen] = useState(false);
@@ -65,7 +66,9 @@ export default function MyDayScreen() {
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
 
-  const activeBlock = blocks.find((block) => block.key === activeKey) ?? blocks[0];
+  const resolvedActiveKey = activeKey ?? currentBlockKey(blocks, new Date());
+  const activeBlock =
+    blocks.find((block) => block.key === resolvedActiveKey) ?? blocks[0];
 
   return (
     <View style={styles.screen}>
@@ -96,7 +99,7 @@ export default function MyDayScreen() {
         />
 
         <TimeBlockTabs
-          activeKey={activeKey}
+          activeKey={activeBlock?.key ?? ""}
           blocks={blocks}
           onSelect={setActiveKey}
           style={compact ? styles.tabsCompact : styles.tabs}

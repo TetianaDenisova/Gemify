@@ -67,6 +67,7 @@ export {
   getTasksByDream,
   getTasksByQuest,
   getUnscheduledTasks,
+  rolloverOverdueTasks,
   setTaskDone,
   updateTask,
 } from "./tasksRepository";

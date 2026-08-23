@@ -1,20 +1,18 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
-import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
 import type { DreamSummary } from "@/db";
+import type { ActionIcon } from "@/dto/timeBlocks";
 import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
+import { habitTimeLabel, useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
   AppText,
   Card,
-  DotsIcon,
-  IconButton,
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
@@ -28,6 +26,16 @@ function greetingForNow(now: Date): string {
   if (hour < 18) return "Good afternoon ✦";
   return "Good evening ✦";
 }
+
+/** Dream-magic icon variety for habit rows, stable per habit id. */
+const HABIT_ICONS: readonly ActionIcon[] = [
+  "moon",
+  "crystal",
+  "feather",
+  "star",
+  "wand",
+  "key",
+];
 
 const GOAL_VISUALS: readonly {
   themeColor: ThemeColor;
@@ -51,44 +59,63 @@ function toGoal(dream: DreamSummary, index: number): Goal {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [moreVisible, setMoreVisible] = useState(false);
   const today = todayKey();
-  const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
-  const {
-    blocks,
-    totalTasks,
-    completedTasks,
-    toggleTask,
-    refresh: refreshDay,
-  } = useDayTaskBlocks(today);
+  const { dreams, loading } = useDreamSummaries();
+  const { blocks, totalTasks, completedTasks, toggleTask } =
+    useDayTaskBlocks(today);
+
+  const { habits: habitViews, setCompletion } = useHabitWeek();
 
   // Current focus = the sprint tasks scheduled into the time block that
-  // matches the clock right now.
+  // matches the clock right now, plus today's Anytime (flexible) tasks and
+  // today's habits — always shown, ordered after the timed tasks.
   const focusKey = currentBlockKey(blocks, new Date());
-  const currentBlock =
+  const focusBlock =
     blocks.find((block) => block.key === focusKey) ?? blocks[0];
+  const flexibleBlock = blocks.find((block) => block.time === "Flexible");
+
+  // Monday-first index of today, matching the habit week arrays.
+  const habitDayIndex = (new Date().getDay() + 6) % 7;
+  const habitActions = habitViews
+    .filter(
+      (view) =>
+        view.scheduleDays.length === 0 ||
+        view.scheduleDays.includes(habitDayIndex),
+    )
+    .map((view) => ({
+      done: view.weekProgress[habitDayIndex] === "done",
+      habitId: view.habit.id,
+      icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
+      subtitle: habitTimeLabel(view.habit.timeOfDay),
+      title: view.habit.title,
+    }));
+
+  const taskActions = focusBlock
+    ? flexibleBlock && flexibleBlock.key !== focusBlock.key
+      ? [...focusBlock.actions, ...flexibleBlock.actions]
+      : focusBlock.actions
+    : [];
+  const currentBlock = focusBlock
+    ? { ...focusBlock, actions: [...taskActions, ...habitActions] }
+    : focusBlock;
+
+  // Today's progress counts the sprint tasks plus today's planned habits.
+  const habitsDone = habitActions.filter((action) => action.done).length;
+  const totalActions = totalTasks + habitActions.length;
+  const completedActions = completedTasks + habitsDone;
 
   return (
     <ScreenScaffold
       footer={
         <TodayProgressCard
-          completedActions={completedTasks}
-          totalActions={totalTasks}
+          completedActions={completedActions}
+          totalActions={totalActions}
         />
       }
       tabClearance
       topInset
     >
-      <HomeHeader
-        action={
-          <IconButton
-            accessibilityLabel="More options"
-            icon={<DotsIcon />}
-            onPress={() => setMoreVisible(true)}
-          />
-        }
-        greeting={greetingForNow(new Date())}
-      />
+      <HomeHeader greeting={greetingForNow(new Date())} />
 
       <SectionHeader
         action={{
@@ -144,7 +171,12 @@ export default function HomeScreen() {
           block={currentBlock}
           onToggleAction={(index) => {
             const action = currentBlock.actions[index];
-            if (action) toggleTask(action.taskId, !action.done);
+            if (!action) return;
+            if ("taskId" in action) {
+              toggleTask(action.taskId, !action.done);
+            } else {
+              setCompletion(action.habitId, today, action.done ? null : "done");
+            }
           }}
           showHeader={false}
           showIntro={false}
@@ -165,15 +197,6 @@ export default function HomeScreen() {
           </View>
         </Card>
       )}
-
-      <MoreMenuSheet
-        onClose={() => setMoreVisible(false)}
-        onImported={() => {
-          refreshDreams();
-          refreshDay();
-        }}
-        visible={moreVisible}
-      />
     </ScreenScaffold>
   );
 }

@@ -7,6 +7,7 @@ type TaskRow = {
   title: string;
   scheduled_date: string | null;
   scheduled_time: string | null;
+  is_planned: number;
   is_done: number;
   completed_at: string | null;
 };
@@ -18,13 +19,14 @@ type TaskBreadcrumbRow = TaskRow & {
 };
 
 const SELECT_TASK = `
-  SELECT id, quest_id, title, scheduled_date, scheduled_time, is_done, completed_at
+  SELECT id, quest_id, title, scheduled_date, scheduled_time, is_planned,
+         is_done, completed_at
   FROM tasks
 `;
 
 const SELECT_TASK_WITH_BREADCRUMB = `
   SELECT t.id, t.quest_id, t.title, t.scheduled_date, t.scheduled_time,
-         t.is_done, t.completed_at,
+         t.is_planned, t.is_done, t.completed_at,
          q.title AS quest_title, m.title AS milestone_title, d.title AS dream_title
   FROM tasks t
   JOIN quests q ON q.id = t.quest_id
@@ -39,6 +41,7 @@ function toTask(row: TaskRow): Task {
     title: row.title,
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time,
+    isPlanned: row.is_planned === 1,
     isDone: row.is_done === 1,
     completedAt: row.completed_at,
   };
@@ -67,7 +70,7 @@ export async function getTasksByDream(dreamId: number): Promise<Task[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TaskRow>(
     `SELECT t.id, t.quest_id, t.title, t.scheduled_date, t.scheduled_time,
-            t.is_done, t.completed_at
+            t.is_planned, t.is_done, t.completed_at
      FROM tasks t
      JOIN quests q ON q.id = t.quest_id
      JOIN milestones m ON m.id = q.milestone_id
@@ -100,12 +103,12 @@ export async function getScheduledTasks(
   return rows.map(toTaskWithBreadcrumb);
 }
 
-/** Sprint board: not-yet-scheduled tasks, grouped by the caller. */
+/** Sprint backlog: tasks added to the weekly plan but not put on a day yet. */
 export async function getUnscheduledTasks(): Promise<TaskWithBreadcrumb[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TaskBreadcrumbRow>(
     `${SELECT_TASK_WITH_BREADCRUMB}
-     WHERE t.scheduled_date IS NULL
+     WHERE t.scheduled_date IS NULL AND t.is_planned = 1
      ORDER BY d.id, m.sequence_number, q.id, t.id`,
   );
   return rows.map(toTaskWithBreadcrumb);
@@ -134,14 +137,17 @@ export async function createTask(input: NewTask): Promise<Task> {
   }
 
   const db = await getDatabase();
+  // A task born with a date is planned; a bare quest task joins the weekly
+  // plan later, via "Do this week".
   const inserted = await db.runAsync(
-    `INSERT INTO tasks (quest_id, title, scheduled_date, scheduled_time)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO tasks (quest_id, title, scheduled_date, scheduled_time, is_planned)
+     VALUES (?, ?, ?, ?, ?)`,
     [
       input.questId,
       title,
       input.scheduledDate ?? null,
       input.scheduledTime ?? null,
+      input.scheduledDate ? 1 : 0,
     ],
   );
 
@@ -158,7 +164,7 @@ export async function updateTask(
   patch: TaskPatch,
 ): Promise<Task | null> {
   const assignments: string[] = [];
-  const params: (string | null)[] = [];
+  const params: (string | number | null)[] = [];
 
   if (patch.title !== undefined) {
     const title = patch.title.trim();
@@ -175,6 +181,10 @@ export async function updateTask(
   if (patch.scheduledTime !== undefined) {
     assignments.push("scheduled_time = ?");
     params.push(patch.scheduledTime);
+  }
+  if (patch.isPlanned !== undefined) {
+    assignments.push("is_planned = ?");
+    params.push(patch.isPlanned ? 1 : 0);
   }
 
   if (assignments.length > 0) {
@@ -209,4 +219,20 @@ export async function deleteTask(id: number): Promise<boolean> {
   const db = await getDatabase();
   const result = await db.runAsync("DELETE FROM tasks WHERE id = ?", [id]);
   return result.changes > 0;
+}
+
+/**
+ * Week rollover: tasks scheduled before `beforeDate` (normally the current
+ * week's Monday) that were never done go back to the unscheduled backlog, so
+ * they show up under "Unscheduled this week" instead of silently staying on
+ * past days. Returns how many tasks were moved.
+ */
+export async function rolloverOverdueTasks(beforeDate: string): Promise<number> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `UPDATE tasks SET scheduled_date = NULL, scheduled_time = NULL, is_planned = 1
+     WHERE is_done = 0 AND scheduled_date IS NOT NULL AND scheduled_date < ?`,
+    [beforeDate],
+  );
+  return result.changes;
 }

@@ -68,7 +68,18 @@ type BackupUpgrade = {
  * imported into a newer app. When adding SQL migration N, append an entry
  * here that reshapes a version N-1 backup document into version N.
  */
-const backupUpgrades: BackupUpgrade[] = [];
+const backupUpgrades: BackupUpgrade[] = [
+  {
+    // v4 added tasks.is_planned; older backups predate the flag, so mirror
+    // the migration default (1 = keep every task visible on the board).
+    toVersion: 4,
+    up: (doc) => {
+      for (const row of doc.tables.tasks ?? []) {
+        if (row.is_planned === undefined) row.is_planned = 1;
+      }
+    },
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Export

@@ -61,7 +61,7 @@ import {
   shadowStyle,
   spacing,
 } from "@/theme/theme";
-import { toDateKey, todayKey } from "@/utils/dates";
+import { toDateKey } from "@/utils/dates";
 
 const TREE_MILESTONE_HEADER_SOURCE = require("../../data/images/tree-milestone-header.png");
 
@@ -826,15 +826,20 @@ export default function MilestoneQuestsScreen() {
     setPrompt(null);
   };
 
-  // "Do this week" drops the task on today, so it shows up on the sprint board.
+  // "Do this week" clears any date, so the task lands in the sprint board's
+  // "Unscheduled this week" backlog to be planned onto a day from there.
   const handleDoThisWeek = async () => {
     if (!menuTask) return;
     setMenuTask(null);
     try {
-      await updateTask(menuTask.id, { scheduledDate: todayKey() });
+      await updateTask(menuTask.id, {
+        scheduledDate: null,
+        scheduledTime: null,
+        isPlanned: true,
+      });
       await loadScreen();
     } catch (cause) {
-      console.error("Failed to schedule the task", cause);
+      console.error("Failed to move the task to the weekly backlog", cause);
     }
   };
 
@@ -842,7 +847,10 @@ export default function MilestoneQuestsScreen() {
     if (!scheduleTask) return;
     setScheduleTask(null);
     try {
-      await updateTask(scheduleTask.id, { scheduledDate: toDateKey(date) });
+      await updateTask(scheduleTask.id, {
+        scheduledDate: toDateKey(date),
+        isPlanned: true,
+      });
       await loadScreen();
     } catch (cause) {
       console.error("Failed to schedule the task", cause);
@@ -865,7 +873,9 @@ export default function MilestoneQuestsScreen() {
     try {
       const pending = entry.tasks.filter((task) => !task.scheduledDate);
       await Promise.all(
-        pending.map((task) => updateTask(task.id, { scheduledDate: date })),
+        pending.map((task) =>
+          updateTask(task.id, { scheduledDate: date, isPlanned: true }),
+        ),
       );
       await loadScreen();
     } catch (cause) {
@@ -873,10 +883,25 @@ export default function MilestoneQuestsScreen() {
     }
   };
 
+  // Quest-level "Do this week": every not-done task goes to the weekly backlog.
   const handleQuestDoThisWeek = async () => {
     if (!menuQuest) return;
     setMenuQuest(null);
-    await scheduleQuestTasks(menuQuest, todayKey());
+    try {
+      const pending = menuQuest.tasks.filter((task) => !task.isDone);
+      await Promise.all(
+        pending.map((task) =>
+          updateTask(task.id, {
+            scheduledDate: null,
+            scheduledTime: null,
+            isPlanned: true,
+          }),
+        ),
+      );
+      await loadScreen();
+    } catch (cause) {
+      console.error("Failed to move the quest to the weekly backlog", cause);
+    }
   };
 
   const handleQuestScheduleDate = async (date: Date) => {

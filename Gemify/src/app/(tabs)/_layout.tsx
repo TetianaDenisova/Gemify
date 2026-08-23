@@ -131,17 +131,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="sprint"
-        options={{
-          headerShown: false,
-          tabBarLabel: "Weekly Plan",
-          title: "Weekly Plan",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="sprint" />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="habits"
         options={{
           headerShown: false,
@@ -149,6 +138,17 @@ export default function TabLayout() {
           title: "Habits",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} tab="habits" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="sprint"
+        options={{
+          headerShown: false,
+          tabBarLabel: "Weekly Plan",
+          title: "Weekly Plan",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} tab="sprint" />
           ),
         }}
       />

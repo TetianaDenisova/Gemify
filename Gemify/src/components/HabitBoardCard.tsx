@@ -228,12 +228,14 @@ export function HabitBoardRow({
       onPress={onPress}
       style={({ pressed: isPressed }) => [containerStyle, isPressed && pressed]}
     >
+      {/* Day cells stay tappable even collapsed, so a tap on a circle
+          toggles that day instead of just expanding the row. */}
       <HabitItemRow
         activeDayIndex={activeDayIndex}
         compact={compact}
         expanded={expanded}
         habit={habit}
-        onDayPress={expanded ? onDayPress : undefined}
+        onDayPress={onDayPress}
         trailing={trailing}
       />
       {expanded ? (

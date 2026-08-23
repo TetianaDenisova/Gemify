@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 
-import type { TimeBlock } from "@/dto/timeBlocks";
+import type { ActionIcon, TimeBlock } from "@/dto/timeBlocks";
 import {
   getScheduledTasks,
   getTimeBlocksForDate,
@@ -50,11 +50,21 @@ export function currentBlockKey(
   return key ?? blocks.find((block) => block.time === "Flexible")?.key ?? null;
 }
 
+/** Dream-magic icon variety for quest tasks, stable per task id. */
+const TASK_ICONS: readonly ActionIcon[] = [
+  "star",
+  "moon",
+  "crystal",
+  "wand",
+  "key",
+  "feather",
+];
+
 function toAction(task: TaskWithBreadcrumb): TaskBlockView["actions"][number] {
   return {
     done: task.isDone,
     dreamTitle: task.dreamTitle,
-    icon: "focus",
+    icon: TASK_ICONS[task.id % TASK_ICONS.length],
     milestoneTitle: task.milestoneTitle,
     subtitle: "",
     taskId: task.id,
