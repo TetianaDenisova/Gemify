@@ -241,6 +241,57 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Habits: the time of day now references a My Day time block. The legacy
+    // time_of_day column carries a CHECK for the old enum, so block keys live
+    // in a new column (old values are copied over; the UI resolves both).
+    // Also: the "Make It Easy" / "bad day" detail checkboxes persist per
+    // section per day, backing the half-filled day circle.
+    toVersion: 5,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE habits ADD COLUMN time_block_key TEXT;
+        UPDATE habits SET time_block_key = time_of_day
+          WHERE time_of_day IS NOT NULL;
+
+        CREATE TABLE IF NOT EXISTS habit_detail_checks (
+          id       INTEGER PRIMARY KEY AUTOINCREMENT,
+          habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+          section  TEXT NOT NULL CHECK (section IN ('easy_start', 'easy_version')),
+          date     TEXT NOT NULL CHECK (date(date) IS NOT NULL),
+          UNIQUE (habit_id, section, date)
+        );
+        CREATE INDEX IF NOT EXISTS idx_habit_detail_checks
+          ON habit_detail_checks (habit_id, date);
+      `);
+    },
+  },
+  {
+    // Legacy habit time-of-day values map onto the seeded My Day blocks, so
+    // pre-migration habits pre-select a block in the edit form's Time of day
+    // dropdown ("evening" already matches the seeded block key). Skipped when
+    // the target block was deleted; the display fallback still covers those.
+    toVersion: 6,
+    up: async (db) => {
+      await db.execAsync(`
+        UPDATE habits SET time_block_key =
+          COALESCE((SELECT key FROM time_blocks WHERE key = 'wake-up'), time_block_key)
+          WHERE time_block_key = 'morning';
+        UPDATE habits SET time_block_key =
+          COALESCE((SELECT key FROM time_blocks WHERE key = 'day'), time_block_key)
+          WHERE time_block_key = 'after_lunch';
+      `);
+    },
+  },
+  {
+    // Dreams: an attached vision image ("See your dream" step), stored the
+    // same way as memory photos — the file is copied into app storage and its
+    // durable URI lives here.
+    toVersion: 7,
+    up: async (db) => {
+      await db.execAsync("ALTER TABLE dreams ADD COLUMN photo_uri TEXT;");
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

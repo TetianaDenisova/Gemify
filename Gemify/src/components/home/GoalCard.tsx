@@ -37,7 +37,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
     >
       <Image
-        source={goalImages[goal.imageKey]}
+        source={goal.photoUri ? { uri: goal.photoUri } : goalImages[goal.imageKey]}
         style={styles.backgroundImage}
         contentFit="cover"
         transition={180}

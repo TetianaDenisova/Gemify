@@ -58,6 +58,10 @@ export default function RootLayout() {
           options={{ headerShown: true, headerTransparent: true }}
         />
         <Stack.Screen
+          name="see-dream"
+          options={{ headerShown: true, headerTransparent: true }}
+        />
+        <Stack.Screen
           name="state"
           options={{ headerShown: true, headerTransparent: true }}
         />

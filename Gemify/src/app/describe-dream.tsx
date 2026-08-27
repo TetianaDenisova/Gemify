@@ -97,7 +97,7 @@ export default function DescribeDreamScreen() {
             label="Continue"
             onPress={() =>
               router.navigate({
-                pathname: "/state",
+                pathname: "/see-dream",
                 params: { name: name ?? "", description: description.trim() },
               })
             }

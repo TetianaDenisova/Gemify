@@ -1,24 +1,30 @@
-import { useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
-import type { DreamSummary } from "@/db";
+import { rolloverOverdueTasks, type DreamSummary } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
 import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
-import { habitTimeLabel, useHabitWeek } from "@/hooks/useHabitWeek";
+import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
   AppText,
+  ArrowRightIcon,
   Card,
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
 } from "@/shared/components";
-import { spacing } from "@/theme/theme";
+import { colors } from "@/theme/colors";
+import { controls, radius, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
+
+const NEXT_MOVE_ART = require("../../../assets/images/star_mountain.png");
 
 function greetingForNow(now: Date): string {
   const hour = now.getHours();
@@ -53,6 +59,7 @@ function toGoal(dream: DreamSummary, index: number): Goal {
     id: String(dream.id),
     title: dream.title,
     progressPercent: dream.progressPercent,
+    photoUri: dream.photoUri,
     ...visuals,
   };
 }
@@ -65,6 +72,17 @@ export default function HomeScreen() {
     useDayTaskBlocks(today);
 
   const { habits: habitViews, setCompletion } = useHabitWeek();
+
+  // Tasks scheduled before today that never got done roll back into the
+  // weekly backlog, so yesterday's leftovers wait under "Unscheduled this
+  // week" on the Weekly Plan instead of silently staying on past days.
+  useFocusEffect(
+    useCallback(() => {
+      rolloverOverdueTasks(today).catch((cause: unknown) => {
+        console.error("Failed to roll over overdue tasks", cause);
+      });
+    }, [today]),
+  );
 
   // Current focus = the sprint tasks scheduled into the time block that
   // matches the clock right now, plus today's Anytime (flexible) tasks and
@@ -86,7 +104,7 @@ export default function HomeScreen() {
       done: view.weekProgress[habitDayIndex] === "done",
       habitId: view.habit.id,
       icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
-      subtitle: habitTimeLabel(view.habit.timeOfDay),
+      subtitle: view.timeLabel,
       title: view.habit.title,
     }));
 
@@ -183,18 +201,34 @@ export default function HomeScreen() {
           style={styles.currentBlock}
         />
       ) : (
-        <Card style={styles.currentBlock}>
-          <AppText align="center" variant="bodySmall">
-            Nothing scheduled for right now. Plan tasks in the Sprint tab and
-            your current focus will appear here.
-          </AppText>
-          <View style={styles.emptyButton}>
-            <AppButton
-              label="Open Weekly Plan"
-              onPress={() => router.push("/sprint")}
-              variant="secondary"
-            />
+        <Card style={[styles.currentBlock, styles.nextMoveCard]}>
+          <Image
+            contentFit="cover"
+            source={NEXT_MOVE_ART}
+            style={styles.nextMoveArt}
+          />
+          <View style={styles.nextMoveCopy}>
+            <AppText variant="titleSm">
+              Your next move is waiting{" "}
+              <AppText color={colors.primary} variant="titleSm">
+                ✦
+              </AppText>
+            </AppText>
+            <AppText
+              color={colors.textSecondary}
+              style={styles.nextMoveSubtitle}
+              variant="body"
+            >
+              Choose a few actions to move your goal forward.
+            </AppText>
           </View>
+          <AppButton
+            icon={<ArrowRightIcon size={20} />}
+            label="Plan my week"
+            onPress={() => router.push("/sprint")}
+            style={styles.nextMoveButton}
+            variant="secondary"
+          />
         </Card>
       )}
     </ScreenScaffold>
@@ -219,5 +253,29 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
+  },
+  /** Star-compass art on the left of the empty current-focus card. */
+  nextMoveArt: {
+    borderRadius: radius.md,
+    height: controls.iconFrame.sm,
+    width: controls.iconFrame.sm,
+  },
+  nextMoveButton: {
+    backgroundColor: colors.transparent,
+    borderRadius: radius.round,
+  },
+  nextMoveCard: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  nextMoveCopy: {
+    flex: 1,
+    minWidth: 200,
+  },
+  nextMoveSubtitle: {
+    marginTop: spacing.xs,
   },
 });

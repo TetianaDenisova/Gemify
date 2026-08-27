@@ -18,8 +18,12 @@ type HabitRow = {
   is_archived: number;
 };
 
+// time_block_key holds the habit's time of day (a My Day block key); the
+// legacy time_of_day column only backfills rows created before migration 5.
 const SELECT_HABIT = `
-  SELECT id, dream_id, title, cue, time_of_day, goal_days, is_archived
+  SELECT id, dream_id, title, cue,
+         COALESCE(time_block_key, time_of_day) AS time_of_day,
+         goal_days, is_archived
   FROM habits
 `;
 
@@ -50,7 +54,7 @@ export async function createHabit(input: NewHabit): Promise<Habit> {
 
   await db.withTransactionAsync(async () => {
     const inserted = await db.runAsync(
-      `INSERT INTO habits (dream_id, title, cue, time_of_day, goal_days)
+      `INSERT INTO habits (dream_id, title, cue, time_block_key, goal_days)
        VALUES (?, ?, ?, ?, ?)`,
       [
         input.dreamId,
@@ -122,6 +126,10 @@ export async function updateHabit(
   const assignments: string[] = [];
   const params: (string | number | null)[] = [];
 
+  if (patch.dreamId !== undefined) {
+    assignments.push("dream_id = ?");
+    params.push(patch.dreamId);
+  }
   if (patch.title !== undefined) {
     const title = patch.title.trim();
     if (!title) {
@@ -135,7 +143,7 @@ export async function updateHabit(
     params.push(patch.cue?.trim() || null);
   }
   if (patch.timeOfDay !== undefined) {
-    assignments.push("time_of_day = ?");
+    assignments.push("time_block_key = ?");
     params.push(patch.timeOfDay);
   }
   if (patch.goalDays !== undefined) {
@@ -223,6 +231,45 @@ export async function setHabitDetails(
       );
     }
   });
+}
+
+/**
+ * Detail sections ("Make It Easy" / "bad day") the user ticked for a date.
+ * Each section carries its own check; the day circle shows "partial" while
+ * at least one is ticked.
+ */
+export async function getHabitDetailChecks(
+  habitId: number,
+  date: string,
+): Promise<HabitDetailEntry["section"][]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ section: HabitDetailEntry["section"] }>(
+    "SELECT section FROM habit_detail_checks WHERE habit_id = ? AND date = ?",
+    [habitId, date],
+  );
+  return rows.map((row) => row.section);
+}
+
+/** Ticks or unticks one detail section for a date (idempotent both ways). */
+export async function setHabitDetailCheck(
+  habitId: number,
+  section: HabitDetailEntry["section"],
+  date: string,
+  checked: boolean,
+): Promise<void> {
+  const db = await getDatabase();
+  if (checked) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO habit_detail_checks (habit_id, section, date)
+       VALUES (?, ?, ?)`,
+      [habitId, section, date],
+    );
+    return;
+  }
+  await db.runAsync(
+    "DELETE FROM habit_detail_checks WHERE habit_id = ? AND section = ? AND date = ?",
+    [habitId, section, date],
+  );
 }
 
 /**

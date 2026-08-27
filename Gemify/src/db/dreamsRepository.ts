@@ -10,11 +10,12 @@ type DreamRow = {
   seed_key: string | null;
   title: string;
   vision_statement: string | null;
+  photo_uri: string | null;
   is_archived: number;
 };
 
 const SELECT_DREAM = `
-  SELECT id, seed_key, title, vision_statement, is_archived
+  SELECT id, seed_key, title, vision_statement, photo_uri, is_archived
   FROM dreams
 `;
 
@@ -24,6 +25,7 @@ function toDream(row: DreamRow): Dream {
     seedKey: row.seed_key,
     title: row.title,
     visionStatement: row.vision_statement,
+    photoUri: row.photo_uri,
     isArchived: row.is_archived === 1,
   };
 }
@@ -44,8 +46,8 @@ export async function createDream(input: NewDream): Promise<Dream> {
 
   await db.withTransactionAsync(async () => {
     const inserted = await db.runAsync(
-      "INSERT INTO dreams (title, vision_statement) VALUES (?, ?)",
-      [title, input.visionStatement?.trim() || null],
+      "INSERT INTO dreams (title, vision_statement, photo_uri) VALUES (?, ?, ?)",
+      [title, input.visionStatement?.trim() || null, input.photoUri ?? null],
     );
     dreamId = inserted.lastInsertRowId;
 
@@ -120,7 +122,8 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
               END AS progress
        FROM milestones m
      )
-     SELECT d.id, d.seed_key, d.title, d.vision_statement, d.is_archived,
+     SELECT d.id, d.seed_key, d.title, d.vision_statement, d.photo_uri,
+            d.is_archived,
             COALESCE(
               (SELECT m.title FROM milestones m
                WHERE m.dream_id = d.id AND m.status = 'active'
@@ -182,6 +185,10 @@ export async function updateDream(
   if (patch.visionStatement !== undefined) {
     assignments.push("vision_statement = ?");
     params.push(patch.visionStatement?.trim() || null);
+  }
+  if (patch.photoUri !== undefined) {
+    assignments.push("photo_uri = ?");
+    params.push(patch.photoUri);
   }
   if (patch.isArchived !== undefined) {
     assignments.push("is_archived = ?");

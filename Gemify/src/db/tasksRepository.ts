@@ -222,10 +222,10 @@ export async function deleteTask(id: number): Promise<boolean> {
 }
 
 /**
- * Week rollover: tasks scheduled before `beforeDate` (normally the current
- * week's Monday) that were never done go back to the unscheduled backlog, so
- * they show up under "Unscheduled this week" instead of silently staying on
- * past days. Returns how many tasks were moved.
+ * Rollover: tasks scheduled before `beforeDate` (normally today, so
+ * yesterday's undone tasks are included) that were never done go back to the
+ * unscheduled backlog, showing up under "Unscheduled this week" instead of
+ * silently staying on past days. Returns how many tasks were moved.
  */
 export async function rolloverOverdueTasks(beforeDate: string): Promise<number> {
   const db = await getDatabase();

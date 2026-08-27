@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
-import { AppText, Card, CheckIcon, ChevronIcon } from "@/shared/components";
+import { AppText, Card, ChevronIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
   controls,
@@ -316,11 +316,6 @@ export function HabitProgress({
               {expanded ? day : day.toUpperCase()}
             </AppText>
             <DayStatus status={progress[index] ?? "missed"} />
-            {expanded && progress[index] === "done" ? (
-              <View style={styles.dayCheck}>
-                <CheckIcon color={colors.primaryBright} size={18} strokeWidth={2.4} />
-              </View>
-            ) : null}
           </Pressable>
         );
       })}
@@ -410,15 +405,6 @@ const styles = StyleSheet.create({
     borderColor: colors.accentVioletStrong,
     borderWidth: 1.2,
     ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.62, radius: 14 }),
-  },
-  dayCheck: {
-    alignItems: "center",
-    height: 30,
-    justifyContent: "center",
-    pointerEvents: "none",
-    position: "absolute",
-    top: 40,
-    width: 30,
   },
   dayCountCompact: {
     fontSize: fontSizes.md,

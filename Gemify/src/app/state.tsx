@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { createDream } from "@/db";
+import { persistMemoryPhoto } from "@/utils/memoryPhotos";
 import {
   AppInput,
   AppText,
@@ -60,9 +61,10 @@ export default function StateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { name, description } = useLocalSearchParams<{
+  const { name, description, photoUri } = useLocalSearchParams<{
     name?: string;
     description?: string;
+    photoUri?: string;
   }>();
   const [customState, setCustomState] = useState("");
   const [saving, setSaving] = useState(false);
@@ -75,9 +77,13 @@ export default function StateScreen() {
     setSaving(true);
     setSaveError(null);
     try {
+      // The vision image still lives in the picker cache — copy it into
+      // permanent app storage (same treatment as memory photos).
+      const storedPhoto = photoUri ? await persistMemoryPhoto(photoUri) : null;
       const dream = await createDream({
         title: name?.trim() || "My dream",
         visionStatement: description?.trim() || null,
+        photoUri: storedPhoto,
         feelingStates: selected,
       });
       router.dismissAll();

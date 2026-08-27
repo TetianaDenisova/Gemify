@@ -545,8 +545,9 @@ export default function SprintScreen() {
 
   const loadBoard = useCallback(async () => {
     try {
-      // Undone tasks stuck on past weeks fall back into this week's backlog.
-      await rolloverOverdueTasks(toDateKey(startOfWeek(new Date())));
+      // Undone tasks stuck on past days (yesterday included) fall back into
+      // the "Unscheduled this week" backlog.
+      await rolloverOverdueTasks(todayKey());
       const from = toDateKey(weekStart);
       const to = toDateKey(addDays(weekStart, 6));
       const [countMap, dayTasks, backlog, blockDefs] = await Promise.all([

@@ -105,20 +105,6 @@ function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: stri
   );
 }
 
-function MenuIcon() {
-  return (
-    <Svg height={27} viewBox="0 0 24 24" width={27}>
-      <Path
-        d="M5 7h14M5 12h14M5 17h14"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
 function DotsGlyph({ color = colors.textSecondary, size = 20 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -489,11 +475,9 @@ export default function MemoriesScreen() {
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
       <View style={[styles.header, compact && styles.headerCompact]}>
-        <IconButton
-          accessibilityLabel="Open menu"
-          icon={<MenuIcon />}
-          onPress={() => {}}
-          size={compact ? "sm" : "md"}
+        {/* Spacer with the add-button's footprint keeps the title centred. */}
+        <View
+          style={compact ? styles.headerSpacerCompact : styles.headerSpacer}
         />
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
           <AppText
@@ -1076,6 +1060,12 @@ const styles = StyleSheet.create({
   },
   headerCompact: {
     minHeight: 72,
+  },
+  headerSpacer: {
+    width: 56,
+  },
+  headerSpacerCompact: {
+    width: 48,
   },
   lockBubble: {
     alignItems: "center",

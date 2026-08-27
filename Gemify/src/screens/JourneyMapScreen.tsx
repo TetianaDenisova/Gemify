@@ -64,6 +64,7 @@ import {
   IconButton,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
+import { deleteMemoryPhotos } from "@/utils/memoryPhotos";
 import {
   fontSizes,
   gradients,
@@ -1121,6 +1122,9 @@ export function GoalJourneyMapScreen() {
     if (!dream) return;
     try {
       await deleteDream(dream.id);
+      if (dream.photoUri) {
+        await deleteMemoryPhotos([dream.photoUri]);
+      }
       router.back();
     } catch (cause) {
       console.error("Failed to delete the dream", cause);

@@ -4,17 +4,21 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { HabitCompletion } from "@/components/HabitItem";
 import {
   getHabitCompletions,
+  getHabitDetailChecks,
   getHabitDetails,
   getHabitDoneCount,
   getHabits,
   getHabitsByDream,
   getHabitScheduleDays,
+  getTimeBlocks,
   setHabitCompletion,
   type Habit,
   type HabitCompletionStatus,
   type HabitDetailEntry,
+  type HabitDetailSection,
+  type TimeBlockRecord,
 } from "@/db";
-import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
+import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 
 export type HabitWeekView = {
   habit: Habit;
@@ -25,6 +29,10 @@ export type HabitWeekView = {
   /** Status per current-week day, Monday first; no record = "open". */
   weekProgress: HabitCompletion[];
   details: HabitDetailEntry[];
+  /** Display label of the habit's time-of-day block ("Anytime" when unset). */
+  timeLabel: string;
+  /** Detail sections ticked today ("Make It Easy" / "bad day" checkboxes). */
+  todayDetailChecks: HabitDetailSection[];
 };
 
 export type UseHabitWeekResult = {
@@ -62,17 +70,20 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
 
   const refresh = useCallback(async () => {
     try {
-      const list =
-        dreamId !== undefined ? await getHabitsByDream(dreamId) : await getHabits();
+      const [list, timeBlocks] = await Promise.all([
+        dreamId !== undefined ? getHabitsByDream(dreamId) : getHabits(),
+        getTimeBlocks(),
+      ]);
 
       const views = await Promise.all(
         list.map(async (habit): Promise<HabitWeekView> => {
-          const [scheduleDays, completions, doneCount, details] =
+          const [scheduleDays, completions, doneCount, details, todayChecks] =
             await Promise.all([
               getHabitScheduleDays(habit.id),
               getHabitCompletions(habit.id, weekDates[0], weekDates[6]),
               getHabitDoneCount(habit.id),
               getHabitDetails(habit.id),
+              getHabitDetailChecks(habit.id, todayKey()),
             ]);
           const statusByDate = new Map(
             completions.map((record) => [record.date, record.status]),
@@ -82,6 +93,8 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
             scheduleDays,
             doneCount,
             details,
+            timeLabel: habitTimeLabel(habit.timeOfDay, timeBlocks),
+            todayDetailChecks: todayChecks,
             weekProgress: weekDates.map(
               (date) => statusByDate.get(date) ?? "open",
             ),
@@ -132,8 +145,17 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
   return { habits, loading, error, weekDates, refresh, setCompletion };
 }
 
-/** Display label for a habit's time of day. */
-export function habitTimeLabel(timeOfDay: Habit["timeOfDay"]): string {
+/**
+ * Display label for a habit's time of day: the matching time block's label
+ * (habits and My Day share the `time_blocks` table), with a fallback for
+ * legacy enum values stored before the migration to block keys.
+ */
+export function habitTimeLabel(
+  timeOfDay: Habit["timeOfDay"],
+  blocks: readonly TimeBlockRecord[],
+): string {
+  const block = blocks.find((entry) => entry.key === timeOfDay);
+  if (block) return block.label;
   switch (timeOfDay) {
     case "morning":
       return "Morning";

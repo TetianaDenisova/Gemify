@@ -10,7 +10,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 import { HabitItemRow, type HabitCompletion } from "@/components/HabitItem";
 import type { HabitDetailSection as DbHabitDetailSection } from "@/db";
-import { habitTimeLabel, type HabitWeekView } from "@/hooks/useHabitWeek";
+import type { HabitWeekView } from "@/hooks/useHabitWeek";
 import { AppText, Checkbox } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -21,7 +21,11 @@ import {
 } from "@/theme/theme";
 
 export type BoardDetailSection = {
+  /** Rows with a checkbox toggle today's "partial" status; plan rows do not. */
+  checkable: boolean;
   icon: "sun" | "feather" | "shield";
+  /** The DB detail section backing this panel (check state is stored by it). */
+  key: DbHabitDetailSection;
   rows: readonly string[];
   title: string;
 };
@@ -40,29 +44,44 @@ export type BoardHabit = {
 
 const HABIT_ICON_CYCLE = ["workout", "water", "book", "meditate"] as const;
 
-const DETAIL_SECTION_META: Record<
-  DbHabitDetailSection,
-  { icon: BoardDetailSection["icon"]; title: string }
-> = {
-  easy_start: { icon: "sun", title: "How to make this habit easy to start" },
-  easy_version: { icon: "feather", title: "Easy version for a bad day" },
-  backup_plan: { icon: "shield", title: "Obstacles & backup plan" },
-};
-
 /** DB habit view → the row shape the habit board renders. */
 export function toBoardHabit(
   view: HabitWeekView,
   index: number,
   tint: string,
 ): BoardHabit {
-  const sections = (Object.keys(DETAIL_SECTION_META) as DbHabitDetailSection[])
-    .map((section) => ({
-      ...DETAIL_SECTION_META[section],
-      rows: view.details
-        .filter((entry) => entry.section === section)
-        .map((entry) => entry.content),
-    }))
-    .filter((section) => section.rows.length > 0);
+  const rowsFor = (...sections: string[]) =>
+    view.details
+      .filter((entry) => sections.includes(entry.section))
+      .map((entry) => entry.content);
+
+  // Three panels: the two ease helpers are checkable — ticking one marks
+  // today half-done — and the contingency plan is read-only. A section with
+  // no content stays hidden.
+  const allSections: BoardDetailSection[] = [
+    {
+      checkable: true,
+      icon: "sun",
+      key: "easy_start",
+      rows: rowsFor("easy_start"),
+      title: "Make It Easy",
+    },
+    {
+      checkable: true,
+      icon: "feather",
+      key: "easy_version",
+      rows: rowsFor("easy_version"),
+      title: "Easy version for a bad day",
+    },
+    {
+      checkable: false,
+      icon: "shield",
+      key: "backup_plan",
+      rows: rowsFor("backup_plan"),
+      title: "Obstacles & backup plan",
+    },
+  ];
+  const sections = allSections.filter((section) => section.rows.length > 0);
 
   return {
     accent: tint,
@@ -72,7 +91,7 @@ export function toBoardHabit(
     icon: HABIT_ICON_CYCLE[index % HABIT_ICON_CYCLE.length],
     id: view.habit.id,
     progress: view.weekProgress,
-    time: view.habit.cue || habitTimeLabel(view.habit.timeOfDay),
+    time: view.habit.cue || view.timeLabel,
     title: view.habit.title,
   };
 }
@@ -157,10 +176,16 @@ export function DetailIcon({
 }
 
 export function HabitDetailSectionView({
+  checked = false,
   compact,
+  onToggleRow,
   section,
 }: {
+  /** Whether this section's checkboxes show as ticked for today. */
+  checked?: boolean;
   compact: boolean;
+  /** Called when a checkable row is ticked/unticked. */
+  onToggleRow?: () => void;
   section: BoardDetailSection;
 }) {
   return (
@@ -178,7 +203,14 @@ export function HabitDetailSectionView({
         </AppText>
         {section.rows.map((row) => (
           <View key={row} style={[styles.detailRow, compact && styles.detailRowCompact]}>
-            <Checkbox checked={false} shape="square" />
+            {section.checkable ? (
+              <Checkbox
+                accessibilityLabel={`Mark today as a small step: ${row}`}
+                checked={checked}
+                onPress={onToggleRow}
+                shape="square"
+              />
+            ) : null}
             <AppText
               color={colors.textSecondary}
               style={[styles.detailText, compact && styles.detailTextCompact]}
@@ -201,22 +233,28 @@ export function HabitDetailSectionView({
  */
 export function HabitBoardRow({
   activeDayIndex,
+  checkedSections,
   compact,
   containerStyle,
   expanded,
   footer,
   habit,
   onDayPress,
+  onDetailToggle,
   onPress,
   trailing,
 }: {
   activeDayIndex: number;
+  /** Detail sections whose checkboxes show as ticked today. */
+  checkedSections?: readonly DbHabitDetailSection[];
   compact: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   expanded: boolean;
   footer?: ReactNode;
   habit: BoardHabit;
   onDayPress?: (dayIndex: number) => void;
+  /** Fired when a checkable section's checkbox is toggled. */
+  onDetailToggle?: (section: DbHabitDetailSection) => void;
   onPress: () => void;
   trailing?: ReactNode;
 }) {
@@ -242,8 +280,10 @@ export function HabitBoardRow({
         <View style={styles.detailPanel}>
           {habit.details.map((section) => (
             <HabitDetailSectionView
+              checked={checkedSections?.includes(section.key) ?? false}
               compact={compact}
-              key={section.title}
+              key={section.key}
+              onToggleRow={() => onDetailToggle?.(section.key)}
               section={section}
             />
           ))}

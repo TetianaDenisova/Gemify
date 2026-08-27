@@ -8,12 +8,15 @@ export type Dream = {
   seedKey: string | null;
   title: string;
   visionStatement: string | null;
+  /** Attached vision image (durable app-storage URI), null when skipped. */
+  photoUri: string | null;
   isArchived: boolean;
 };
 
 export type NewDream = {
   title: string;
   visionStatement?: string | null;
+  photoUri?: string | null;
   /** Up to three feeling-state labels; unknown labels are created on the fly. */
   feelingStates?: readonly string[];
 };
@@ -21,6 +24,7 @@ export type NewDream = {
 export type DreamPatch = {
   title?: string;
   visionStatement?: string | null;
+  photoUri?: string | null;
   isArchived?: boolean;
 };
 
@@ -125,7 +129,11 @@ export type TaskWithBreadcrumb = Task & {
 // Habits
 // ---------------------------------------------------------------------------
 
-export type HabitTimeOfDay = "morning" | "after_lunch" | "evening";
+/**
+ * A time-block key from the `time_blocks` table (the same blocks My Day
+ * shows). Legacy rows may still hold "morning" | "after_lunch" | "evening".
+ */
+export type HabitTimeOfDay = string;
 
 export type Habit = {
   id: number;
@@ -158,6 +166,7 @@ export type NewHabit = {
 };
 
 export type HabitPatch = {
+  dreamId?: number;
   title?: string;
   cue?: string | null;
   timeOfDay?: HabitTimeOfDay | null;

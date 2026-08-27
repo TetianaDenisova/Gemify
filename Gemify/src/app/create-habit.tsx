@@ -1,26 +1,33 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   createHabit,
   getDreams,
   getHabitById,
   getHabitDetails,
   getHabitScheduleDays,
+  getTimeBlocks,
   setHabitDetails,
   setHabitScheduleDays,
   updateHabit,
+  type Dream,
   type HabitDetailSection,
-  type HabitTimeOfDay,
+  type TimeBlockRecord,
 } from "@/db";
+import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
   AppInput,
   AppText,
+  Card,
+  ChevronIcon,
   Chip,
   CloseIcon,
+  ListItem,
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
@@ -29,7 +36,6 @@ import { colors } from "@/theme/colors";
 import { gradients, radius, shadowStyle, spacing } from "@/theme/theme";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const TIMES = ["Morning", "After lunch", "Evening"] as const;
 
 /** Feature-art tints for the step medallions (no violet-border tokens). */
 const ICON_HIGHLIGHT = "#F1B3FF";
@@ -38,7 +44,6 @@ const ICON_RING_INNER = "rgba(216, 138, 255, 0.68)";
 const ICON_RING_FILL = "rgba(32, 13, 54, 0.8)";
 
 type Day = (typeof DAYS)[number];
-type TimeOfDay = (typeof TIMES)[number];
 
 type StepIconName =
   | "calendar"
@@ -66,31 +71,31 @@ const textSteps: readonly FormStep[] = [
     title: "1. Habit name",
   },
   {
-    helper: "A short cue to remind you when to do this habit.",
+    helper: "Choose a moment in your routine that will trigger this habit.",
     icon: "chat",
     input: "cue",
-    placeholder: "After lunch",
-    title: "2. Cue or description",
+    placeholder: "After lunch, before work, during my commute…",
+    title: "2. When to do it",
   },
   {
     helper: "A short cue to remind you when to do this habit.",
     icon: "sprout",
     input: "easyStart",
     placeholder: "Put vegetables on the lunch plate before I start eating.",
-    title: "5. Make it easy to start",
+    title: "6. Make it easy to start",
   },
   {
     icon: "shield",
     input: "badDay",
     placeholder: "Eat just 1 vegetable serving.",
-    title: "6. Easy version for bad day",
+    title: "7. Easy version for bad day",
   },
   {
     icon: "shield",
     input: "backupPlan",
     multiline: true,
     placeholder: "If I don't have vegetables ready, I will add frozen vegetables or order a salad.",
-    title: "7. Obstacles & backup plan",
+    title: "8. Obstacles & backup plan",
   },
 ];
 
@@ -255,31 +260,69 @@ function Icon({ name, size = 31 }: { name: StepIconName; size?: number }) {
   );
 }
 
-function SunIcon({ muted = false }: { muted?: boolean }) {
-  const tint = muted ? colors.textMuted : colors.primary;
+type DropdownOption = {
+  icon?: ReactNode;
+  key: string;
+  label: string;
+};
+
+/**
+ * Tap-to-expand select: a field-like row showing the current choice; open, it
+ * lists the other options below (same pattern as the Memories goal picker).
+ */
+function DropdownField({
+  accessibilityLabel,
+  onSelect,
+  options,
+  placeholder,
+  selectedKey,
+}: {
+  accessibilityLabel: string;
+  onSelect: (key: string) => void;
+  options: readonly DropdownOption[];
+  placeholder: string;
+  selectedKey: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.key === selectedKey);
 
   return (
-    <Svg height={25} viewBox="0 0 32 32" width={25}>
-      <Circle cx={16} cy={16} fill={tint} r={4.5} />
-      <Path
-        d="M16 3v4M16 25v4M3 16h4M25 16h4M6.8 6.8l2.8 2.8M22.4 22.4l2.8 2.8M25.2 6.8l-2.8 2.8M9.6 22.4l-2.8 2.8"
-        fill="none"
-        stroke={tint}
-        strokeLinecap="round"
-        strokeWidth={2}
+    <Card padded={false} style={styles.dropdown} variant="glass">
+      <ListItem
+        accessibilityLabel={accessibilityLabel}
+        last
+        leading={selected?.icon}
+        onPress={() => setOpen((current) => !current)}
+        style={styles.dropdownRow}
+        title={selected?.label ?? placeholder}
+        titleColor={selected ? colors.textPrimary : colors.textMuted}
+        trailing={
+          <ChevronIcon
+            color={colors.textSecondary}
+            direction={open ? "up" : "down"}
+            size={18}
+          />
+        }
       />
-    </Svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <Svg height={25} viewBox="0 0 32 32" width={25}>
-      <Path
-        d="M23.5 21.7A10.5 10.5 0 0 1 10.3 8.5 10.5 10.5 0 1 0 23.5 21.7Z"
-        fill={colors.textMuted}
-      />
-    </Svg>
+      {open
+        ? options
+            .filter((option) => option.key !== selectedKey)
+            .map((option) => (
+              <ListItem
+                key={option.key}
+                last
+                leading={option.icon}
+                onPress={() => {
+                  onSelect(option.key);
+                  setOpen(false);
+                }}
+                style={styles.dropdownOption}
+                title={option.label}
+                titleColor={colors.textSecondary}
+              />
+            ))
+        : null}
+    </Card>
   );
 }
 
@@ -298,18 +341,6 @@ type FormValues = {
   cue: string;
   easyStart: string;
   habitName: string;
-};
-
-const TIME_OF_DAY_BY_LABEL: Record<TimeOfDay, HabitTimeOfDay> = {
-  Morning: "morning",
-  "After lunch": "after_lunch",
-  Evening: "evening",
-};
-
-const LABEL_BY_TIME_OF_DAY: Record<HabitTimeOfDay, TimeOfDay> = {
-  morning: "Morning",
-  after_lunch: "After lunch",
-  evening: "Evening",
 };
 
 const SECTION_BY_INPUT: Partial<Record<FormStep["input"], HabitDetailSection>> =
@@ -337,10 +368,47 @@ export default function CreateHabitScreen() {
   const [selectedDays, setSelectedDays] = useState<ReadonlySet<Day>>(
     () => new Set(),
   );
-  const [selectedTime, setSelectedTime] = useState<TimeOfDay>("Morning");
+  /** Time-block key ("morning-focus", "anytime", …), null = Anytime. */
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([]);
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const [selectedDreamId, setSelectedDreamId] = useState<number | null>(() => {
+    const parsed = Number(dreamIdParam);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  });
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // The dream list (a habit must attach to one) and the routine time blocks —
+  // the same blocks My Day is built from.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [dreamList, blocks] = await Promise.all([
+          getDreams(),
+          getTimeBlocks(),
+        ]);
+        if (cancelled) return;
+        setDreams(dreamList);
+        setTimeBlocks(blocks);
+        if (!isEditMode) {
+          setSelectedDreamId(
+            (current) => current ?? dreamList[0]?.id ?? null,
+          );
+          setSelectedTime((current) => current ?? blocks[0]?.key ?? null);
+        }
+      } catch (cause) {
+        console.error("Failed to load dreams and time blocks", cause);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode]);
 
   // Edit mode: prefill the form from the stored habit.
   useEffect(() => {
@@ -367,9 +435,8 @@ export default function CreateHabitScreen() {
           backupPlan: bySection.get("backup_plan") ?? "",
         });
         setSelectedDays(new Set(scheduleDays.map((weekday) => DAYS[weekday])));
-        if (habit.timeOfDay) {
-          setSelectedTime(LABEL_BY_TIME_OF_DAY[habit.timeOfDay]);
-        }
+        setSelectedDreamId(habit.dreamId);
+        setSelectedTime(habit.timeOfDay);
       } catch (cause) {
         console.error("Failed to load the habit", cause);
       }
@@ -396,6 +463,10 @@ export default function CreateHabitScreen() {
       setFormError("Pick at least one day.");
       return;
     }
+    if (selectedDreamId === null) {
+      setFormError("Create a dream first — habits live inside one.");
+      return;
+    }
 
     setSaving(true);
     setFormError(null);
@@ -407,28 +478,19 @@ export default function CreateHabitScreen() {
     try {
       if (isEditMode) {
         await updateHabit(editHabitId, {
+          dreamId: selectedDreamId,
           title: values.habitName,
           cue: values.cue || null,
-          timeOfDay: TIME_OF_DAY_BY_LABEL[selectedTime],
+          timeOfDay: selectedTime,
         });
         await setHabitScheduleDays(editHabitId, scheduleDays);
         await setHabitDetails(editHabitId, details());
       } else {
-        let dreamId = Number(dreamIdParam);
-        if (!Number.isFinite(dreamId) || dreamId <= 0) {
-          const [firstDream] = await getDreams();
-          if (!firstDream) {
-            setFormError("Create a dream first — habits live inside one.");
-            setSaving(false);
-            return;
-          }
-          dreamId = firstDream.id;
-        }
         await createHabit({
-          dreamId,
+          dreamId: selectedDreamId,
           title: values.habitName,
           cue: values.cue || null,
-          timeOfDay: TIME_OF_DAY_BY_LABEL[selectedTime],
+          timeOfDay: selectedTime,
           scheduleDays,
           details: details(),
         });
@@ -515,6 +577,36 @@ export default function CreateHabitScreen() {
         {renderTextStep(textSteps[1])}
 
         <View style={styles.formRow}>
+          <StepIcon name="leaf" />
+          <View style={styles.formMain}>
+            <AppText
+              color={colors.primary}
+              style={styles.stepLabel}
+              variant="subtitle"
+            >
+              3. Attach to a dream
+            </AppText>
+            <DropdownField
+              accessibilityLabel="Choose a dream"
+              onSelect={(key) => setSelectedDreamId(Number(key))}
+              options={dreams.map((dream) => ({
+                key: String(dream.id),
+                label: dream.title,
+              }))}
+              placeholder="Choose a dream"
+              selectedKey={
+                selectedDreamId === null ? null : String(selectedDreamId)
+              }
+            />
+            <AppText color={colors.textMuted} style={styles.helperText}>
+              {dreams.length > 0
+                ? "This habit will support the dream you pick."
+                : "Create a dream first — habits live inside one."}
+            </AppText>
+          </View>
+        </View>
+
+        <View style={styles.formRow}>
           <StepIcon name="calendar" />
           <View style={styles.formMain}>
             <AppText
@@ -522,7 +614,7 @@ export default function CreateHabitScreen() {
               style={styles.stepLabel}
               variant="subtitle"
             >
-              3. Frequency
+              4. Frequency
             </AppText>
             <View style={styles.dayGrid}>
               {DAYS.map((day) => (
@@ -549,26 +641,31 @@ export default function CreateHabitScreen() {
               style={styles.stepLabel}
               variant="subtitle"
             >
-              4. Reminder or time of day
+              5. Time of day
             </AppText>
-            <View style={styles.timeGrid}>
-              {TIMES.map((time) => (
-                <Chip
-                  icon={
-                    time === "Evening" ? (
-                      <MoonIcon />
-                    ) : (
-                      <SunIcon muted={selectedTime !== time} />
-                    )
-                  }
-                  key={time}
-                  label={time}
-                  onPress={() => setSelectedTime(time)}
-                  selected={selectedTime === time}
-                  style={styles.timeChip}
-                />
-              ))}
-            </View>
+            <DropdownField
+              accessibilityLabel="Choose a time of day"
+              onSelect={setSelectedTime}
+              options={timeBlocks.map((block) => ({
+                icon: (
+                  <BlockIconArt
+                    color={colors.primary}
+                    icon={block.iconKey as BlockIcon}
+                    size={20}
+                  />
+                ),
+                key: block.key,
+                label: block.startTime
+                  ? `${block.label} · ${block.startTime}`
+                  : block.label,
+              }))}
+              placeholder="Choose a time of day"
+              selectedKey={selectedTime}
+            />
+            <AppText color={colors.textMuted} style={styles.helperText}>
+              Your My Day time blocks — the habit will live in the one you
+              pick.
+            </AppText>
           </View>
         </View>
 
@@ -611,6 +708,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md,
+  },
+  dropdown: {
+    overflow: "hidden",
+  },
+  dropdownOption: {
+    borderTopColor: colors.borderSoft,
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.md,
+  },
+  dropdownRow: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   form: {
     borderTopColor: colors.borderSoft,
@@ -673,14 +782,5 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     marginBottom: spacing.sm,
-  },
-  timeChip: {
-    flex: 1,
-    minWidth: 180,
-  },
-  timeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
   },
 });

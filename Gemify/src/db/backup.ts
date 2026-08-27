@@ -25,6 +25,7 @@ const BACKUP_TABLES = [
   "habit_schedule_days",
   "habit_detail_entries",
   "habit_completions",
+  "habit_detail_checks",
   "time_blocks",
   "time_block_actions",
   "action_completions",
@@ -79,6 +80,47 @@ const backupUpgrades: BackupUpgrade[] = [
       }
     },
   },
+  {
+    // v5 moved habits.time_of_day into time_block_key (and added the per-day
+    // habit_detail_checks table, which is simply absent in older backups).
+    toVersion: 5,
+    up: (doc) => {
+      for (const row of doc.tables.habits ?? []) {
+        if (row.time_block_key === undefined) {
+          row.time_block_key = row.time_of_day ?? null;
+        }
+      }
+    },
+  },
+  {
+    // v6 mapped legacy time-of-day values onto the seeded My Day block keys
+    // (only when the backup actually carries that block).
+    toVersion: 6,
+    up: (doc) => {
+      const remap: Record<string, string> = {
+        morning: "wake-up",
+        after_lunch: "day",
+      };
+      const blockKeys = new Set(
+        (doc.tables.time_blocks ?? []).map((row) => row.key),
+      );
+      for (const row of doc.tables.habits ?? []) {
+        const key = row.time_block_key;
+        if (typeof key === "string" && remap[key] && blockKeys.has(remap[key])) {
+          row.time_block_key = remap[key];
+        }
+      }
+    },
+  },
+  {
+    // v7 added dreams.photo_uri; older backups have no vision image.
+    toVersion: 7,
+    up: (doc) => {
+      for (const row of doc.tables.dreams ?? []) {
+        if (row.photo_uri === undefined) row.photo_uri = null;
+      }
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -97,19 +139,29 @@ async function buildBackupDocument(): Promise<BackupDocument> {
   const photos: BackupDocument["photos"] = [];
   if (Platform.OS !== "web") {
     const { File } = await import("expo-file-system");
-    for (const row of tables.timeline_moment_photos) {
-      const uri = row.uri;
-      if (typeof uri !== "string" || !uri.startsWith("file:")) continue;
+    const embedPhoto = async (uri: unknown): Promise<string | null> => {
+      if (typeof uri !== "string" || !uri.startsWith("file:")) return null;
       try {
         const file = new File(uri);
-        if (!file.exists) continue;
+        if (!file.exists) return null;
         const name = uri.split("/").pop() ?? "";
-        if (!name) continue;
+        if (!name) return null;
         photos.push({ name, base64: await file.base64() });
-        row.uri = PHOTO_URI_PREFIX + name;
+        return PHOTO_URI_PREFIX + name;
       } catch {
-        // A photo that can't be read is dropped; the moment itself survives.
+        // A photo that can't be read is dropped; its owner row survives.
+        return null;
       }
+    };
+
+    for (const row of tables.timeline_moment_photos) {
+      const marker = await embedPhoto(row.uri);
+      if (marker) row.uri = marker;
+    }
+    // Dream vision images travel the same way as memory photos.
+    for (const row of tables.dreams) {
+      const marker = await embedPhoto(row.photo_uri);
+      if (marker) row.photo_uri = marker;
     }
   }
 
@@ -269,7 +321,9 @@ async function restoreBackup(document: BackupDocument): Promise<void> {
         const resolved =
           table === "timeline_moment_photos"
             ? resolvePhotoUri(row, photoUriByName)
-            : row;
+            : table === "dreams"
+              ? resolveDreamPhoto(row, photoUriByName)
+              : row;
         if (!resolved) continue;
 
         const columns = Object.keys(resolved).filter((column) =>
@@ -312,6 +366,20 @@ async function writePhotoFiles(
     }
   }
   return uriByName;
+}
+
+/**
+ * Swaps a dream's photo marker back to a real URI. A photo that failed to
+ * restore only clears the image — the dream row itself always survives.
+ */
+function resolveDreamPhoto(
+  row: Row,
+  photoUriByName: Map<string, string>,
+): Row {
+  const uri = row.photo_uri;
+  if (typeof uri !== "string" || !uri.startsWith(PHOTO_URI_PREFIX)) return row;
+  const restored = photoUriByName.get(uri.slice(PHOTO_URI_PREFIX.length));
+  return { ...row, photo_uri: restored ?? null };
 }
 
 /** Swaps the export-time photo marker back to a real file URI. */

@@ -1,14 +1,20 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { useCallback, useState } from "react";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import {
   HabitBoardRow,
   toBoardHabit,
   type BoardHabit,
 } from "@/components/HabitBoardCard";
-import { deleteHabit, getDreams, type Dream } from "@/db";
+import {
+  deleteHabit,
+  getDreams,
+  setHabitDetailCheck,
+  type Dream,
+  type HabitDetailSection,
+} from "@/db";
 import { useHabitWeek, type HabitWeekView } from "@/hooks/useHabitWeek";
 import {
   AppButton,
@@ -54,14 +60,46 @@ const GROUP_VISUAL_CYCLE = [
   { icon: "heart", tint: colors.primary },
 ] as const;
 
-function MenuIcon() {
+function GearIcon({ size = 25 }: { size?: number }) {
   return (
-    <Svg height={27} viewBox="0 0 24 24" width={27}>
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Circle cx={12} cy={12} fill="none" r={3.1} stroke={colors.primary} strokeWidth={1.6} />
       <Path
-        d="M5 7h14M5 12h14M5 17h14"
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
         fill="none"
         stroke={colors.primary}
         strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.6}
+      />
+    </Svg>
+  );
+}
+
+function PencilIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0 0-3l-1-1a2.1 2.1 0 0 0-3 0L4 16v4ZM13.5 6.5l4 4"
+        fill="none"
+        stroke={colors.primary}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.7}
+      />
+    </Svg>
+  );
+}
+
+function TrashIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4 7h16M9.5 4h5M6.5 7l.8 13h9.4l.8-13M10 11v5.5M14 11v5.5"
+        fill="none"
+        stroke={colors.danger}
+        strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth={1.7}
       />
     </Svg>
@@ -166,26 +204,27 @@ function GroupIcon({ icon, tint }: { icon: HabitGroup["icon"]; tint: string }) {
 
 function HabitRow({
   activeDayIndex,
+  checkedSections,
   compact,
   expanded,
   habit,
   onDayPress,
-  onDelete,
-  onEdit,
+  onDetailToggle,
   onPress,
 }: {
   activeDayIndex: number;
+  checkedSections: readonly HabitDetailSection[];
   compact: boolean;
   expanded: boolean;
   habit: Habit;
   onDayPress: (dayIndex: number) => void;
-  onDelete: () => void;
-  onEdit: () => void;
+  onDetailToggle: (section: HabitDetailSection) => void;
   onPress: () => void;
 }) {
   return (
     <HabitBoardRow
       activeDayIndex={activeDayIndex}
+      checkedSections={checkedSections}
       compact={compact}
       containerStyle={[
         styles.habitRow,
@@ -194,25 +233,9 @@ function HabitRow({
         expanded && compact && styles.habitRowExpandedCompact,
       ]}
       expanded={expanded}
-      footer={
-        <View style={styles.habitActionsRow}>
-          <AppButton
-            label="Edit"
-            onPress={onEdit}
-            style={styles.habitActionButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={onDelete}
-            style={[styles.habitActionButton, styles.habitDeleteButton]}
-            textStyle={styles.habitDeleteLabel}
-            variant="secondary"
-          />
-        </View>
-      }
       habit={habit}
       onDayPress={onDayPress}
+      onDetailToggle={onDetailToggle}
       onPress={onPress}
     />
   );
@@ -248,7 +271,11 @@ export default function HabitsScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
   const [expandedHabit, setExpandedHabit] = useState<number | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Habit | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const [dreams, setDreams] = useState<Dream[]>([]);
   const { habits: habitViews, refresh, setCompletion, weekDates } =
     useHabitWeek();
@@ -297,6 +324,44 @@ export default function HabitsScreen() {
     setCompletion(habit.id, date, current === "done" ? null : "done");
   }
 
+  // Sections ticked today, per habit — each section keeps its own check.
+  const checksByHabit = new Map(
+    habitViews.map((view) => [view.habit.id, view.todayDetailChecks]),
+  );
+
+  // Ticking "Make It Easy" or the bad-day version counts today as a small
+  // step: the day circle half-fills ("partial") while at least one section is
+  // ticked and clears back to open when the last one is unticked.
+  async function handleDetailToggle(habit: Habit, section: HabitDetailSection) {
+    const date = weekDates[activeDayIndex];
+    const checks = checksByHabit.get(habit.id) ?? [];
+    const nowChecked = !checks.includes(section);
+    const anyChecked =
+      nowChecked || checks.some((entry) => entry !== section);
+    const current = habit.progress[activeDayIndex];
+
+    try {
+      await setHabitDetailCheck(habit.id, section, date, nowChecked);
+      if (anyChecked && current !== "done") {
+        await setCompletion(habit.id, date, "partial");
+      } else if (!anyChecked && current === "partial") {
+        await setCompletion(habit.id, date, null);
+      } else {
+        await refresh();
+      }
+    } catch (cause) {
+      console.error("Failed to save the habit detail check", cause);
+    }
+  }
+
+  function handleEdit(habitId: number) {
+    setManageOpen(false);
+    router.push({
+      pathname: "/create-habit",
+      params: { habitId: String(habitId) },
+    });
+  }
+
   async function handleDeleteConfirmed() {
     if (!deleteTarget) return;
     try {
@@ -312,9 +377,9 @@ export default function HabitsScreen() {
     <ScreenScaffold backgroundGradient={HABITS_BACKGROUND} tabClearance topInset>
       <View style={[styles.header, compact && styles.headerCompact]}>
         <IconButton
-          accessibilityLabel="Open menu"
-          icon={<MenuIcon />}
-          onPress={() => {}}
+          accessibilityLabel="Manage habits"
+          icon={<GearIcon size={compact ? 22 : 25} />}
+          onPress={() => setManageOpen(true)}
           size={compact ? "sm" : "md"}
         />
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
@@ -346,18 +411,13 @@ export default function HabitsScreen() {
             {group.habits.map((habit) => (
               <HabitRow
                 activeDayIndex={activeDayIndex}
+                checkedSections={checksByHabit.get(habit.id) ?? []}
                 compact={compact}
                 expanded={expandedHabit === habit.id}
                 habit={habit}
                 key={habit.id}
                 onDayPress={(dayIndex) => handleDayPress(habit, dayIndex)}
-                onDelete={() => setDeleteTarget(habit)}
-                onEdit={() =>
-                  router.push({
-                    pathname: "/create-habit",
-                    params: { habitId: String(habit.id) },
-                  })
-                }
+                onDetailToggle={(section) => handleDetailToggle(habit, section)}
                 onPress={() => handleHabitPress(habit.id)}
               />
             ))}
@@ -372,6 +432,62 @@ export default function HabitsScreen() {
           </AppText>
         </View>
       ) : null}
+
+      <AppModal
+        onClose={() => setManageOpen(false)}
+        variant="sheet"
+        visible={manageOpen}
+      >
+        <AppText align="center" color={colors.primary} variant="titleSm">
+          Manage Habits
+        </AppText>
+        <AppText align="center" style={styles.manageSubtitle} variant="bodySmall">
+          All your habits in one place
+        </AppText>
+        <View style={styles.manageList}>
+          {habitViews.map((view) => (
+            <View key={view.habit.id} style={styles.manageRow}>
+              <View style={styles.manageCopy}>
+                <AppText numberOfLines={1} variant="button">
+                  {view.habit.title}
+                </AppText>
+                <AppText color={colors.textMuted} variant="bodySmall">
+                  Day {view.doneCount} / {view.habit.goalDays}
+                </AppText>
+              </View>
+              <IconButton
+                accessibilityLabel={`Edit ${view.habit.title}`}
+                icon={<PencilIcon />}
+                onPress={() => handleEdit(view.habit.id)}
+                size="sm"
+              />
+              <IconButton
+                accessibilityLabel={`Delete ${view.habit.title}`}
+                icon={<TrashIcon />}
+                onPress={() => {
+                  setManageOpen(false);
+                  setDeleteTarget({
+                    id: view.habit.id,
+                    title: view.habit.title,
+                  });
+                }}
+                size="sm"
+              />
+            </View>
+          ))}
+          {habitViews.length === 0 ? (
+            <AppText align="center" color={colors.textMuted} variant="bodySmall">
+              No habits yet. Tap + to create the first one.
+            </AppText>
+          ) : null}
+        </View>
+        <AppButton
+          label="Close"
+          onPress={() => setManageOpen(false)}
+          style={styles.manageClose}
+          variant="secondary"
+        />
+      </AppModal>
 
       <AppModal
         onClose={() => setDeleteTarget(null)}
@@ -467,6 +583,31 @@ const styles = StyleSheet.create({
   },
   habitDeleteLabel: {
     color: colors.danger,
+  },
+  manageClose: {
+    marginTop: spacing.lg,
+  },
+  manageCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  manageList: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  manageRow: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  manageSubtitle: {
+    marginTop: spacing.xs,
   },
   todayBar: {
     alignItems: "center",

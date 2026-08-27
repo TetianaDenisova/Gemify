@@ -23,6 +23,8 @@ export interface Goal {
   themeColor: ThemeColor;
   imageKey: GoalImageKey;
   iconKey: GoalIconKey;
+  /** User-attached dream image; replaces the preset art when set. */
+  photoUri?: string | null;
 }
 
 export interface FocusItem {
