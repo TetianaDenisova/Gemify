@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
-import { TimeBlockCard } from "@/components/TimeBlockCard";
+import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
@@ -17,6 +17,10 @@ import {
   AppText,
   ArrowRightIcon,
   Card,
+  Checkbox,
+  ChevronIcon,
+  DreamIcon,
+  MilestoneIcon,
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
@@ -34,6 +38,18 @@ const NEXT_MOVE_SHADE = [
   "rgba(4, 7, 17, 0.74)",
   "rgba(4, 7, 17, 0.12)",
 ] as const;
+
+/** Bespoke muted palette of the Later-today row, matched to the mock. */
+const LATER_COLORS = {
+  badgeBorder: "#4C4763",
+  crumb: "#90909A",
+  icon: "#9D95BA",
+  label: "#9089A9",
+  pillBorder: "#3C4150",
+  pillText: "#A6A6AF",
+  time: "#967E42",
+  title: "#C7C6CD",
+} as const;
 
 function greetingForNow(now: Date): string {
   const hour = now.getHours();
@@ -213,7 +229,7 @@ export default function HomeScreen() {
           hasFocus || allDone
             ? "CURRENT FOCUS"
             : nextBlock
-              ? "NEXT FOCUS"
+              ? "LATER TODAY"
               : "PLAN YOUR WEEK"
         }
         variant="eyebrow"
@@ -224,31 +240,138 @@ export default function HomeScreen() {
           <DayCompleteCard completed={plannedDone} total={plannedTotal} />
         </View>
       ) : hasFocus && currentBlock ? (
-        <TimeBlockCard
-          block={currentBlock}
-          onToggleAction={(index) => {
-            const action = currentBlock.actions[index];
-            if (!action) return;
-            if ("questId" in action) {
-              toggleQuest(action.questId, !action.done);
-            } else {
-              setCompletion(action.habitId, today, action.done ? null : "done");
-            }
-          }}
-          showHeader={false}
-          showIntro={false}
-          style={styles.currentBlock}
-        />
+        <View style={styles.currentBlock}>
+          {currentBlock.actions.map((action) => (
+            <Card
+              key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
+              style={styles.focusCard}
+            >
+              <View style={styles.focusRow}>
+                <Checkbox
+                  accessibilityLabel={`Mark ${action.title} done`}
+                  checked={action.done}
+                  onPress={() => {
+                    if ("questId" in action) {
+                      toggleQuest(action.questId, !action.done);
+                    } else {
+                      setCompletion(
+                        action.habitId,
+                        today,
+                        action.done ? null : "done",
+                      );
+                    }
+                  }}
+                  shape="circle"
+                  size={44}
+                />
+                <View style={styles.focusCopy}>
+                  <AppText numberOfLines={2} variant="pill">
+                    {action.title}
+                  </AppText>
+                  {"questId" in action ? (
+                    <View style={styles.focusBreadcrumb}>
+                      <DreamIcon size={16} />
+                      <AppText
+                        color={LATER_COLORS.label}
+                        numberOfLines={1}
+                        style={styles.laterCrumbLabel}
+                        variant="subtitle"
+                      >
+                        {action.dreamTitle}
+                      </AppText>
+                      <ChevronIcon
+                        color={colors.textMuted}
+                        direction="right"
+                        size={13}
+                      />
+                      <AppText
+                        color={colors.primarySoft}
+                        numberOfLines={1}
+                        style={styles.laterCrumbLabel}
+                        variant="subtitle"
+                      >
+                        {action.milestoneTitle}
+                      </AppText>
+                    </View>
+                  ) : action.subtitle ? (
+                    <AppText
+                      color={colors.textSecondary}
+                      style={styles.focusSubtitle}
+                      variant="subtitle"
+                    >
+                      {action.subtitle}
+                    </AppText>
+                  ) : null}
+                </View>
+              </View>
+            </Card>
+          ))}
+        </View>
       ) : nextBlock ? (
-        <TimeBlockCard
-          block={nextBlock}
-          onToggleAction={(index) => {
-            const action = nextBlock.actions[index];
-            if (action) toggleQuest(action.questId, !action.done);
-          }}
-          showIntro={false}
-          style={styles.currentBlock}
-        />
+        <View style={[styles.currentBlock, styles.laterRow]}>
+          <View style={styles.laterBadge}>
+            <BlockIconArt
+              color={LATER_COLORS.icon}
+              icon={nextBlock.icon}
+              size={26}
+            />
+          </View>
+          <View style={styles.laterCopy}>
+            <View style={styles.laterTitleRow}>
+              <AppText color={LATER_COLORS.label} variant="controlLabel">
+                {nextBlock.label}
+              </AppText>
+              {nextBlock.time !== "Flexible" ? (
+                <>
+                  <AppText color={LATER_COLORS.crumb} variant="controlLabel">
+                    ·
+                  </AppText>
+                  <AppText color={LATER_COLORS.time} variant="controlLabel">
+                    {nextBlock.time}
+                  </AppText>
+                </>
+              ) : null}
+            </View>
+            <AppText
+              color={LATER_COLORS.title}
+              numberOfLines={2}
+              style={styles.laterQuestTitle}
+              variant="body"
+            >
+              {nextBlock.actions[0]?.title}
+            </AppText>
+            <View style={styles.laterBreadcrumb}>
+              <DreamIcon color={LATER_COLORS.icon} size={16} />
+              <AppText
+                color={LATER_COLORS.crumb}
+                numberOfLines={1}
+                style={styles.laterCrumbLabel}
+                variant="subtitle"
+              >
+                {nextBlock.actions[0]?.dreamTitle}
+              </AppText>
+              <ChevronIcon
+                color={LATER_COLORS.crumb}
+                direction="right"
+                size={13}
+              />
+              <MilestoneIcon color={LATER_COLORS.icon} size={16} />
+              <AppText
+                color={LATER_COLORS.crumb}
+                numberOfLines={1}
+                style={styles.laterCrumbLabel}
+                variant="subtitle"
+              >
+                {nextBlock.actions[0]?.milestoneTitle}
+              </AppText>
+            </View>
+          </View>
+          <View style={styles.upcomingPill}>
+            <AppText color={LATER_COLORS.pillText} variant="labelStrong">
+              Upcoming
+            </AppText>
+          </View>
+        </View>
       ) : (
         <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
           <Image
@@ -295,9 +418,79 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: spacing.sm,
   },
+  focusBreadcrumb: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs + 2,
+    marginTop: spacing.xs + 2,
+  },
+  /** Gold-edged card per focus action, per the mock. */
+  focusCard: {
+    borderLeftColor: colors.primary,
+    borderLeftWidth: 3,
+    marginBottom: spacing.md,
+  },
+  focusCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  focusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.lg,
+  },
+  focusSubtitle: {
+    marginTop: spacing.xs,
+  },
   sectionHeader: {
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
+  },
+  upcomingPill: {
+    alignSelf: "center",
+    borderColor: LATER_COLORS.pillBorder,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  /** Quiet variant of the time-block disc, matched to the mock. */
+  laterBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(24, 14, 42, 0.7)",
+    borderColor: LATER_COLORS.badgeBorder,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 56,
+    justifyContent: "center",
+    width: 56,
+  },
+  laterBreadcrumb: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs + 2,
+    marginTop: spacing.sm,
+  },
+  laterCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  laterCrumbLabel: {
+    flexShrink: 1,
+  },
+  laterQuestTitle: {
+    marginTop: spacing.xs,
+  },
+  laterRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  laterTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   nextMoveArt: {
     ...StyleSheet.absoluteFill,

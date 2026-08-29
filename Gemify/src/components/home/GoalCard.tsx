@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import type { Goal, ThemeColor } from "@/data/homeData";
@@ -12,6 +13,17 @@ interface GoalCardProps {
   goal: Goal;
   onPress?: (goal: Goal) => void;
 }
+
+/**
+ * Left-to-right shade over the goal art: dark under the icon/title so the
+ * copy reads, thinning out so the artwork glows on the right (the same
+ * treatment as the milestone hero and the plan-week card).
+ */
+const GOAL_SHADE = [
+  "rgba(4, 7, 17, 0.96)",
+  "rgba(4, 7, 17, 0.72)",
+  "rgba(4, 7, 17, 0.16)",
+] as const;
 
 const absoluteFill = {
   bottom: 0,
@@ -47,7 +59,12 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         transition={180}
       />
 
-      <View style={styles.darkOverlay} />
+      <LinearGradient
+        colors={[...GOAL_SHADE]}
+        end={{ x: 1, y: 0.5 }}
+        start={{ x: 0, y: 0.5 }}
+        style={styles.shade}
+      />
 
       <View style={styles.inner}>
         <View style={styles.iconWrapper}>
@@ -96,9 +113,8 @@ const styles = StyleSheet.create({
     ...shadows.softDark,
   },
 
-  darkOverlay: {
+  shade: {
     ...absoluteFill,
-    backgroundColor: colors.overlayDark,
     zIndex: 1,
   },
 
