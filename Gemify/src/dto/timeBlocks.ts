@@ -1,7 +1,7 @@
 /**
  * Routine icons ("meditate".."focus") are stored on time-block actions in the
  * database; the dream-magic set ("star".."feather") exists only in the view
- * layer, assigned to quest tasks and habits on the fly.
+ * layer, assigned to quests and habits on the fly.
  */
 export type ActionIcon =
   | "meditate"
@@ -21,7 +21,7 @@ export type BlockIcon = "clock" | "sunrise" | "briefcase" | "sun" | "moon";
 /** View-model for a single action rendered inside a time block. */
 export type DayAction = {
   done: boolean;
-  /** Dream the task belongs to; with milestoneTitle it renders a breadcrumb instead of the plain subtitle. */
+  /** Dream the quest belongs to; with milestoneTitle it renders a breadcrumb instead of the plain subtitle. */
   dreamTitle?: string;
   icon: ActionIcon;
   milestoneTitle?: string;

@@ -18,20 +18,16 @@ import {
 } from "@/components/HabitBoardCard";
 import {
   createQuest,
-  createTask,
   deleteQuest,
-  deleteTask,
   getDreams,
   getMilestoneById,
   getMilestones,
   getQuests,
-  getTasksByQuest,
-  setTaskDone,
+  setQuestDone,
+  updateMilestone,
   updateQuest,
-  updateTask,
   type Milestone,
   type Quest,
-  type Task,
 } from "@/db";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
@@ -42,9 +38,10 @@ import {
   BackIcon,
   BulbIcon,
   Card,
+  CheckIcon,
   Checkbox,
-  ChevronIcon,
   CloseIcon,
+  HintRow,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -64,18 +61,12 @@ import {
 import { toDateKey } from "@/utils/dates";
 
 const TREE_MILESTONE_HEADER_SOURCE = require("../../data/images/tree-milestone-header.png");
+const MILESTONE_DOOR_SOURCE = require("../../../assets/create-goal/milestone-door.png");
 
 const HABIT_ACCENT_CYCLE = [colors.primary, "#7F91FF", "#D986FF", "#4FC3F7"];
 
-type QuestWithTasks = {
-  quest: Quest;
-  tasks: Task[];
-};
-
 type PromptState =
   | { kind: "quest" }
-  | { kind: "task"; questId: number }
-  | { kind: "editTask"; taskId: number; initialValue: string }
   | { kind: "editQuest"; questId: number; initialValue: string }
   | null;
 
@@ -174,6 +165,38 @@ function TrashIcon({ color = colors.danger }: { color?: string }) {
   );
 }
 
+function MemoryGlyph({
+  color = colors.textOnPrimary,
+  size = 22,
+}: {
+  color?: string;
+  size?: number;
+}) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Rect
+        fill="none"
+        height={16}
+        rx={2.6}
+        stroke={color}
+        strokeWidth={1.6}
+        width={18}
+        x={3}
+        y={4}
+      />
+      <Circle cx={8.4} cy={9} fill="none" r={1.7} stroke={color} strokeWidth={1.6} />
+      <Path
+        d="m5.5 17 4.6-4.8 3.2 3.2 2.8-2.6 2.9 4.2"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.6}
+      />
+    </Svg>
+  );
+}
+
 function DotsIcon({ color = colors.textSecondary }: { color?: string }) {
   return (
     <Svg height={iconSizes.md} viewBox="0 0 24 24" width={iconSizes.md}>
@@ -201,120 +224,57 @@ function MilestoneProgressBar({ value }: { value: number }) {
   );
 }
 
-function TaskRow({
-  onOpenMenu,
-  onToggle,
-  task,
-}: {
-  onOpenMenu: () => void;
-  onToggle: () => void;
-  task: Task;
-}) {
-  const subtitle = task.scheduledDate
-    ? `${task.scheduledDate}${task.scheduledTime ? ` - ${task.scheduledTime}` : ""}`
-    : null;
-
-  return (
-    <View style={styles.taskTile}>
-      <Pressable accessibilityRole="checkbox" hitSlop={8} onPress={onToggle}>
-        <Checkbox
-          appearance="outline"
-          checked={task.isDone}
-          shape="circle"
-          size={36}
-        />
-      </Pressable>
-      <View style={styles.taskCopy}>
-        <AppText
-          color={task.isDone ? colors.textMuted : colors.textPrimary}
-          numberOfLines={2}
-          style={task.isDone ? styles.taskTitleDone : undefined}
-          variant="pill"
-        >
-          {task.title}
-        </AppText>
-        {subtitle ? (
-          <AppText color={colors.textSecondary} style={styles.taskSubtitle} variant="bodySmall">
-            {subtitle}
-          </AppText>
-        ) : null}
-      </View>
-      <Pressable
-        accessibilityLabel="Task options"
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={onOpenMenu}
-        style={({ pressed: isPressed }) => [
-          styles.menuButton,
-          isPressed && pressed,
-        ]}
-      >
-        <DotsIcon />
-      </Pressable>
-    </View>
-  );
-}
-
-function ActiveQuestCard({
+/**
+ * One flat row per quest: completion circle · title · kebab menu. A quest is
+ * a single actionable item — there is nothing to expand or drill into.
+ */
+function QuestRow({
   compact,
-  entry,
-  expanded,
-  onAddTask,
   onOpenMenu,
-  onOpenTaskMenu,
-  onToggleExpanded,
-  onToggleTask,
+  onToggleQuest,
+  quest,
 }: {
   compact: boolean;
-  entry: QuestWithTasks;
-  expanded: boolean;
-  onAddTask: () => void;
   onOpenMenu: () => void;
-  onOpenTaskMenu: (task: Task) => void;
-  onToggleExpanded: () => void;
-  onToggleTask: (task: Task) => void;
+  onToggleQuest: () => void;
+  quest: Quest;
 }) {
-  const { quest, tasks } = entry;
-  const doneCount = tasks.filter((task) => task.isDone).length;
-  const questComplete = tasks.length > 0 && doneCount === tasks.length;
-
   return (
     <Card
-      style={[
-        styles.questCard,
-        expanded ? styles.questCardExpanded : styles.questCardCollapsed,
-        compact && styles.questCardCompact,
-      ]}
-      variant={expanded ? "strong" : "default"}
+      style={[styles.questCard, compact && styles.questCardCompact]}
     >
       <View style={styles.questTopRow}>
         <Pressable
+          accessibilityLabel={
+            quest.isDone
+              ? "Mark the quest as not done"
+              : "Mark the quest as done"
+          }
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: quest.isDone }}
+          hitSlop={8}
+          onPress={onToggleQuest}
+        >
+          <Checkbox
+            appearance="outline"
+            checked={quest.isDone}
+            shape="circle"
+            size={44}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`Options for the quest ${quest.title}`}
           accessibilityRole="button"
-          onPress={onToggleExpanded}
+          onPress={onOpenMenu}
           style={({ pressed: isPressed }) => [
             styles.questHeaderTap,
             isPressed && pressed,
           ]}
         >
-          <Checkbox
-            appearance="outline"
-            checked={questComplete}
-            shape="circle"
-            size={44}
-          />
           <View style={styles.questCopy}>
             <AppText numberOfLines={2} variant="cardTitle">
               {quest.title}
             </AppText>
-            {tasks.length > 0 ? (
-              <AppText
-                color={colors.textSecondary}
-                style={styles.questMeta}
-                variant="meta"
-              >
-                {doneCount}/{tasks.length} tasks
-              </AppText>
-            ) : null}
           </View>
         </Pressable>
         <Pressable
@@ -329,53 +289,7 @@ function ActiveQuestCard({
         >
           <DotsIcon />
         </Pressable>
-        <Pressable
-          accessibilityLabel={expanded ? "Collapse quest" : "Expand quest"}
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onToggleExpanded}
-          style={({ pressed: isPressed }) => [
-            styles.chevronButton,
-            isPressed && pressed,
-          ]}
-        >
-          <ChevronIcon direction={expanded ? "up" : "down"} />
-        </Pressable>
       </View>
-
-      {expanded ? (
-        <>
-          <View style={styles.taskStack}>
-            {tasks.length > 0 ? (
-              tasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  onOpenMenu={() => onOpenTaskMenu(task)}
-                  onToggle={() => onToggleTask(task)}
-                  task={task}
-                />
-              ))
-            ) : (
-              <AppText style={styles.noTasksText} variant="bodySmall">
-                No tasks yet.
-              </AppText>
-            )}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onAddTask}
-            style={({ pressed: isPressed }) => [
-              styles.addTaskButton,
-              isPressed && pressed,
-            ]}
-          >
-            <PlusIcon color={colors.primary} size={iconSizes.md} />
-            <AppText color={colors.primary} variant="button">
-              Add task
-            </AppText>
-          </Pressable>
-        </>
-      ) : null}
     </Card>
   );
 }
@@ -448,6 +362,7 @@ function ContentTabs({
 }
 
 function TextPromptModal({
+  hint,
   initialValue = "",
   onClose,
   onSubmit,
@@ -456,6 +371,7 @@ function TextPromptModal({
   title,
   visible,
 }: {
+  hint?: string;
   initialValue?: string;
   onClose: () => void;
   onSubmit: (value: string) => void;
@@ -484,6 +400,7 @@ function TextPromptModal({
         placeholder={placeholder}
         value={value}
       />
+      {hint ? <HintRow style={styles.promptHint} text={hint} /> : null}
       <View style={styles.promptActions}>
         <AppButton
           label="Cancel"
@@ -502,7 +419,7 @@ function TextPromptModal({
   );
 }
 
-function TaskActionRow({
+function SheetActionRow({
   danger = false,
   icon,
   label,
@@ -531,7 +448,7 @@ function TaskActionRow({
 }
 
 /**
- * Bottom-sheet shell shared by the task and habit action menus: violet
+ * Bottom-sheet shell shared by the quest and habit action menus: violet
  * handle + border, the item title, then the caller's action rows.
  */
 function ActionSheet({
@@ -562,79 +479,40 @@ function ActionSheet({
   );
 }
 
-/** Bottom sheet with the actions for one task (mirrors the design mock). */
-function TaskActionSheet({
-  onClose,
-  onDelete,
-  onDoThisWeek,
-  onEdit,
-  onSchedule,
-  task,
-}: {
-  onClose: () => void;
-  onDelete: () => void;
-  onDoThisWeek: () => void;
-  onEdit: () => void;
-  onSchedule: () => void;
-  task: Task | null;
-}) {
-  return (
-    <ActionSheet onClose={onClose} title={task?.title} visible={task !== null}>
-      <TaskActionRow
-        icon={<CalendarIcon />}
-        label="Do this week"
-        onPress={onDoThisWeek}
-      />
-      <TaskActionRow
-        icon={<CalendarClockIcon />}
-        label="Schedule"
-        onPress={onSchedule}
-      />
-      <TaskActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
-      <TaskActionRow
-        danger
-        icon={<TrashIcon />}
-        label="Delete"
-        onPress={onDelete}
-      />
-    </ActionSheet>
-  );
-}
-
-/** The same sheet for a quest — the same actions as a task's menu. */
+/** Bottom sheet with the actions for one quest (mirrors the design mock). */
 function QuestActionSheet({
-  entry,
   onClose,
   onDelete,
   onDoThisWeek,
   onEdit,
   onSchedule,
+  quest,
 }: {
-  entry: QuestWithTasks | null;
   onClose: () => void;
   onDelete: () => void;
   onDoThisWeek: () => void;
   onEdit: () => void;
   onSchedule: () => void;
+  quest: Quest | null;
 }) {
   return (
     <ActionSheet
       onClose={onClose}
-      title={entry?.quest.title}
-      visible={entry !== null}
+      title={quest?.title}
+      visible={quest !== null}
     >
-      <TaskActionRow
+      <SheetActionRow
         icon={<CalendarIcon />}
         label="Do this week"
         onPress={onDoThisWeek}
       />
-      <TaskActionRow
+      <SheetActionRow
         icon={<CalendarClockIcon />}
         label="Schedule"
         onPress={onSchedule}
       />
-      <TaskActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
-      <TaskActionRow
+      <SheetActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
+      <SheetActionRow
         danger
         icon={<TrashIcon />}
         label="Delete"
@@ -656,8 +534,8 @@ function HabitActionSheet({
 }) {
   return (
     <ActionSheet onClose={onClose} title={habit?.title} visible={habit !== null}>
-      <TaskActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
-      <TaskActionRow
+      <SheetActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
+      <SheetActionRow
         icon={<CloseIcon color={colors.textSecondary} size={iconSizes.lg} />}
         label="Cancel"
         onPress={onClose}
@@ -670,33 +548,26 @@ export default function MilestoneQuestsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isNarrow = width < layout.compactBreakpoint;
-  const { milestoneId: milestoneIdParam } = useLocalSearchParams<{
-    milestoneId?: string;
-    dreamId?: string;
-  }>();
+  const { milestoneId: milestoneIdParam, dreamId: dreamIdParam } =
+    useLocalSearchParams<{
+      milestoneId?: string;
+      dreamId?: string;
+    }>();
 
   const [activeTab, setActiveTab] = useState<ContentTab>("quests");
-  const [expandedQuestIds, setExpandedQuestIds] = useState<Set<number>>(
-    () => new Set(),
-  );
   const [expandedHabitIds, setExpandedHabitIds] = useState<Set<number>>(
     () => new Set(),
   );
-  const [didAutoExpand, setDidAutoExpand] = useState(false);
   const [menuHabit, setMenuHabit] = useState<BoardHabit | null>(null);
-  const [menuTask, setMenuTask] = useState<Task | null>(null);
-  const [menuQuest, setMenuQuest] = useState<QuestWithTasks | null>(null);
-  const [scheduleTask, setScheduleTask] = useState<Task | null>(null);
-  const [scheduleQuest, setScheduleQuest] = useState<QuestWithTasks | null>(
-    null,
-  );
-  const [taskDeleteTarget, setTaskDeleteTarget] = useState<Task | null>(null);
+  const [menuQuest, setMenuQuest] = useState<Quest | null>(null);
+  const [scheduleQuest, setScheduleQuest] = useState<Quest | null>(null);
   const [questDeleteTarget, setQuestDeleteTarget] = useState<Quest | null>(
     null,
   );
   const [milestone, setMilestone] = useState<Milestone | null>(null);
-  const [questEntries, setQuestEntries] = useState<QuestWithTasks[]>([]);
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [prompt, setPrompt] = useState<PromptState>(null);
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
   const { habits, setCompletion, weekDates } = useHabitWeek(
     milestone?.dreamId,
   );
@@ -721,18 +592,11 @@ export default function MilestoneQuestsScreen() {
 
       setMilestone(resolved);
       if (!resolved) {
-        setQuestEntries([]);
+        setQuests([]);
         return;
       }
 
-      const questList = await getQuests(resolved.id);
-      const withTasks = await Promise.all(
-        questList.map(async (quest) => ({
-          quest,
-          tasks: await getTasksByQuest(quest.id),
-        })),
-      );
-      setQuestEntries(withTasks);
+      setQuests(await getQuests(resolved.id));
     } catch (cause) {
       console.error("Failed to load milestone quests", cause);
     }
@@ -750,23 +614,6 @@ export default function MilestoneQuestsScreen() {
   // Monday-first index of today, matching the week strip's order.
   const activeDayIndex = (new Date().getDay() + 6) % 7;
 
-  // Expand the first quest once when the list first loads; from then on every
-  // card is toggled independently by the user. Adjusted during render so it
-  // settles before paint instead of cascading through an effect.
-  if (!didAutoExpand && questEntries.length > 0) {
-    setDidAutoExpand(true);
-    setExpandedQuestIds(new Set([questEntries[0].quest.id]));
-  }
-
-  const toggleQuestExpanded = (id: number) => {
-    setExpandedQuestIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const toggleHabitExpanded = (id: number) => {
     setExpandedHabitIds((current) => {
       const next = new Set(current);
@@ -776,26 +623,73 @@ export default function MilestoneQuestsScreen() {
     });
   };
 
-  const allTasks = questEntries.flatMap((entry) => entry.tasks);
-  const doneTasks = allTasks.filter((task) => task.isDone).length;
-  const milestoneProgress =
-    allTasks.length > 0 ? Math.round((doneTasks / allTasks.length) * 100) : 0;
+  const goToJourneyMap = () => {
+    const dreamId =
+      dreamIdParam ?? (milestone ? String(milestone.dreamId) : "");
+    router.navigate({
+      pathname: "/journey-map",
+      params: dreamId ? { dreamId } : {},
+    });
+  };
 
-  const handleToggleTask = async (task: Task) => {
-    setQuestEntries((current) =>
-      current.map((entry) => ({
-        ...entry,
-        tasks: entry.tasks.map((existing) =>
-          existing.id === task.id
-            ? { ...existing, isDone: !existing.isDone }
-            : existing,
-        ),
-      })),
+  // The milestone can be closed once every quest is checked off. No quests
+  // at all also counts as ready.
+  const allQuestsComplete = quests.every((quest) => quest.isDone);
+
+  const handleCompleteMilestone = async () => {
+    if (!milestone) return;
+    try {
+      await updateMilestone(milestone.id, { status: "completed" });
+      setMilestone({ ...milestone, status: "completed" });
+      setCelebrationVisible(true);
+    } catch (cause) {
+      console.error("Failed to complete the milestone", cause);
+    }
+  };
+
+  // "Add a Memory" jumps to the Memories tab with the add form open for this
+  // dream, prefilled with the milestone's name. The unique addMemory value
+  // makes each arrival open the form exactly once.
+  const handleAddMemory = () => {
+    setCelebrationVisible(false);
+    router.navigate({
+      pathname: "/memories",
+      params: {
+        addMemory: String(Date.now()),
+        goalKey:
+          dreamIdParam ?? (milestone ? String(milestone.dreamId) : ""),
+        memoryName: milestone?.title ?? "",
+      },
+    });
+  };
+
+  const handleCelebrationClose = () => {
+    setCelebrationVisible(false);
+    goToJourneyMap();
+  };
+
+  // Every quest is an equal slice of the milestone (mirrors the dream-level
+  // weighted progress in the DB).
+  const milestoneProgress =
+    quests.length > 0
+      ? Math.round(
+          (quests.filter((quest) => quest.isDone).length / quests.length) * 100,
+        )
+      : 0;
+
+  const handleToggleQuest = async (quest: Quest) => {
+    const nextDone = !quest.isDone;
+    setQuests((current) =>
+      current.map((existing) =>
+        existing.id === quest.id
+          ? { ...existing, isDone: nextDone }
+          : existing,
+      ),
     );
     try {
-      await setTaskDone(task.id, !task.isDone);
+      await setQuestDone(quest.id, nextDone);
     } catch (cause) {
-      console.error("Failed to toggle the task", cause);
+      console.error("Failed to toggle the quest", cause);
       await loadScreen();
     }
   };
@@ -812,10 +706,6 @@ export default function MilestoneQuestsScreen() {
     try {
       if (prompt.kind === "quest" && milestone) {
         await createQuest(milestone.id, value);
-      } else if (prompt.kind === "task") {
-        await createTask({ questId: prompt.questId, title: value });
-      } else if (prompt.kind === "editTask") {
-        await updateTask(prompt.taskId, { title: value });
       } else if (prompt.kind === "editQuest") {
         await updateQuest(prompt.questId, { title: value });
       }
@@ -826,78 +716,17 @@ export default function MilestoneQuestsScreen() {
     setPrompt(null);
   };
 
-  // "Do this week" clears any date, so the task lands in the sprint board's
+  // "Do this week" clears any date, so the quest lands in the sprint board's
   // "Unscheduled this week" backlog to be planned onto a day from there.
-  const handleDoThisWeek = async () => {
-    if (!menuTask) return;
-    setMenuTask(null);
-    try {
-      await updateTask(menuTask.id, {
-        scheduledDate: null,
-        scheduledTime: null,
-        isPlanned: true,
-      });
-      await loadScreen();
-    } catch (cause) {
-      console.error("Failed to move the task to the weekly backlog", cause);
-    }
-  };
-
-  const handleScheduleDate = async (date: Date) => {
-    if (!scheduleTask) return;
-    setScheduleTask(null);
-    try {
-      await updateTask(scheduleTask.id, {
-        scheduledDate: toDateKey(date),
-        isPlanned: true,
-      });
-      await loadScreen();
-    } catch (cause) {
-      console.error("Failed to schedule the task", cause);
-    }
-  };
-
-  const handleDeleteTaskConfirmed = async () => {
-    if (!taskDeleteTarget) return;
-    setTaskDeleteTarget(null);
-    try {
-      await deleteTask(taskDeleteTarget.id);
-      await loadScreen();
-    } catch (cause) {
-      console.error("Failed to delete the task", cause);
-    }
-  };
-
-  /** Batch-schedules a quest's still-unscheduled tasks onto one date. */
-  const scheduleQuestTasks = async (entry: QuestWithTasks, date: string) => {
-    try {
-      const pending = entry.tasks.filter((task) => !task.scheduledDate);
-      await Promise.all(
-        pending.map((task) =>
-          updateTask(task.id, { scheduledDate: date, isPlanned: true }),
-        ),
-      );
-      await loadScreen();
-    } catch (cause) {
-      console.error("Failed to schedule the quest", cause);
-    }
-  };
-
-  // Quest-level "Do this week": every not-done task goes to the weekly backlog.
   const handleQuestDoThisWeek = async () => {
     if (!menuQuest) return;
     setMenuQuest(null);
     try {
-      const pending = menuQuest.tasks.filter((task) => !task.isDone);
-      await Promise.all(
-        pending.map((task) =>
-          updateTask(task.id, {
-            scheduledDate: null,
-            scheduledTime: null,
-            isPlanned: true,
-          }),
-        ),
-      );
+      await updateQuest(menuQuest.id, {
+        scheduledDate: null,
+        scheduledTime: null,
+        isPlanned: true,
+      });
       await loadScreen();
     } catch (cause) {
       console.error("Failed to move the quest to the weekly backlog", cause);
@@ -907,7 +736,15 @@ export default function MilestoneQuestsScreen() {
   const handleQuestScheduleDate = async (date: Date) => {
     if (!scheduleQuest) return;
     setScheduleQuest(null);
-    await scheduleQuestTasks(scheduleQuest, toDateKey(date));
+    try {
+      await updateQuest(scheduleQuest.id, {
+        scheduledDate: toDateKey(date),
+        isPlanned: true,
+      });
+      await loadScreen();
+    } catch (cause) {
+      console.error("Failed to schedule the quest", cause);
+    }
   };
 
   const handleDeleteQuestConfirmed = async () => {
@@ -921,7 +758,7 @@ export default function MilestoneQuestsScreen() {
     }
   };
 
-  const visibleCount = activeTab === "quests" ? questEntries.length : habits.length;
+  const visibleCount = activeTab === "quests" ? quests.length : habits.length;
   const visibleLabel = `${visibleCount} ${
     activeTab === "quests"
       ? visibleCount === 1
@@ -937,15 +774,11 @@ export default function MilestoneQuestsScreen() {
       <ScreenHeader
         buttonSize="md"
         leftAction={{
-          accessibilityLabel: "Back",
+          accessibilityLabel: "Back to the journey map",
           icon: <BackIcon />,
-          onPress: () => {
-            if (router.canGoBack()) {
-              router.back();
-              return;
-            }
-            router.push("/journey-map");
-          },
+          // Back always returns to the journey map of the milestone's dream,
+          // regardless of how the quests screen was reached.
+          onPress: goToJourneyMap,
         }}
         rightAction={{
           accessibilityLabel: "Open ideas",
@@ -997,7 +830,7 @@ export default function MilestoneQuestsScreen() {
         activeTab={activeTab}
         habitsCount={habits.length}
         onChange={setActiveTab}
-        questsCount={questEntries.length}
+        questsCount={quests.length}
       />
 
       <View style={styles.listToolbar}>
@@ -1044,26 +877,56 @@ export default function MilestoneQuestsScreen() {
 
       {activeTab === "quests" ? (
         <>
-          {questEntries.map((entry) => (
-            <ActiveQuestCard
+          {quests.map((quest) => (
+            <QuestRow
               compact={isNarrow}
-              entry={entry}
-              expanded={expandedQuestIds.has(entry.quest.id)}
-              key={entry.quest.id}
-              onAddTask={() => setPrompt({ kind: "task", questId: entry.quest.id })}
-              onOpenMenu={() => setMenuQuest(entry)}
-              onOpenTaskMenu={setMenuTask}
-              onToggleExpanded={() => toggleQuestExpanded(entry.quest.id)}
-              onToggleTask={handleToggleTask}
+              key={quest.id}
+              onOpenMenu={() => setMenuQuest(quest)}
+              onToggleQuest={() => handleToggleQuest(quest)}
+              quest={quest}
             />
           ))}
 
-          {questEntries.length === 0 ? (
+          {quests.length === 0 ? (
             <Card style={styles.emptyCard}>
               <AppText align="center" variant="bodySmall">
                 No quests yet. Add the first one to break this milestone into doable steps.
               </AppText>
             </Card>
+          ) : null}
+
+          {milestone ? (
+            milestone.status === "completed" ? (
+              <View style={styles.completeRow}>
+                <CheckIcon color={colors.primary} size={iconSizes.md} />
+                <AppText color={colors.primary} variant="button">
+                  Milestone completed
+                </AppText>
+              </View>
+            ) : allQuestsComplete ? (
+              <AppButton
+                icon={
+                  <CheckIcon
+                    color={colors.textOnPrimary}
+                    size={iconSizes.md}
+                  />
+                }
+                iconPosition="before"
+                label="Milestone Complete"
+                onPress={handleCompleteMilestone}
+                size="lg"
+                style={styles.completeButton}
+              />
+            ) : (
+              <AppText
+                align="center"
+                color={colors.textMuted}
+                style={styles.completeHint}
+                variant="bodySmall"
+              >
+                To complete this milestone, complete all of its quests.
+              </AppText>
+            )
           ) : null}
         </>
       ) : (
@@ -1109,64 +972,26 @@ export default function MilestoneQuestsScreen() {
       )}
 
       <TextPromptModal
+        hint={
+          prompt?.kind === "quest"
+            ? "Big quest? Split it into smaller ones — each finished quest moves your milestone forward."
+            : undefined
+        }
         initialValue={
-          prompt?.kind === "editTask" || prompt?.kind === "editQuest"
-            ? prompt.initialValue
-            : ""
+          prompt?.kind === "editQuest" ? prompt.initialValue : ""
         }
         onClose={() => setPrompt(null)}
         onSubmit={handlePromptSubmit}
-        placeholder={
-          prompt?.kind === "quest" || prompt?.kind === "editQuest"
-            ? "Quest title..."
-            : "Task title..."
-        }
-        submitLabel={
-          prompt?.kind === "editTask" || prompt?.kind === "editQuest"
-            ? "Save"
-            : "Add"
-        }
-        title={
-          prompt?.kind === "editQuest"
-            ? "Edit quest"
-            : prompt?.kind === "editTask"
-              ? "Edit task"
-              : prompt?.kind === "task"
-                ? "Add a task"
-                : "Add a quest"
-        }
+        placeholder="Quest title..."
+        submitLabel={prompt?.kind === "editQuest" ? "Save" : "Add"}
+        title={prompt?.kind === "editQuest" ? "Edit quest" : "Add a quest"}
         visible={prompt !== null}
       />
 
-      <TaskActionSheet
-        onClose={() => setMenuTask(null)}
-        onDelete={() => {
-          setTaskDeleteTarget(menuTask);
-          setMenuTask(null);
-        }}
-        onDoThisWeek={handleDoThisWeek}
-        onEdit={() => {
-          if (menuTask) {
-            setPrompt({
-              kind: "editTask",
-              taskId: menuTask.id,
-              initialValue: menuTask.title,
-            });
-          }
-          setMenuTask(null);
-        }}
-        onSchedule={() => {
-          setScheduleTask(menuTask);
-          setMenuTask(null);
-        }}
-        task={menuTask}
-      />
-
       <QuestActionSheet
-        entry={menuQuest}
         onClose={() => setMenuQuest(null)}
         onDelete={() => {
-          setQuestDeleteTarget(menuQuest?.quest ?? null);
+          setQuestDeleteTarget(menuQuest);
           setMenuQuest(null);
         }}
         onDoThisWeek={handleQuestDoThisWeek}
@@ -1174,8 +999,8 @@ export default function MilestoneQuestsScreen() {
           if (menuQuest) {
             setPrompt({
               kind: "editQuest",
-              questId: menuQuest.quest.id,
-              initialValue: menuQuest.quest.title,
+              questId: menuQuest.id,
+              initialValue: menuQuest.title,
             });
           }
           setMenuQuest(null);
@@ -1184,25 +1009,16 @@ export default function MilestoneQuestsScreen() {
           setScheduleQuest(menuQuest);
           setMenuQuest(null);
         }}
+        quest={menuQuest}
       />
-
-      {scheduleTask ? (
-        <DatePickerModal
-          initialDate={
-            scheduleTask.scheduledDate
-              ? new Date(`${scheduleTask.scheduledDate}T12:00:00`)
-              : new Date()
-          }
-          onClose={() => setScheduleTask(null)}
-          onSelect={handleScheduleDate}
-          today={new Date()}
-          visible
-        />
-      ) : null}
 
       {scheduleQuest ? (
         <DatePickerModal
-          initialDate={new Date()}
+          initialDate={
+            scheduleQuest.scheduledDate
+              ? new Date(`${scheduleQuest.scheduledDate}T12:00:00`)
+              : new Date()
+          }
           onClose={() => setScheduleQuest(null)}
           onSelect={handleQuestScheduleDate}
           today={new Date()}
@@ -1218,7 +1034,7 @@ export default function MilestoneQuestsScreen() {
           Delete this quest?
         </AppText>
         <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{questDeleteTarget?.title}” and its tasks will be removed.
+          “{questDeleteTarget?.title}” will be removed.
         </AppText>
         <View style={styles.promptActions}>
           <AppButton
@@ -1238,30 +1054,46 @@ export default function MilestoneQuestsScreen() {
       </AppModal>
 
       <AppModal
-        onClose={() => setTaskDeleteTarget(null)}
-        visible={taskDeleteTarget !== null}
+        onClose={() => setCelebrationVisible(false)}
+        visible={celebrationVisible}
       >
-        <AppText align="center" variant="titleSm">
-          Delete this task?
+        <Image
+          contentFit="contain"
+          source={MILESTONE_DOOR_SOURCE}
+          style={styles.celebrationImage}
+        />
+        <AppText align="center" variant="title">
+          Milestone Complete!
         </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{taskDeleteTarget?.title}” will be removed.
+        <AppText
+          align="center"
+          style={styles.celebrationSubtitle}
+          variant="bodySerif"
+        >
+          You&rsquo;ve completed {milestone?.title}
         </AppText>
-        <View style={styles.promptActions}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setTaskDeleteTarget(null)}
-            style={styles.promptButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteTaskConfirmed}
-            style={[styles.promptButton, styles.habitDeleteButton]}
-            textStyle={styles.habitDeleteLabel}
-            variant="secondary"
-          />
-        </View>
+        <AppText
+          align="center"
+          color={colors.primary}
+          style={styles.celebrationHint}
+          variant="caption"
+        >
+          Take a moment to capture what changed.
+        </AppText>
+        <AppButton
+          icon={<MemoryGlyph />}
+          iconPosition="before"
+          label="Add a Memory"
+          onPress={handleAddMemory}
+          size="lg"
+          style={styles.celebrationButton}
+        />
+        <AppButton
+          label="Close"
+          onPress={handleCelebrationClose}
+          style={styles.celebrationCloseButton}
+          variant="secondary"
+        />
       </AppModal>
 
       <HabitActionSheet
@@ -1286,20 +1118,37 @@ const styles = StyleSheet.create({
   actionSheetPanel: {
     borderColor: colors.accentVioletGlow,
   },
-  addTaskButton: {
-    alignItems: "center",
+  celebrationButton: {
+    marginTop: spacing.lg,
+  },
+  celebrationCloseButton: {
+    marginTop: spacing.md,
+  },
+  celebrationHint: {
+    marginTop: spacing.md,
+  },
+  celebrationImage: {
     alignSelf: "center",
+    height: 150,
+    marginBottom: spacing.sm,
+    width: 220,
+  },
+  celebrationSubtitle: {
+    marginTop: spacing.sm,
+  },
+  completeButton: {
+    marginTop: spacing.lg,
+  },
+  completeHint: {
+    marginTop: spacing.lg,
+  },
+  completeRow: {
+    alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
+    marginTop: spacing.lg,
     minHeight: controls.button.section.height,
-    paddingHorizontal: spacing.md,
-  },
-  chevronButton: {
-    alignItems: "center",
-    height: layout.minTouchTarget,
-    justifyContent: "center",
-    width: layout.minTouchTarget,
   },
   confirmBody: {
     marginTop: spacing.sm,
@@ -1387,9 +1236,6 @@ const styles = StyleSheet.create({
     minWidth: controls.button.section.minWidth,
     paddingHorizontal: controls.button.section.paddingHorizontal,
   },
-  noTasksText: {
-    paddingVertical: spacing.md,
-  },
   progressFill: {
     backgroundColor: colors.primary,
     borderRadius: radius.round,
@@ -1421,24 +1267,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.sm,
   },
+  promptHint: {
+    marginTop: spacing.lg,
+  },
   promptInput: {
     marginTop: spacing.lg,
   },
   questCard: {
+    borderColor: "rgba(246, 232, 200, 0.18)",
     marginBottom: spacing.md,
     overflow: "hidden",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
-  questCardCollapsed: {
-    borderColor: "rgba(246, 232, 200, 0.18)",
-  },
   questCardCompact: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-  },
-  questCardExpanded: {
-    borderColor: colors.borderStrong,
   },
   questCopy: {
     flex: 1,
@@ -1450,9 +1294,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     minWidth: 0,
-  },
-  questMeta: {
-    marginTop: spacing.xs,
   },
   questTopRow: {
     alignItems: "center",
@@ -1509,31 +1350,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginHorizontal: -layout.screenPaddingH,
     marginTop: spacing.lg,
-  },
-  taskCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  taskStack: {
-    gap: spacing.md,
-    paddingTop: spacing.lg,
-  },
-  taskSubtitle: {
-    marginTop: spacing.xs,
-  },
-  taskTitleDone: {
-    textDecorationLine: "line-through",
-  },
-  taskTile: {
-    alignItems: "center",
-    backgroundColor: "rgba(7, 13, 27, 0.82)",
-    borderColor: "rgba(246, 232, 200, 0.1)",
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: controls.row.option,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
   },
 });

@@ -72,7 +72,7 @@ function TimeTab({
   compact: boolean;
   onPress: () => void;
 }) {
-  const taskCount = block.actions.length;
+  const questCount = block.actions.length;
 
   return (
     <Pressable
@@ -104,7 +104,7 @@ function TimeTab({
         >
           {block.label}
         </AppText>
-        {taskCount > 0 ? (
+        {questCount > 0 ? (
           <View
             style={[
               styles.countBadge,
@@ -116,7 +116,7 @@ function TimeTab({
               color={active ? colors.textPrimary : colors.textSecondary}
               variant="caption"
             >
-              {taskCount}
+              {questCount}
             </AppText>
           </View>
         ) : null}

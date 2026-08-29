@@ -1,10 +1,14 @@
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,8 +31,10 @@ import {
   iconSizes,
   inputFocusReset,
   lineHeights,
+  pressed as pressedStyle,
   radius,
   shadows,
+  shadowStyle,
   spacing,
   typography,
 } from "@/theme/theme";
@@ -59,6 +65,7 @@ type JourneyOverviewModalProps = {
   onClose: () => void;
   onEditPath: () => void;
   onOpenWhatIfPlan: () => void;
+  photoUri: string | null;
   visible: boolean;
   visionStatement: string;
 };
@@ -68,10 +75,12 @@ function JourneyOverviewModal({
   onClose,
   onEditPath,
   onOpenWhatIfPlan,
+  photoUri,
   visible,
   visionStatement,
 }: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
 
   return (
     <AppModal
@@ -97,6 +106,16 @@ function JourneyOverviewModal({
             <SparkIcon size={iconSizes.sm} />
             <View style={styles.ornamentLine} />
           </View>
+
+          {photoUri ? (
+            <View style={[styles.photoFrame, { maxHeight: height * 0.32 }]}>
+              <Image
+                contentFit="cover"
+                source={{ uri: photoUri }}
+                style={styles.photo}
+              />
+            </View>
+          ) : null}
 
           <View style={styles.visionCard}>
             <AppText style={styles.quoteMark}>{"“"}</AppText>
@@ -137,7 +156,12 @@ type DreamEditModalProps = {
   dreamName: string;
   onClose: () => void;
   onDelete: () => void;
-  onSave: (dreamName: string, visionStatement: string) => void;
+  onSave: (
+    dreamName: string,
+    visionStatement: string,
+    photoUri: string | null,
+  ) => void;
+  photoUri: string | null;
   /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
   showDelete: boolean;
   visible: boolean;
@@ -154,13 +178,16 @@ function DreamEditModal({
   onClose,
   onDelete,
   onSave,
+  photoUri,
   showDelete,
   visible,
   visionStatement,
 }: DreamEditModalProps) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const [draftName, setDraftName] = useState(dreamName);
   const [draftVision, setDraftVision] = useState(visionStatement);
+  const [draftPhotoUri, setDraftPhotoUri] = useState(photoUri);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [wasVisible, setWasVisible] = useState(false);
 
@@ -171,10 +198,33 @@ function DreamEditModal({
     if (visible) {
       setDraftName(dreamName);
       setDraftVision(visionStatement);
+      setDraftPhotoUri(photoUri);
     }
   }
 
-  const isDirty = draftName !== dreamName || draftVision !== visionStatement;
+  const pickDreamPhoto = async () => {
+    try {
+      if (Platform.OS !== "web") {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setDraftPhotoUri(result.assets[0].uri);
+      }
+    } catch (cause) {
+      console.error("Failed to pick the dream image", cause);
+    }
+  };
+
+  const isDirty =
+    draftName !== dreamName ||
+    draftVision !== visionStatement ||
+    draftPhotoUri !== photoUri;
   const canSave = isDirty && draftName.trim().length > 0;
 
   return (
@@ -209,6 +259,36 @@ function DreamEditModal({
               <View style={styles.ornamentLine} />
             </View>
 
+            <Pressable
+              accessibilityLabel={
+                draftPhotoUri ? "Change the dream photo" : "Add a dream photo"
+              }
+              accessibilityRole="button"
+              onPress={pickDreamPhoto}
+              style={({ pressed }) => [
+                styles.photoFrame,
+                { maxHeight: height * 0.28 },
+                pressed && pressedStyle,
+              ]}
+            >
+              {draftPhotoUri ? (
+                <Image
+                  contentFit="cover"
+                  source={{ uri: draftPhotoUri }}
+                  style={styles.photo}
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <AppText color={colors.textMuted} variant="bodySmall">
+                    Add a photo of your dream
+                  </AppText>
+                </View>
+              )}
+              <View style={styles.photoEditBadge}>
+                <PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />
+              </View>
+            </Pressable>
+
             <View style={styles.visionCard}>
               <AppText style={styles.quoteMark}>{"“"}</AppText>
               <TextInput
@@ -233,7 +313,9 @@ function DreamEditModal({
                 <AppButton
                   disabled={!canSave}
                   label="Save Changes"
-                  onPress={() => onSave(draftName.trim(), draftVision.trim())}
+                  onPress={() =>
+                  onSave(draftName.trim(), draftVision.trim(), draftPhotoUri)
+                }
                   style={styles.dreamActionButton}
                   textStyle={styles.actionLabel}
                 />
@@ -242,7 +324,9 @@ function DreamEditModal({
               <AppButton
                 disabled={!canSave}
                 label="Save Changes"
-                onPress={() => onSave(draftName.trim(), draftVision.trim())}
+                onPress={() =>
+                  onSave(draftName.trim(), draftVision.trim(), draftPhotoUri)
+                }
                 style={styles.dreamSaveButton}
                 textStyle={styles.actionLabel}
               />
@@ -298,7 +382,13 @@ export type JourneyMapControlsProps = {
   onDeleteDream: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
-  onSaveDream: (dreamName: string, visionStatement: string) => void;
+  onSaveDream: (
+    dreamName: string,
+    visionStatement: string,
+    photoUri: string | null,
+  ) => void;
+  /** Dream image shown in the overview sheet; hidden when null. */
+  photoUri?: string | null;
   /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
   showDeleteDream?: boolean;
   visionStatement: string;
@@ -312,6 +402,7 @@ export function JourneyMapControls({
   onEnterEditMode,
   onExitEditMode,
   onSaveDream,
+  photoUri = null,
   showDeleteDream = true,
   visionStatement,
 }: JourneyMapControlsProps) {
@@ -372,6 +463,7 @@ export function JourneyMapControls({
         onClose={() => setOverviewVisible(false)}
         onEditPath={openEditPath}
         onOpenWhatIfPlan={openWhatIfPlan}
+        photoUri={photoUri}
         visible={overviewVisible}
         visionStatement={visionStatement}
       />
@@ -383,10 +475,11 @@ export function JourneyMapControls({
           setDreamEditVisible(false);
           onDeleteDream();
         }}
-        onSave={(nextName, nextVision) => {
-          onSaveDream(nextName, nextVision);
+        onSave={(nextName, nextVision, nextPhotoUri) => {
+          onSaveDream(nextName, nextVision, nextPhotoUri);
           setDreamEditVisible(false);
         }}
+        photoUri={photoUri}
         showDelete={showDeleteDream}
         visible={dreamEditVisible}
         visionStatement={visionStatement}
@@ -432,6 +525,45 @@ const styles = StyleSheet.create({
     width: 72,
     height: 1,
     backgroundColor: colors.border,
+  },
+  /** The dream image frame: gold edge and soft glow, as on the See Dream step. */
+  photoFrame: {
+    alignSelf: "stretch",
+    aspectRatio: 1.45,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.primary,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
+    marginBottom: spacing.md,
+    overflow: "hidden",
+    ...shadowStyle({
+      color: colors.primary,
+      elevation: 10,
+      opacity: 0.35,
+      radius: 22,
+    }),
+  },
+  photo: {
+    height: "100%",
+    width: "100%",
+  },
+  photoPlaceholder: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  /** Gold pencil badge signalling the photo is editable. */
+  photoEditBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: radius.round,
+    bottom: spacing.sm,
+    height: 36,
+    justifyContent: "center",
+    position: "absolute",
+    right: spacing.sm,
+    width: 36,
+    ...shadows.softDark,
   },
   visionCard: {
     alignItems: "flex-start",

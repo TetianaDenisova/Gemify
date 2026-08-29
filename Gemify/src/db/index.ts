@@ -40,9 +40,11 @@ export {
   deleteMilestone,
   getMilestoneById,
   getMilestones,
+  getQuestProgressByMilestone,
   insertMilestone,
   updateMilestone,
 } from "./milestonesRepository";
+export type { MilestoneQuestProgress } from "./milestonesRepository";
 
 // Quests & ideas
 export {
@@ -54,23 +56,14 @@ export {
   getIdeas,
   getQuestById,
   getQuests,
+  getQuestsByDream,
+  getScheduledQuestCounts,
+  getScheduledQuests,
+  getUnscheduledQuests,
+  rolloverOverdueQuests,
+  setQuestDone,
   updateQuest,
 } from "./questsRepository";
-
-// Tasks
-export {
-  createTask,
-  deleteTask,
-  getScheduledTaskCounts,
-  getScheduledTasks,
-  getTaskById,
-  getTasksByDream,
-  getTasksByQuest,
-  getUnscheduledTasks,
-  rolloverOverdueTasks,
-  setTaskDone,
-  updateTask,
-} from "./tasksRepository";
 
 // Habits
 export {
@@ -144,14 +137,12 @@ export type {
   NewItem,
   NewMilestone,
   NewRisk,
-  NewTask,
   NewTimelineMoment,
   Quest,
+  QuestPatch,
+  QuestWithBreadcrumb,
   Risk,
   RiskAction,
-  Task,
-  TaskPatch,
-  TaskWithBreadcrumb,
   TimeBlockActionRecord,
   TimeBlockRecord,
   TimeBlockWithActions,

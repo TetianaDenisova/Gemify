@@ -8,7 +8,7 @@ import { TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import { TimeBlockSettingsModal } from "@/components/TimeBlockSettingsModal";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
-import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
+import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { AppText, Card, ScreenHeader, ScreenScaffold } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { layout, spacing } from "@/theme/theme";
@@ -60,8 +60,8 @@ export default function MyDayScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [blockSettingsOpen, setBlockSettingsOpen] = useState(false);
 
-  const { blocks, completedTasks, refresh, totalTasks, toggleTask } =
-    useDayTaskBlocks(toDateKey(selectedDate));
+  const { blocks, completedQuests, refresh, totalQuests, toggleQuest } =
+    useDayQuestBlocks(toDateKey(selectedDate));
 
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
@@ -110,7 +110,7 @@ export default function MyDayScreen() {
             block={activeBlock}
             onToggleAction={(index) => {
               const action = activeBlock.actions[index];
-              if (action) toggleTask(action.taskId, !action.done);
+              if (action) toggleQuest(action.questId, !action.done);
             }}
             showIntro={false}
             style={compact ? styles.blockSectionCompact : styles.blockSection}
@@ -118,7 +118,7 @@ export default function MyDayScreen() {
         ) : (
           <Card style={styles.emptyBlockCard}>
             <AppText align="center" variant="bodySmall">
-              No tasks scheduled for this block. Plan your week in the Sprint
+              No quests scheduled for this block. Plan your week in the Sprint
               tab and they will show up here.
             </AppText>
           </Card>
@@ -133,9 +133,9 @@ export default function MyDayScreen() {
         ]}
       >
         <TodayProgressCard
-          completedActions={completedTasks}
+          completedActions={completedQuests}
           style={styles.progressCard}
-          totalActions={totalTasks}
+          totalActions={totalQuests}
         />
       </View>
 

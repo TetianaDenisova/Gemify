@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   Platform,
@@ -304,15 +305,36 @@ export default function MemoriesScreen() {
       ? detailPhoto
       : detailMoment?.photoUris[0];
 
-  const openAddForm = () => {
+  const openAddForm = (prefillName = "") => {
     setEditingKey(null);
-    setFormName("");
+    setFormName(prefillName);
     setFormDescription("");
     setFormDate(todayKey());
     setFormPhotos([]);
     setOriginalPhotos([]);
     setFormOpen(true);
   };
+
+  // Deep link from the milestone-complete celebration: open the add form for
+  // the right dream, prefilled with the milestone's name. `addMemory` carries
+  // a unique value per navigation so each arrival opens the form once.
+  const {
+    addMemory: addMemoryParam,
+    goalKey: goalKeyParam,
+    memoryName: memoryNameParam,
+  } = useLocalSearchParams<{
+    addMemory?: string;
+    goalKey?: string;
+    memoryName?: string;
+  }>();
+  const [consumedAddParam, setConsumedAddParam] = useState<string | null>(
+    null,
+  );
+  if (addMemoryParam && addMemoryParam !== consumedAddParam) {
+    setConsumedAddParam(addMemoryParam);
+    if (goalKeyParam) setGoalKey(goalKeyParam);
+    openAddForm(memoryNameParam ?? "");
+  }
 
   const openEditForm = (moment: TimelineMoment) => {
     setEditingKey(moment.key);
@@ -493,7 +515,7 @@ export default function MemoriesScreen() {
         <IconButton
           accessibilityLabel="Add a memory"
           icon={<PlusIcon size={20} />}
-          onPress={openAddForm}
+          onPress={() => openAddForm()}
           size={compact ? "sm" : "md"}
         />
       </View>
@@ -649,7 +671,7 @@ export default function MemoriesScreen() {
             icon={<PlusIcon size={16} />}
             iconPosition="before"
             label="Add memory"
-            onPress={openAddForm}
+            onPress={() => openAddForm()}
             variant="secondary"
           />
         </View>

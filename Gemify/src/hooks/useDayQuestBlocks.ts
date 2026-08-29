@@ -3,36 +3,36 @@ import { useCallback, useRef, useState } from "react";
 
 import type { ActionIcon, TimeBlock } from "@/dto/timeBlocks";
 import {
-  getScheduledTasks,
+  getScheduledQuests,
   getTimeBlocksForDate,
-  setTaskDone,
-  type TaskWithBreadcrumb,
+  setQuestDone,
+  type QuestWithBreadcrumb,
 } from "@/db";
 
 /**
  * A day's schedule: the routine time-block frames (labels, times, identity)
- * filled with the REAL tasks planned in the weekly sprint — each task belongs
- * to a quest under a milestone, and lands in the block whose start time most
+ * filled with the REAL quests planned in the weekly sprint — each quest
+ * belongs to a milestone, and lands in the block whose start time most
  * recently precedes its scheduled time (no time → the flexible block).
  */
-export type TaskBlockView = Omit<TimeBlock, "actions"> & {
-  actions: (TimeBlock["actions"][number] & { taskId: number })[];
+export type QuestBlockView = Omit<TimeBlock, "actions"> & {
+  actions: (TimeBlock["actions"][number] & { questId: number })[];
 };
 
-export type UseDayTaskBlocksResult = {
-  blocks: TaskBlockView[];
+export type UseDayQuestBlocksResult = {
+  blocks: QuestBlockView[];
   loading: boolean;
   error: string | null;
-  totalTasks: number;
-  completedTasks: number;
+  totalQuests: number;
+  completedQuests: number;
   /** Persists the done state and updates local state optimistically. */
-  toggleTask: (taskId: number, done: boolean) => void;
+  toggleQuest: (questId: number, done: boolean) => void;
   refresh: () => Promise<void>;
 };
 
 /** Key of the block whose start time most recently passed (Home focus). */
 export function currentBlockKey(
-  blocks: readonly TaskBlockView[],
+  blocks: readonly QuestBlockView[],
   now: Date,
 ): string | null {
   const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
@@ -50,8 +50,8 @@ export function currentBlockKey(
   return key ?? blocks.find((block) => block.time === "Flexible")?.key ?? null;
 }
 
-/** Dream-magic icon variety for quest tasks, stable per task id. */
-const TASK_ICONS: readonly ActionIcon[] = [
+/** Dream-magic icon variety for quests, stable per quest id. */
+const QUEST_ICONS: readonly ActionIcon[] = [
   "star",
   "moon",
   "crystal",
@@ -60,33 +60,33 @@ const TASK_ICONS: readonly ActionIcon[] = [
   "feather",
 ];
 
-function toAction(task: TaskWithBreadcrumb): TaskBlockView["actions"][number] {
+function toAction(quest: QuestWithBreadcrumb): QuestBlockView["actions"][number] {
   return {
-    done: task.isDone,
-    dreamTitle: task.dreamTitle,
-    icon: TASK_ICONS[task.id % TASK_ICONS.length],
-    milestoneTitle: task.milestoneTitle,
+    done: quest.isDone,
+    dreamTitle: quest.dreamTitle,
+    icon: QUEST_ICONS[quest.id % QUEST_ICONS.length],
+    milestoneTitle: quest.milestoneTitle,
     subtitle: "",
-    taskId: task.id,
-    title: task.title,
+    questId: quest.id,
+    title: quest.title,
   };
 }
 
-export function useDayTaskBlocks(date: string): UseDayTaskBlocksResult {
-  const [blocks, setBlocks] = useState<TaskBlockView[]>([]);
+export function useDayQuestBlocks(date: string): UseDayQuestBlocksResult {
+  const [blocks, setBlocks] = useState<QuestBlockView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
     try {
-      const [blockDefs, tasks] = await Promise.all([
+      const [blockDefs, quests] = await Promise.all([
         getTimeBlocksForDate(date),
-        getScheduledTasks(date),
+        getScheduledQuests(date),
       ]);
 
-      // Timed blocks in start-time order; the flexible block collects tasks
-      // without a time and tasks earlier than the first timed block.
+      // Timed blocks in start-time order; the flexible block collects quests
+      // without a time and quests earlier than the first timed block.
       const timed = blockDefs
         .filter((block) => block.startTime !== null)
         .sort((a, b) => (a.startTime! < b.startTime! ? -1 : 1));
@@ -94,18 +94,18 @@ export function useDayTaskBlocks(date: string): UseDayTaskBlocksResult {
         blockDefs.find((block) => block.startTime === null)?.key ??
         blockDefs[0]?.key;
 
-      const tasksByBlock = new Map<string, TaskWithBreadcrumb[]>();
-      for (const task of tasks) {
+      const questsByBlock = new Map<string, QuestWithBreadcrumb[]>();
+      for (const quest of quests) {
         let key = flexibleKey;
-        if (task.scheduledTime) {
+        if (quest.scheduledTime) {
           for (const block of timed) {
-            if (block.startTime! <= task.scheduledTime) key = block.key;
+            if (block.startTime! <= quest.scheduledTime) key = block.key;
           }
         }
         if (key === undefined) continue;
-        const list = tasksByBlock.get(key) ?? [];
-        list.push(task);
-        tasksByBlock.set(key, list);
+        const list = questsByBlock.get(key) ?? [];
+        list.push(quest);
+        questsByBlock.set(key, list);
       }
 
       if (!mounted.current) return;
@@ -118,7 +118,7 @@ export function useDayTaskBlocks(date: string): UseDayTaskBlocksResult {
           identity: block.identity ?? "",
           routineTitle: block.routineTitle,
           routineSubtitle: block.routineSubtitle ?? "",
-          actions: (tasksByBlock.get(block.key) ?? []).map(toAction),
+          actions: (questsByBlock.get(block.key) ?? []).map(toAction),
         })),
       );
       setError(null);
@@ -143,32 +143,40 @@ export function useDayTaskBlocks(date: string): UseDayTaskBlocksResult {
     }, [refresh]),
   );
 
-  const toggleTask = useCallback(
-    (taskId: number, done: boolean) => {
+  const toggleQuest = useCallback(
+    (questId: number, done: boolean) => {
       setBlocks((current) =>
         current.map((block) => ({
           ...block,
           actions: block.actions.map((action) =>
-            action.taskId === taskId ? { ...action, done } : action,
+            action.questId === questId ? { ...action, done } : action,
           ),
         })),
       );
-      setTaskDone(taskId, done).catch((cause: unknown) => {
-        console.error("Failed to save the task state", cause);
+      setQuestDone(questId, done).catch((cause: unknown) => {
+        console.error("Failed to save the quest state", cause);
         if (mounted.current) refresh();
       });
     },
     [refresh],
   );
 
-  const totalTasks = blocks.reduce(
+  const totalQuests = blocks.reduce(
     (sum, block) => sum + block.actions.length,
     0,
   );
-  const completedTasks = blocks.reduce(
+  const completedQuests = blocks.reduce(
     (sum, block) => sum + block.actions.filter((action) => action.done).length,
     0,
   );
 
-  return { blocks, loading, error, totalTasks, completedTasks, toggleTask, refresh };
+  return {
+    blocks,
+    loading,
+    error,
+    totalQuests,
+    completedQuests,
+    toggleQuest,
+    refresh,
+  };
 }

@@ -1,3 +1,5 @@
+import { Image as ExpoImage } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,12 +44,12 @@ import type {
 import { journeyPageConfigs } from "@/data/journeyPageConfig";
 import {
   createQuest,
-  createTask,
   deleteDream,
   deleteMilestone,
   getDreamById,
   getDreams,
   getMilestones,
+  getQuestProgressByMilestone,
   insertMilestone,
   updateDream,
   updateMilestone,
@@ -60,14 +62,21 @@ import {
   AppModal,
   AppText,
   ArrowRightIcon,
+  Checkbox,
   CloseIcon,
   IconButton,
+  PencilIcon,
+  ProgressBar,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { deleteMemoryPhotos } from "@/utils/memoryPhotos";
+import {
+  deleteMemoryPhotos,
+  persistMemoryPhoto,
+} from "@/utils/memoryPhotos";
 import {
   fontSizes,
   gradients,
+  iconSizes,
   inputFocusReset,
   lineHeights,
   pressed as pressedStyle,
@@ -88,21 +97,28 @@ type MilestoneModalState =
 type MilestoneFormValues = {
   artifact: string;
   mentor: string;
+  /** Draft step image (picker URI or the stored URI), null when absent. */
+  photoUri: string | null;
   reward: string;
   state: string;
   title: string;
 };
+
+type MilestoneQuestCounts = { completed: number; total: number };
 
 type MilestoneModalProps = {
   onClose: () => void;
   onDelete: () => void;
   onOpenQuests: () => void;
   onSave: (values: MilestoneFormValues) => void;
+  /** Quest counts for the shown milestone, null when unknown (add mode). */
+  questProgress: MilestoneQuestCounts | null;
   state: MilestoneModalState | null;
+  /** Total milestones on the path, for the "STEP N OF M" eyebrow. */
+  stepCount: number;
 };
 
 const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
-const MILESTONE_DOOR_SOURCE = require("../../assets/create-goal/milestone-door.png");
 const PLUS_SOURCE = require("../../assets/plus.png");
 const PLUS_IMAGE_SIZE = 52;
 const PLUS_TOUCH_SIZE = 60;
@@ -115,6 +131,7 @@ const SHEET_GRADIENT = ["#0A1325", "#050A15", "#08101F"] as const;
 const EMPTY_MILESTONE_FORM: MilestoneFormValues = {
   artifact: "",
   mentor: "",
+  photoUri: null,
   reward: "",
   state: "",
   title: "",
@@ -284,12 +301,18 @@ const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
   },
 ];
 
-function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
+function MilestoneDetailIcon({
+  name,
+  size = 30,
+}: {
+  name: MilestoneDetailIconName;
+  size?: number;
+}) {
   const stroke = colors.primary;
 
   if (name === "artifact") {
     return (
-      <Svg height={48} viewBox="0 0 48 48" width={48}>
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
         <Path
           d="M24 4 L29.2 18.8 L44 24 L29.2 29.2 L24 44 L18.8 29.2 L4 24 L18.8 18.8 Z"
           fill={stroke}
@@ -301,7 +324,7 @@ function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
 
   if (name === "state") {
     return (
-      <Svg height={48} viewBox="0 0 48 48" width={48}>
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
         <Path
           d="M24 7 C31 13 34 20 31 29 C28 36 20 36 17 29 C14 20 17 13 24 7 Z"
           fill="none"
@@ -341,7 +364,7 @@ function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
 
   if (name === "mentor") {
     return (
-      <Svg height={48} viewBox="0 0 48 48" width={48}>
+      <Svg height={size} viewBox="0 0 48 48" width={size}>
         <Circle
           cx={24}
           cy={15}
@@ -363,7 +386,7 @@ function MilestoneDetailIcon({ name }: { name: MilestoneDetailIconName }) {
   }
 
   return (
-    <Svg height={48} viewBox="0 0 48 48" width={48}>
+    <Svg height={size} viewBox="0 0 48 48" width={size}>
       <Rect
         fill="none"
         height={27}
@@ -442,7 +465,9 @@ function MilestoneModal({
   onDelete,
   onOpenQuests,
   onSave,
+  questProgress,
   state,
+  stepCount,
 }: MilestoneModalProps) {
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
@@ -456,6 +481,7 @@ function MilestoneModal({
       : {
           artifact: state.milestone.artifact ?? "",
           mentor: state.milestone.mentor ?? "",
+          photoUri: state.milestone.photoUri ?? null,
           reward: state.milestone.reward ?? "",
           state: state.milestone.state,
           title: state.milestone.title,
@@ -470,10 +496,34 @@ function MilestoneModal({
     }
   }
 
+  const pickStepPhoto = async () => {
+    try {
+      if (Platform.OS !== "web") {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setDraft((current) => ({
+          ...current,
+          photoUri: result.assets[0].uri,
+        }));
+      }
+    } catch (cause) {
+      console.error("Failed to pick the milestone image", cause);
+    }
+  };
+
   const mode: MilestoneModalMode = state?.mode ?? "view";
   const milestone = state && state.mode !== "add" ? state.milestone : null;
   const displayNumber =
     state?.mode === "add" ? state.insertIndex + 1 : milestone?.id ?? 0;
+  // Adding inserts a new step, so the path is one longer than it is now.
+  const stepTotal = state?.mode === "add" ? stepCount + 1 : stepCount;
   const isCompact = width < 520;
   const isShort = height < 760;
   const sheetMaxHeight = Math.min(
@@ -482,12 +532,13 @@ function MilestoneModal({
   );
   const sheetBottomPadding = Math.max(insets.bottom + 14, isCompact ? 18 : 22);
 
-  const isDirty = MILESTONE_DETAIL_FIELDS.some(
-    (field) => draft[field.key] !== initialValues[field.key],
-  );
+  const isDirty =
+    MILESTONE_DETAIL_FIELDS.some(
+      (field) => draft[field.key] !== initialValues[field.key],
+    ) || draft.photoUri !== initialValues.photoUri;
   // Only title and state are mandatory (title is read-only in edit mode);
   // artifact, mentor, and reward are optional.
-  const requiredKeys: readonly (keyof MilestoneFormValues)[] =
+  const requiredKeys: readonly ("title" | "state")[] =
     mode === "add" ? ["title", "state"] : ["state"];
   const requiredComplete = requiredKeys.every(
     (key) => draft[key].trim().length > 0,
@@ -528,16 +579,6 @@ function MilestoneModal({
                 isShort && styles.sheetShort,
               ]}
             >
-              <Image
-                resizeMode="contain"
-                source={MILESTONE_DOOR_SOURCE}
-                style={[
-                  styles.doorImage,
-                  isCompact && styles.doorImageCompact,
-                  isShort && styles.doorImageShort,
-                ]}
-              />
-
               <IconButton
                 accessibilityLabel="Close"
                 icon={<CloseIcon size={26} strokeWidth={1.8} />}
@@ -552,59 +593,72 @@ function MilestoneModal({
               <View
                 style={[
                   styles.sheetHeader,
-                  isCompact && styles.sheetHeaderCompact,
                   isShort && styles.sheetHeaderShort,
                 ]}
               >
-                <View
-                  style={[
-                    styles.modalNumber,
-                    isCompact && styles.modalNumberCompact,
-                  ]}
-                >
-                  <AppText
-                    color={colors.primary}
-                    style={isCompact && styles.modalNumberTextCompact}
-                    variant="stat"
-                  >
-                    {displayNumber}
-                  </AppText>
-                </View>
+                <AppText color={colors.primary} variant="eyebrow">
+                  STEP {displayNumber} OF {stepTotal}
+                </AppText>
 
-                <View style={styles.modalTitleBlock}>
-                  {mode === "add" ? (
-                    <View style={styles.requiredInputRow}>
-                      <MilestoneFieldInput
-                        onChangeText={(text) => setDraftField("title", text)}
-                        placeholder="Milestone title"
-                        style={[
-                          styles.titleInput,
-                          styles.requiredInput,
-                          isCompact && styles.modalTitleCompact,
-                          isShort && styles.modalTitleShort,
-                        ]}
-                        value={draft.title}
-                      />
-                      <AppText
-                        color={colors.primary}
-                        style={styles.requiredMark}
-                        variant="titleSm"
-                      >
-                        *
-                      </AppText>
-                    </View>
-                  ) : (
-                    <AppText
+                {mode === "add" ? (
+                  <View style={styles.requiredInputRow}>
+                    <MilestoneFieldInput
+                      onChangeText={(text) => setDraftField("title", text)}
+                      placeholder="Milestone title"
                       style={[
+                        styles.titleInput,
+                        styles.requiredInput,
                         isCompact && styles.modalTitleCompact,
                         isShort && styles.modalTitleShort,
                       ]}
-                      variant="title"
+                      value={draft.title}
+                    />
+                    <AppText
+                      color={colors.primary}
+                      style={styles.requiredMark}
+                      variant="titleSm"
                     >
-                      {milestone?.title}
+                      *
                     </AppText>
-                  )}
-                </View>
+                  </View>
+                ) : (
+                  <AppText
+                    style={[
+                      styles.modalTitle,
+                      isCompact && styles.modalTitleCompact,
+                      isShort && styles.modalTitleShort,
+                    ]}
+                    variant="title"
+                  >
+                    {milestone?.title}
+                  </AppText>
+                )}
+
+                {mode === "view" &&
+                questProgress &&
+                questProgress.total > 0 ? (
+                  <View style={styles.questProgressRow}>
+                    {questProgress.completed === questProgress.total ? (
+                      <Checkbox
+                        appearance="outline"
+                        checked
+                        shape="circle"
+                        size={26}
+                      />
+                    ) : null}
+                    <AppText color={colors.textMuted} variant="caption">
+                      {questProgress.completed} of {questProgress.total}{" "}
+                      quests
+                    </AppText>
+                    <ProgressBar
+                      glow
+                      style={styles.questProgressBar}
+                      value={
+                        (questProgress.completed / questProgress.total) * 100
+                      }
+                    />
+                  </View>
+                ) : null}
               </View>
 
               <ScrollView
@@ -614,6 +668,55 @@ function MilestoneModal({
                 showsVerticalScrollIndicator={false}
                 style={styles.detailScroll}
               >
+                {mode === "view" ? (
+                  milestone?.photoUri ? (
+                    <View style={styles.stepPhotoFrame}>
+                      <ExpoImage
+                        contentFit="cover"
+                        source={{ uri: milestone.photoUri }}
+                        style={styles.stepPhoto}
+                      />
+                    </View>
+                  ) : null
+                ) : (
+                  <Pressable
+                    accessibilityLabel={
+                      draft.photoUri
+                        ? "Change the step photo"
+                        : "Add a step photo"
+                    }
+                    accessibilityRole="button"
+                    onPress={pickStepPhoto}
+                    style={({ pressed }) => [
+                      styles.stepPhotoFrame,
+                      pressed && pressedStyle,
+                    ]}
+                  >
+                    {draft.photoUri ? (
+                      <ExpoImage
+                        contentFit="cover"
+                        source={{ uri: draft.photoUri }}
+                        style={styles.stepPhoto}
+                      />
+                    ) : (
+                      <View style={styles.stepPhotoPlaceholder}>
+                        <AppText
+                          color={colors.textMuted}
+                          variant="bodySmall"
+                        >
+                          Add a photo of this step
+                        </AppText>
+                      </View>
+                    )}
+                    <View style={styles.stepPhotoEditBadge}>
+                      <PencilIcon
+                        color={colors.textOnPrimary}
+                        size={iconSizes.sm}
+                      />
+                    </View>
+                  </Pressable>
+                )}
+
                 {visibleFields.map((field, index) => (
                   <View
                     key={field.label}
@@ -773,21 +876,19 @@ function MilestoneModal({
   );
 }
 
-const FIRST_STEPS_QUEST_TITLE = "First steps";
-
 type FirstStepModalProps = {
   onClose: () => void;
-  onSave: (taskTitles: string[]) => void;
+  onSave: (stepTitles: string[]) => void;
   visible: boolean;
 };
 
 /**
  * Shown when the guided dream initialization ends: offers to capture a few
- * tiny tasks that become the "First steps" quest on the first milestone.
+ * tiny steps that become the first quests on the first milestone.
  */
 function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
   const [asking, setAsking] = useState(true);
-  const [tasks, setTasks] = useState<string[]>([]);
+  const [steps, setSteps] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [wasVisible, setWasVisible] = useState(false);
 
@@ -796,12 +897,12 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
     setWasVisible(visible);
     if (visible) {
       setAsking(true);
-      setTasks([]);
+      setSteps([]);
       setDraft("");
     }
   }
 
-  const pendingTasks = draft.trim() ? [...tasks, draft.trim()] : tasks;
+  const pendingSteps = draft.trim() ? [...steps, draft.trim()] : steps;
 
   return (
     <AppModal onClose={onClose} visible={visible}>
@@ -816,7 +917,7 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
             style={styles.firstStepBody}
             variant="bodySerif"
           >
-            Would you like to add a small first step — a task you can complete
+            Would you like to add a small first step — a quest you can complete
             in just a few minutes — to begin your journey?
           </AppText>
           <View style={styles.formActionsRow}>
@@ -842,26 +943,25 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
             style={styles.firstStepBody}
             variant="bodySmall"
           >
-            These tasks become the “{FIRST_STEPS_QUEST_TITLE}” quest on your
-            first milestone.
+            These become your first quests on your first milestone.
           </AppText>
 
-          {tasks.map((task, index) => (
-            <View key={`${task}-${index}`} style={styles.firstStepTaskRow}>
+          {steps.map((step, index) => (
+            <View key={`${step}-${index}`} style={styles.firstStepRow}>
               <View style={styles.firstStepBullet} />
               <AppText
                 numberOfLines={1}
-                style={styles.firstStepTaskTitle}
+                style={styles.firstStepTitle}
                 variant="pill"
               >
-                {task}
+                {step}
               </AppText>
               <IconButton
-                accessibilityLabel={`Remove ${task}`}
+                accessibilityLabel={`Remove ${step}`}
                 icon={<CloseIcon size={16} />}
                 onPress={() =>
-                  setTasks((current) =>
-                    current.filter((_, taskIndex) => taskIndex !== index),
+                  setSteps((current) =>
+                    current.filter((_, stepIndex) => stepIndex !== index),
                   )
                 }
                 size="sm"
@@ -871,7 +971,7 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
 
           <AppInput
             containerStyle={styles.firstStepInput}
-            label={tasks.length === 0 ? "First tiny task" : "Another tiny task"}
+            label={steps.length === 0 ? "First tiny quest" : "Another tiny quest"}
             onChangeText={setDraft}
             placeholder="e.g. Write one sentence about why this matters"
             value={draft}
@@ -880,7 +980,7 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
             disabled={!draft.trim()}
             label="+ Add another"
             onPress={() => {
-              setTasks((current) => [...current, draft.trim()]);
+              setSteps((current) => [...current, draft.trim()]);
               setDraft("");
             }}
             style={styles.firstStepAddButton}
@@ -896,9 +996,9 @@ function FirstStepModal({ onClose, onSave, visible }: FirstStepModalProps) {
               variant="secondary"
             />
             <AppButton
-              disabled={pendingTasks.length === 0}
+              disabled={pendingSteps.length === 0}
               label="Save"
-              onPress={() => onSave(pendingTasks)}
+              onPress={() => onSave(pendingSteps)}
               style={styles.formActionButton}
               textStyle={styles.formActionLabel}
             />
@@ -928,6 +1028,7 @@ function toJourneyData(milestone: Milestone): JourneyMilestoneData {
     description: "",
     id: displayId,
     mentor: milestone.mentor ?? undefined,
+    photoUri: milestone.photoUri,
     reward: milestone.reward ?? undefined,
     state: milestone.state ?? "",
     subtitle: "",
@@ -954,6 +1055,10 @@ export function GoalJourneyMapScreen() {
   const [modalState, setModalState] = useState<MilestoneModalState | null>(
     null,
   );
+  /** DB milestone id → quest counts, for the sheet's progress bar. */
+  const [questCounts, setQuestCounts] = useState<
+    Map<number, MilestoneQuestCounts>
+  >(new Map());
 
   const loadJourney = useCallback(async () => {
     try {
@@ -962,6 +1067,17 @@ export function GoalJourneyMapScreen() {
         : ((await getDreams())[0] ?? null);
       setDream(resolved);
       setDbMilestones(resolved ? await getMilestones(resolved.id) : []);
+      const progress = resolved
+        ? await getQuestProgressByMilestone(resolved.id)
+        : [];
+      setQuestCounts(
+        new Map(
+          progress.map((entry) => [
+            entry.milestoneId,
+            { completed: entry.completed, total: entry.total },
+          ]),
+        ),
+      );
     } catch (cause) {
       console.error("Failed to load the journey", cause);
     }
@@ -1044,21 +1160,36 @@ export function GoalJourneyMapScreen() {
 
     try {
       if (modalState.mode === "add") {
+        const storedPhoto = values.photoUri
+          ? await persistMemoryPhoto(values.photoUri)
+          : null;
         await insertMilestone(dream.id, modalState.insertIndex, {
           title: values.title,
           state: values.state,
           artifact: values.artifact,
           mentor: values.mentor,
           reward: values.reward,
+          photoUri: storedPhoto,
         });
       } else {
         const dbId = dbIdByDisplayId.get(modalState.milestone.id);
         if (dbId !== undefined) {
+          const previousPhoto = modalState.milestone.photoUri ?? null;
+          let storedPhoto = previousPhoto;
+          if (values.photoUri !== previousPhoto) {
+            storedPhoto = values.photoUri
+              ? await persistMemoryPhoto(values.photoUri)
+              : null;
+            if (previousPhoto) {
+              await deleteMemoryPhotos([previousPhoto]);
+            }
+          }
           await updateMilestone(dbId, {
             state: values.state,
             artifact: values.artifact,
             mentor: values.mentor,
             reward: values.reward,
+            photoUri: storedPhoto,
           });
         }
       }
@@ -1079,6 +1210,10 @@ export function GoalJourneyMapScreen() {
       const dbId = dbIdByDisplayId.get(modalState.milestone.id);
       if (dbId !== undefined) {
         await deleteMilestone(dbId);
+        const photo = modalState.milestone.photoUri;
+        if (photo) {
+          await deleteMemoryPhotos([photo]);
+        }
       }
       await loadJourney();
     } catch (cause) {
@@ -1087,12 +1222,24 @@ export function GoalJourneyMapScreen() {
     setModalState(null);
   };
 
-  const handleSaveDream = async (name: string, vision: string) => {
+  const handleSaveDream = async (
+    name: string,
+    vision: string,
+    photoUri: string | null,
+  ) => {
     if (!dream) return;
     try {
+      let storedPhoto = dream.photoUri;
+      if (photoUri !== dream.photoUri) {
+        storedPhoto = photoUri ? await persistMemoryPhoto(photoUri) : null;
+        if (dream.photoUri) {
+          await deleteMemoryPhotos([dream.photoUri]);
+        }
+      }
       const updated = await updateDream(dream.id, {
         title: name,
         visionStatement: vision || null,
+        photoUri: storedPhoto,
       });
       if (updated) setDream(updated);
     } catch (cause) {
@@ -1100,16 +1247,12 @@ export function GoalJourneyMapScreen() {
     }
   };
 
-  const handleSaveFirstSteps = async (taskTitles: string[]) => {
+  const handleSaveFirstSteps = async (stepTitles: string[]) => {
     const firstMilestone = dbMilestones[0];
     if (firstMilestone) {
       try {
-        const quest = await createQuest(
-          firstMilestone.id,
-          FIRST_STEPS_QUEST_TITLE,
-        );
-        for (const title of taskTitles) {
-          await createTask({ questId: quest.id, title });
+        for (const title of stepTitles) {
+          await createQuest(firstMilestone.id, title);
         }
       } catch (cause) {
         console.error("Failed to save the first steps", cause);
@@ -1122,8 +1265,12 @@ export function GoalJourneyMapScreen() {
     if (!dream) return;
     try {
       await deleteDream(dream.id);
-      if (dream.photoUri) {
-        await deleteMemoryPhotos([dream.photoUri]);
+      const photos = [
+        dream.photoUri,
+        ...dbMilestones.map((milestone) => milestone.photoUri),
+      ].filter((uri): uri is string => uri !== null);
+      if (photos.length > 0) {
+        await deleteMemoryPhotos(photos);
       }
       router.back();
     } catch (cause) {
@@ -1236,6 +1383,7 @@ export function GoalJourneyMapScreen() {
         dreamId={dream?.id}
         dreamName={dream?.title ?? ""}
         editMode={isEditMode}
+        photoUri={dream?.photoUri ?? null}
         onDeleteDream={handleDeleteDream}
         onEnterEditMode={() => {
           setIsEditMode(true);
@@ -1244,7 +1392,7 @@ export function GoalJourneyMapScreen() {
         }}
         onExitEditMode={() => {
           // Leaving the guided initialization with a path in place is the
-          // moment to offer a tiny first task.
+          // moment to offer a tiny first quest.
           if (isGuidedAdd && dbMilestones.length > 0) {
             setFirstStepVisible(true);
           }
@@ -1276,7 +1424,15 @@ export function GoalJourneyMapScreen() {
           });
         }}
         onSave={handleSave}
+        questProgress={
+          modalState && modalState.mode !== "add"
+            ? (questCounts.get(
+                dbIdByDisplayId.get(modalState.milestone.id) ?? -1,
+              ) ?? null)
+            : null
+        }
         state={modalState}
+        stepCount={milestones.length}
       />
 
       <FirstStepModal
@@ -1329,62 +1485,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 24,
   },
-  doorImage: {
-    position: "absolute",
-    top: 30,
-    right: 90,
-    width: 190,
-    height: 132,
-  },
-  doorImageCompact: {
-    top: 22,
-    right: 82,
-    width: 116,
-    height: 88,
-    opacity: 0.88,
-  },
-  doorImageShort: {
-    top: 20,
-    width: 104,
-    height: 78,
-  },
   sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: 116,
-    paddingRight: 246,
-  },
-  sheetHeaderCompact: {
-    minHeight: 88,
-    paddingRight: 150,
+    paddingBottom: spacing.md,
+    paddingRight: 52,
   },
   sheetHeaderShort: {
-    minHeight: 78,
-    paddingRight: 138,
+    paddingBottom: spacing.sm,
   },
-  modalNumber: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  modalTitle: {
+    marginTop: spacing.xs,
+  },
+  questProgressRow: {
     alignItems: "center",
-    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  questProgressBar: {
+    width: 96,
+  },
+  /** Landscape step image, framed like the mock's wide photo card. */
+  stepPhotoFrame: {
+    aspectRatio: 2,
     backgroundColor: colors.surfaceDeep,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    ...shadows.goldGlow,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+    overflow: "hidden",
   },
-  modalNumberCompact: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  stepPhoto: {
+    height: "100%",
+    width: "100%",
   },
-  modalNumberTextCompact: {
-    fontSize: fontSizes.screenTitle,
-    lineHeight: lineHeights.screenTitle,
-  },
-  modalTitleBlock: {
+  stepPhotoPlaceholder: {
+    alignItems: "center",
     flex: 1,
-    marginLeft: 18,
+    justifyContent: "center",
+  },
+  /** Gold pencil badge signalling the photo is editable. */
+  stepPhotoEditBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: radius.round,
+    bottom: spacing.sm,
+    height: 36,
+    justifyContent: "center",
+    position: "absolute",
+    right: spacing.sm,
+    width: 36,
+    ...shadows.softDark,
   },
   modalTitleCompact: {
     fontSize: fontSizes.xxxl,
@@ -1431,17 +1581,16 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   detailIcon: {
-    width: 66,
+    width: 44,
     alignItems: "center",
     paddingTop: 3,
   },
   detailIconCompact: {
-    width: 42,
-    transform: [{ scale: 0.72 }],
+    width: 36,
   },
   detailCopy: {
     flex: 1,
-    paddingLeft: 16,
+    paddingLeft: 12,
   },
   detailCopyCompact: {
     paddingLeft: 6,
@@ -1572,7 +1721,7 @@ const styles = StyleSheet.create({
   firstStepBody: {
     marginTop: spacing.sm,
   },
-  firstStepTaskRow: {
+  firstStepRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
@@ -1584,7 +1733,7 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
   },
-  firstStepTaskTitle: {
+  firstStepTitle: {
     flex: 1,
   },
   firstStepInput: {

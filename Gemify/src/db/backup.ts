@@ -19,7 +19,6 @@ const BACKUP_TABLES = [
   "dream_feeling_states",
   "milestones",
   "quests",
-  "tasks",
   "ideas",
   "habits",
   "habit_schedule_days",
@@ -55,7 +54,7 @@ export type ImportSummary = {
   dreams: number;
   habits: number;
   moments: number;
-  tasks: number;
+  quests: number;
 };
 
 type BackupUpgrade = {
@@ -121,6 +120,72 @@ const backupUpgrades: BackupUpgrade[] = [
       }
     },
   },
+  {
+    // v8 added milestones.photo_uri; older backups have no step images.
+    toVersion: 8,
+    up: (doc) => {
+      for (const row of doc.tables.milestones ?? []) {
+        if (row.photo_uri === undefined) row.photo_uri = null;
+      }
+    },
+  },
+  {
+    // v9 added quests.is_done; older backups predate manual quest checks.
+    toVersion: 9,
+    up: (doc) => {
+      for (const row of doc.tables.quests ?? []) {
+        if (row.is_done === undefined) row.is_done = 0;
+      }
+    },
+  },
+  {
+    // v10 folded the tasks layer into quests: every task becomes its own
+    // quest under its parent's milestone, former container quests are
+    // dropped, and quests carry the scheduling columns.
+    toVersion: 10,
+    up: (doc) => {
+      const quests = doc.tables.quests ?? [];
+      const tasks = doc.tables.tasks ?? [];
+      const questById = new Map(quests.map((row) => [row.id, row]));
+      const containerIds = new Set(tasks.map((row) => row.quest_id));
+
+      let nextId =
+        quests.reduce((max, row) => Math.max(max, Number(row.id) || 0), 0) + 1;
+
+      const survivors = quests
+        .filter((row) => !containerIds.has(row.id))
+        .map((row) => ({
+          scheduled_date: null,
+          scheduled_time: null,
+          is_planned: 0,
+          completed_at: null,
+          ...row,
+        }));
+
+      const converted: typeof quests = [];
+      for (const task of tasks) {
+        const parent = questById.get(task.quest_id);
+        if (!parent) continue;
+        const row: Row = {
+          id: nextId++,
+          milestone_id: parent.milestone_id,
+          title: task.title,
+          is_active: parent.is_active ?? 1,
+          is_done: task.is_done ?? 0,
+          scheduled_date: task.scheduled_date ?? null,
+          scheduled_time: task.scheduled_time ?? null,
+          is_planned: task.is_planned ?? 1,
+          completed_at: task.completed_at ?? null,
+        };
+        // created_at is NOT NULL with a default — omit rather than insert null.
+        if (parent.created_at != null) row.created_at = parent.created_at;
+        converted.push(row);
+      }
+
+      doc.tables.quests = [...survivors, ...converted];
+      delete doc.tables.tasks;
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -158,8 +223,8 @@ async function buildBackupDocument(): Promise<BackupDocument> {
       const marker = await embedPhoto(row.uri);
       if (marker) row.uri = marker;
     }
-    // Dream vision images travel the same way as memory photos.
-    for (const row of tables.dreams) {
+    // Dream vision and milestone step images travel like memory photos.
+    for (const row of [...tables.dreams, ...tables.milestones]) {
       const marker = await embedPhoto(row.photo_uri);
       if (marker) row.photo_uri = marker;
     }
@@ -260,7 +325,7 @@ export async function pickAndImportBackup(): Promise<ImportSummary | null> {
     dreams: document.tables.dreams?.length ?? 0,
     habits: document.tables.habits?.length ?? 0,
     moments: document.tables.timeline_moments?.length ?? 0,
-    tasks: document.tables.tasks?.length ?? 0,
+    quests: document.tables.quests?.length ?? 0,
   };
 }
 
@@ -321,7 +386,7 @@ async function restoreBackup(document: BackupDocument): Promise<void> {
         const resolved =
           table === "timeline_moment_photos"
             ? resolvePhotoUri(row, photoUriByName)
-            : table === "dreams"
+            : table === "dreams" || table === "milestones"
               ? resolveDreamPhoto(row, photoUriByName)
               : row;
         if (!resolved) continue;
@@ -369,8 +434,8 @@ async function writePhotoFiles(
 }
 
 /**
- * Swaps a dream's photo marker back to a real URI. A photo that failed to
- * restore only clears the image — the dream row itself always survives.
+ * Swaps a dream's or milestone's photo marker back to a real URI. A photo
+ * that failed to restore only clears the image — the row itself survives.
  */
 function resolveDreamPhoto(
   row: Row,

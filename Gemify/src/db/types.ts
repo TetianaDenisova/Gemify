@@ -50,6 +50,8 @@ export type Milestone = {
   mentor: string | null;
   reward: string | null;
   status: MilestoneStatus;
+  /** Attached step image (durable app-storage URI), null when absent. */
+  photoUri: string | null;
 };
 
 export type NewMilestone = {
@@ -58,6 +60,7 @@ export type NewMilestone = {
   artifact?: string | null;
   mentor?: string | null;
   reward?: string | null;
+  photoUri?: string | null;
 };
 
 export type MilestonePatch = {
@@ -67,19 +70,44 @@ export type MilestonePatch = {
   mentor?: string | null;
   reward?: string | null;
   status?: MilestoneStatus;
+  photoUri?: string | null;
 };
 
 // ---------------------------------------------------------------------------
-// Quests, tasks, ideas
+// Quests & ideas
 // ---------------------------------------------------------------------------
 
+/** A quest is a single actionable item — the unit of both doing and planning. */
 export type Quest = {
   id: number;
   milestoneId: number;
   title: string;
   isActive: boolean;
+  isDone: boolean;
   /** ISO 8601 UTC — drives the "N days active" caption. */
   createdAt: string;
+  /** YYYY-MM-DD, null = unscheduled. */
+  scheduledDate: string | null;
+  /** HH:MM, null = no fixed time. */
+  scheduledTime: string | null;
+  /** True once the quest was added to the weekly plan ("Do this week"). */
+  isPlanned: boolean;
+  completedAt: string | null;
+};
+
+export type QuestPatch = {
+  title?: string;
+  isActive?: boolean;
+  isDone?: boolean;
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
+  isPlanned?: boolean;
+};
+
+/** Quest plus its Dream / Milestone breadcrumb (sprint board rows). */
+export type QuestWithBreadcrumb = Quest & {
+  dreamTitle: string;
+  milestoneTitle: string;
 };
 
 export type Idea = {
@@ -88,41 +116,6 @@ export type Idea = {
   title: string;
   /** 0..10 */
   score: number;
-};
-
-export type Task = {
-  id: number;
-  questId: number;
-  title: string;
-  /** YYYY-MM-DD, null = unscheduled. */
-  scheduledDate: string | null;
-  /** HH:MM, null = no fixed time. */
-  scheduledTime: string | null;
-  /** True once the task was added to the weekly plan ("Do this week"). */
-  isPlanned: boolean;
-  isDone: boolean;
-  completedAt: string | null;
-};
-
-export type NewTask = {
-  questId: number;
-  title: string;
-  scheduledDate?: string | null;
-  scheduledTime?: string | null;
-};
-
-export type TaskPatch = {
-  title?: string;
-  scheduledDate?: string | null;
-  scheduledTime?: string | null;
-  isPlanned?: boolean;
-};
-
-/** Task plus its Dream / Milestone / Quest breadcrumb (sprint board rows). */
-export type TaskWithBreadcrumb = Task & {
-  dreamTitle: string;
-  milestoneTitle: string;
-  questTitle: string;
 };
 
 // ---------------------------------------------------------------------------

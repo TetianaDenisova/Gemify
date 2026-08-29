@@ -261,7 +261,7 @@ function FulfillmentChart({
   );
 }
 
-function TaskBarsChart({
+function QuestBarsChart({
   compact,
   points,
 }: {
@@ -579,7 +579,7 @@ export default function ProgressScreen() {
               style={styles.emptyCaption}
               variant="body"
             >
-              Complete your first task to reveal your progress.
+              Complete your first quest to reveal your progress.
             </AppText>
           </View>
         </Card>
@@ -633,7 +633,7 @@ export default function ProgressScreen() {
             <Card style={styles.sectionCard} variant="glass">
               <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
               <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
-                <TaskBarsChart compact={compact} points={barsRange.points} />
+                <QuestBarsChart compact={compact} points={barsRange.points} />
                 {barsRange.summary ? (
                   <>
                     <View style={styles.panelDivider} />

@@ -11,13 +11,11 @@ import type {
 import {
   getDreams,
   getMilestones,
-  getQuests,
-  getTasksByDream,
+  getQuestsByDream,
   getTimelineMoments,
   type Dream,
   type Milestone,
   type Quest,
-  type Task,
 } from "@/db";
 import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
 
@@ -79,27 +77,25 @@ function sixMonthBuckets(): Bucket[] {
   });
 }
 
-/** Date-only part of a task's completion timestamp, or null. */
-function completedOn(task: Task): string | null {
-  return task.completedAt ? task.completedAt.slice(0, 10) : null;
+/** Date-only part of a quest's completion timestamp, or null. */
+function completedOn(quest: Quest): string | null {
+  return quest.completedAt ? quest.completedAt.slice(0, 10) : null;
 }
 
 /**
- * Each task's contribution to the overall goal, as a fraction of 1: 100% is
- * split equally across the dream's milestones, each milestone's share equally
- * across its quests, and each quest's share equally across its tasks. Values
- * stay exact (no rounding) so completing everything sums to exactly 1 —
- * round only when displaying.
+ * Each quest's contribution to the overall goal, as a fraction of 1: 100% is
+ * split equally across the dream's milestones, and each milestone's share
+ * equally across its quests. Values stay exact (no rounding) so completing
+ * everything sums to exactly 1 — round only when displaying.
  */
-function taskWeights(
+function questWeights(
   milestones: Milestone[],
   quests: Quest[],
-  tasks: Task[],
 ): Map<number, number> {
   const weights = new Map<number, number>();
   if (milestones.length === 0) {
-    // No structure to weight by — fall back to equal task shares.
-    tasks.forEach((task) => weights.set(task.id, 1 / tasks.length));
+    // No structure to weight by — fall back to equal quest shares.
+    quests.forEach((quest) => weights.set(quest.id, 1 / quests.length));
     return weights;
   }
 
@@ -110,19 +106,14 @@ function taskWeights(
     );
     if (milestoneQuests.length === 0) continue;
     const questShare = milestoneShare / milestoneQuests.length;
-    for (const quest of milestoneQuests) {
-      const questTasks = tasks.filter((task) => task.questId === quest.id);
-      if (questTasks.length === 0) continue;
-      const taskShare = questShare / questTasks.length;
-      questTasks.forEach((task) => weights.set(task.id, taskShare));
-    }
+    milestoneQuests.forEach((quest) => weights.set(quest.id, questShare));
   }
   return weights;
 }
 
 /** Cumulative "% of the goal done by the end of each bucket", exact. */
 function cumulativePoints(
-  tasks: Task[],
+  quests: Quest[],
   weights: Map<number, number>,
   buckets: Bucket[],
 ): FulfillmentPoint[] {
@@ -130,27 +121,27 @@ function cumulativePoints(
     key: bucket.key,
     label: bucket.label,
     percent:
-      tasks
-        .filter((task) => {
-          if (!task.isDone) return false;
-          const date = completedOn(task);
-          // Tasks without a timestamp still count once done.
+      quests
+        .filter((quest) => {
+          if (!quest.isDone) return false;
+          const date = completedOn(quest);
+          // Quests without a timestamp still count once done.
           return date === null || date <= bucket.end;
         })
-        .reduce((sum, task) => sum + (weights.get(task.id) ?? 0), 0) * 100,
+        .reduce((sum, quest) => sum + (weights.get(quest.id) ?? 0), 0) * 100,
   }));
 }
 
 /** Cumulative goal-progress range with the "+10% closer" header data. */
 function goalRange(
-  tasks: Task[],
+  quests: Quest[],
   weights: Map<number, number>,
   buckets: Bucket[],
   key: string,
   label: string,
   eyebrow: string,
 ): FulfillmentRange {
-  const points = cumulativePoints(tasks, weights, buckets);
+  const points = cumulativePoints(quests, weights, buckets);
   // Delta between the *displayed* endpoints, so the header always matches
   // the rounded labels on the chart.
   const delta =
@@ -161,9 +152,9 @@ function goalRange(
 
   const rangeStart = buckets[0].start;
   const rangeEnd = buckets[buckets.length - 1].end;
-  const doneInRange = tasks.filter((task) => {
-    if (!task.isDone) return false;
-    const date = completedOn(task);
+  const doneInRange = quests.filter((quest) => {
+    if (!quest.isDone) return false;
+    const date = completedOn(quest);
     return date !== null && date >= rangeStart && date <= rangeEnd;
   }).length;
 
@@ -175,14 +166,14 @@ function goalRange(
       eyebrow,
       delta,
       caption: "closer to your goal",
-      tasksLabel: `${doneInRange} ${doneInRange === 1 ? "task" : "tasks"}`,
+      tasksLabel: `${doneInRange} ${doneInRange === 1 ? "quest" : "quests"}`,
     },
   };
 }
 
-/** Per-bucket completion rate of tasks scheduled inside the bucket. */
+/** Per-bucket completion rate of quests scheduled inside the bucket. */
 function completionRange(
-  tasks: Task[],
+  quests: Quest[],
   buckets: Bucket[],
   key: string,
   label: string,
@@ -192,13 +183,13 @@ function completionRange(
   let rangeTotal = 0;
 
   const points = buckets.map((bucket) => {
-    const scheduled = tasks.filter(
-      (task) =>
-        task.scheduledDate !== null &&
-        task.scheduledDate >= bucket.start &&
-        task.scheduledDate <= bucket.end,
+    const scheduled = quests.filter(
+      (quest) =>
+        quest.scheduledDate !== null &&
+        quest.scheduledDate >= bucket.start &&
+        quest.scheduledDate <= bucket.end,
     );
-    const done = scheduled.filter((task) => task.isDone).length;
+    const done = scheduled.filter((quest) => quest.isDone).length;
     rangeDone += done;
     rangeTotal += scheduled.length;
     const today = toDateKey(new Date());
@@ -218,39 +209,39 @@ function completionRange(
     summary: {
       eyebrow,
       percent: rangeTotal > 0 ? Math.round((rangeDone / rangeTotal) * 100) : 0,
-      caption: `${rangeDone} of ${rangeTotal} tasks completed`,
+      caption: `${rangeDone} of ${rangeTotal} quests completed`,
     },
   };
 }
 
-function buildForecast(tasks: Task[]): ProgressContent["forecast"] {
-  const total = tasks.length;
-  const done = tasks.filter((task) => task.isDone).length;
+function buildForecast(quests: Quest[]): ProgressContent["forecast"] {
+  const total = quests.length;
+  const done = quests.filter((quest) => quest.isDone).length;
 
   if (total === 0) {
     return {
-      headline: "Add tasks to your quests to unlock the forecast.",
+      headline: "Add quests to your milestones to unlock the forecast.",
       date: "Your journey starts now.",
       eta: "No data yet",
     };
   }
   if (done >= total) {
     return {
-      headline: "Every task is complete —",
+      headline: "Every quest is complete —",
       date: "you made it real.",
       eta: "Done",
     };
   }
 
   const cutoff = toDateKey(addDays(new Date(), -30));
-  const recentDone = tasks.filter((task) => {
-    const date = completedOn(task);
+  const recentDone = quests.filter((quest) => {
+    const date = completedOn(quest);
     return date !== null && date >= cutoff;
   }).length;
 
   if (recentDone === 0) {
     return {
-      headline: "Complete a few tasks and the forecast will appear.",
+      headline: "Complete a few quests and the forecast will appear.",
       date: "Keep going.",
       eta: "No recent data",
     };
@@ -314,14 +305,13 @@ export type UseProgressContentResult = {
 
 /**
  * Builds the ProgressContent view-model the Progress screen renders, from
- * real dreams, tasks and timeline moments. `goalKey` is the selected dream id
+ * real dreams, quests and timeline moments. `goalKey` is the selected dream id
  * as a string ("" or unknown falls back to the first dream).
  */
 export function useProgressContent(goalKey: string): UseProgressContentResult {
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [moments, setMoments] = useState<ProgressTimelineMoment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -340,21 +330,16 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       if (!resolved) {
         setMilestones([]);
         setQuests([]);
-        setTasks([]);
         setMoments([]);
         return;
       }
-      const [milestoneList, taskList, momentList] = await Promise.all([
+      const [milestoneList, questList, momentList] = await Promise.all([
         getMilestones(resolved.id),
-        getTasksByDream(resolved.id),
+        getQuestsByDream(resolved.id),
         getTimelineMoments(resolved.id),
       ]);
-      const questLists = await Promise.all(
-        milestoneList.map((milestone) => getQuests(milestone.id)),
-      );
       setMilestones(milestoneList);
-      setQuests(questLists.flat());
-      setTasks(taskList);
+      setQuests(questList);
       setMoments(momentList.map(toProgressMoment));
     } catch (cause) {
       console.error("Failed to load progress data", cause);
@@ -373,7 +358,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
     const week = weekBuckets();
     const month = monthBuckets();
     const sixMonths = sixMonthBuckets();
-    const weights = taskWeights(milestones, quests, tasks);
+    const weights = questWeights(milestones, quests);
 
     return {
       title: "Progress",
@@ -385,7 +370,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
               label: dream.title,
             }))
           : [{ key: "none", label: "No dreams yet" }],
-      forecast: buildForecast(tasks),
+      forecast: buildForecast(quests),
       moments,
       fulfillmentTabs: [
         {
@@ -393,10 +378,10 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
           label: "Goal Progress",
           chart: "line",
           ranges: [
-            goalRange(tasks, weights, week, "week", "Week", "This week"),
-            goalRange(tasks, weights, month, "month", "Month", "This month"),
+            goalRange(quests, weights, week, "week", "Week", "This week"),
+            goalRange(quests, weights, month, "month", "Month", "This month"),
             goalRange(
-              tasks,
+              quests,
               weights,
               sixMonths,
               "6months",
@@ -407,13 +392,13 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
         },
         {
           key: "daily",
-          label: "Task Completion",
+          label: "Quest Completion",
           chart: "bars",
           ranges: [
-            completionRange(tasks, week, "week", "Week", "Weekly Average"),
-            completionRange(tasks, month, "month", "Month", "Monthly Average"),
+            completionRange(quests, week, "week", "Week", "Weekly Average"),
+            completionRange(quests, month, "month", "Month", "Monthly Average"),
             completionRange(
-              tasks,
+              quests,
               sixMonths,
               "6months",
               "6 Months",
@@ -423,9 +408,9 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
         },
       ],
       overallLabel: "Overall Goal Progress",
-      hasChartData: tasks.some((task) => task.isDone),
+      hasChartData: quests.some((quest) => quest.isDone),
     };
-  }, [dreams, milestones, moments, quests, tasks]);
+  }, [dreams, milestones, moments, quests]);
 
   return { content, dreamId, loading, refresh };
 }

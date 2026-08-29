@@ -292,6 +292,67 @@ export const migrations: Migration[] = [
       await db.execAsync("ALTER TABLE dreams ADD COLUMN photo_uri TEXT;");
     },
   },
+  {
+    // Milestones: an attached step image shown in the milestone sheet,
+    // stored the same way as the dream vision image.
+    toVersion: 8,
+    up: async (db) => {
+      await db.execAsync("ALTER TABLE milestones ADD COLUMN photo_uri TEXT;");
+    },
+  },
+  {
+    // Quests: a manual done flag so a quest without tasks can be checked
+    // off. Quests with tasks still derive completion from their tasks.
+    toVersion: 9,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE quests ADD COLUMN is_done INTEGER NOT NULL DEFAULT 0
+          CHECK (is_done IN (0, 1));
+      `);
+    },
+  },
+  {
+    // A quest is now a single actionable item: the tasks layer is folded into
+    // quests. Scheduling columns move onto quests; every existing task becomes
+    // its own quest under the same milestone; former container quests (those
+    // that had tasks) are removed, and the tasks table is dropped.
+    toVersion: 10,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE quests ADD COLUMN scheduled_date TEXT
+          CHECK (scheduled_date IS NULL OR date(scheduled_date) IS NOT NULL);
+        ALTER TABLE quests ADD COLUMN scheduled_time TEXT
+          CHECK (scheduled_time IS NULL
+            OR scheduled_time GLOB '[0-2][0-9]:[0-5][0-9]');
+        ALTER TABLE quests ADD COLUMN is_planned INTEGER NOT NULL DEFAULT 0
+          CHECK (is_planned IN (0, 1));
+        ALTER TABLE quests ADD COLUMN completed_at TEXT;
+
+        CREATE TEMP TABLE container_quests AS
+          SELECT DISTINCT quest_id AS id FROM tasks;
+
+        INSERT INTO quests
+          (milestone_id, title, is_active, is_done, created_at,
+           scheduled_date, scheduled_time, is_planned, completed_at)
+        SELECT q.milestone_id, t.title, q.is_active, t.is_done, q.created_at,
+               t.scheduled_date, t.scheduled_time, t.is_planned, t.completed_at
+        FROM tasks t
+        JOIN quests q ON q.id = t.quest_id
+        ORDER BY t.id;
+
+        DELETE FROM quests
+          WHERE id IN (SELECT id FROM container_quests);
+        DROP TABLE container_quests;
+
+        DROP INDEX IF EXISTS idx_tasks_quest;
+        DROP INDEX IF EXISTS idx_tasks_schedule;
+        DROP TABLE tasks;
+
+        CREATE INDEX IF NOT EXISTS idx_quests_schedule
+          ON quests (scheduled_date, scheduled_time);
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

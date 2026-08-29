@@ -77,47 +77,37 @@ export async function getDreams(includeArchived = false): Promise<Dream[]> {
 export type DreamSummary = Dream & {
   /** Title of the first not-completed milestone (or the last one when done). */
   currentMilestone: string | null;
-  completedTasks: number;
-  totalTasks: number;
+  completedQuests: number;
+  totalQuests: number;
   /**
    * 0..100, exact (unrounded) so partial shares still sum to 100. The dream's
-   * 100% is split equally across its milestones, each milestone's share
-   * equally across its active quests, and each quest's share equally across
-   * its tasks. Round only for display.
+   * 100% is split equally across its milestones, and each milestone's share
+   * equally across its active quests. Round only for display.
    */
   progressPercent: number;
 };
 
-/** Home-screen cards: each dream with its current milestone and task counts. */
+/** Home-screen cards: each dream with its current milestone and quest counts. */
 export async function getDreamSummaries(): Promise<DreamSummary[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<
     DreamRow & {
       current_milestone: string | null;
-      completed_tasks: number;
-      total_tasks: number;
+      completed_quests: number;
+      total_quests: number;
       progress_fraction: number;
     }
   >(
     // Weighted progress: AVG at each level gives every milestone an equal
-    // slice of the dream, every active quest an equal slice of its milestone,
-    // and every task an equal slice of its quest. A milestone the user marked
-    // completed counts as its full slice regardless of quest state; empty
-    // levels count as 0.
-    `WITH quest_progress AS (
-       SELECT q.id, q.milestone_id,
-              COALESCE(AVG(t.is_done * 1.0), 0) AS progress
-       FROM quests q
-       LEFT JOIN tasks t ON t.quest_id = q.id
-       WHERE q.is_active = 1
-       GROUP BY q.id
-     ),
-     milestone_progress AS (
+    // slice of the dream and every active quest an equal slice of its
+    // milestone. A milestone the user marked completed counts as its full
+    // slice regardless of quest state; empty levels count as 0.
+    `WITH milestone_progress AS (
        SELECT m.id, m.dream_id,
               CASE WHEN m.status = 'completed' THEN 1.0
                    ELSE COALESCE(
-                     (SELECT AVG(qp.progress) FROM quest_progress qp
-                      WHERE qp.milestone_id = m.id),
+                     (SELECT AVG(q.is_done * 1.0) FROM quests q
+                      WHERE q.milestone_id = m.id AND q.is_active = 1),
                      0)
               END AS progress
        FROM milestones m
@@ -132,14 +122,12 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
                WHERE m.dream_id = d.id
                ORDER BY m.sequence_number DESC LIMIT 1)
             ) AS current_milestone,
-            (SELECT COUNT(*) FROM tasks t
-             JOIN quests q ON q.id = t.quest_id
+            (SELECT COUNT(*) FROM quests q
              JOIN milestones m ON m.id = q.milestone_id
-             WHERE m.dream_id = d.id AND t.is_done = 1) AS completed_tasks,
-            (SELECT COUNT(*) FROM tasks t
-             JOIN quests q ON q.id = t.quest_id
+             WHERE m.dream_id = d.id AND q.is_done = 1) AS completed_quests,
+            (SELECT COUNT(*) FROM quests q
              JOIN milestones m ON m.id = q.milestone_id
-             WHERE m.dream_id = d.id) AS total_tasks,
+             WHERE m.dream_id = d.id) AS total_quests,
             COALESCE(
               (SELECT AVG(mp.progress) FROM milestone_progress mp
                WHERE mp.dream_id = d.id),
@@ -152,8 +140,8 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
   return rows.map((row) => ({
     ...toDream(row),
     currentMilestone: row.current_milestone,
-    completedTasks: row.completed_tasks,
-    totalTasks: row.total_tasks,
+    completedQuests: row.completed_quests,
+    totalQuests: row.total_quests,
     progressPercent: row.progress_fraction * 100,
   }));
 }

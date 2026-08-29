@@ -11,6 +11,8 @@ export type JourneyMilestoneContent = {
   id: number;
   locked?: boolean;
   mentor?: string;
+  /** Attached step image URI shown in the milestone sheet. */
+  photoUri?: string | null;
   reward?: string;
   state: string;
   subtitle: string;

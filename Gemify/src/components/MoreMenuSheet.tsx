@@ -61,7 +61,7 @@ export function MoreMenuSheet({
           title: "Import complete",
           message:
             `Restored ${summary.dreams} dreams, ${summary.habits} habits, ` +
-            `${summary.tasks} tasks and ${summary.moments} memories.`,
+            `${summary.quests} quests and ${summary.moments} memories.`,
         });
       }
     } catch (cause) {

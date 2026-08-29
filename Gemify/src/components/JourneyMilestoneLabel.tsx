@@ -9,6 +9,8 @@ import { fonts, shadows, textGlow } from "@/theme/theme";
 export type JourneyMilestoneLabelSide = "left" | "right";
 
 export type JourneyMilestoneLabelProps = {
+  /** Fades the whole label — used for completed milestones on the map. */
+  muted?: boolean;
   number: number;
   side?: JourneyMilestoneLabelSide;
   style?: StyleProp<ViewStyle>;
@@ -55,6 +57,7 @@ function GoldenConnector() {
 }
 
 export function JourneyMilestoneLabel({
+  muted = false,
   number,
   side = "right",
   style,
@@ -72,6 +75,7 @@ export function JourneyMilestoneLabel({
         styles.container,
         { pointerEvents: "none" },
         isLeft && styles.containerLeft,
+        muted && styles.containerMuted,
         style,
       ]}
     >
@@ -119,6 +123,10 @@ const styles = StyleSheet.create({
   },
   containerLeft: {
     flexDirection: "row-reverse",
+  },
+  /** Completed milestones: the label recedes so upcoming steps stand out. */
+  containerMuted: {
+    opacity: 0.55,
   },
   connector: {
     width: CONNECTOR_WIDTH,

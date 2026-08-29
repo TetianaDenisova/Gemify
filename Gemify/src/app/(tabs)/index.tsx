@@ -6,9 +6,9 @@ import { StyleSheet, View } from "react-native";
 import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
-import { rolloverOverdueTasks, type DreamSummary } from "@/db";
+import { rolloverOverdueQuests, type DreamSummary } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
-import { currentBlockKey, useDayTaskBlocks } from "@/hooks/useDayTaskBlocks";
+import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
@@ -21,10 +21,10 @@ import {
   SectionHeader,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { controls, radius, spacing } from "@/theme/theme";
+import { radius, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
 
-const NEXT_MOVE_ART = require("../../../assets/images/star_mountain.png");
+const NEXT_MOVE_ART = require("../../../assets/create-goal/walk_road.png");
 
 function greetingForNow(now: Date): string {
   const hour = now.getHours();
@@ -68,25 +68,25 @@ export default function HomeScreen() {
   const router = useRouter();
   const today = todayKey();
   const { dreams, loading } = useDreamSummaries();
-  const { blocks, totalTasks, completedTasks, toggleTask } =
-    useDayTaskBlocks(today);
+  const { blocks, totalQuests, completedQuests, toggleQuest } =
+    useDayQuestBlocks(today);
 
   const { habits: habitViews, setCompletion } = useHabitWeek();
 
-  // Tasks scheduled before today that never got done roll back into the
+  // Quests scheduled before today that never got done roll back into the
   // weekly backlog, so yesterday's leftovers wait under "Unscheduled this
   // week" on the Weekly Plan instead of silently staying on past days.
   useFocusEffect(
     useCallback(() => {
-      rolloverOverdueTasks(today).catch((cause: unknown) => {
-        console.error("Failed to roll over overdue tasks", cause);
+      rolloverOverdueQuests(today).catch((cause: unknown) => {
+        console.error("Failed to roll over overdue quests", cause);
       });
     }, [today]),
   );
 
-  // Current focus = the sprint tasks scheduled into the time block that
-  // matches the clock right now, plus today's Anytime (flexible) tasks and
-  // today's habits — always shown, ordered after the timed tasks.
+  // Current focus = the sprint quests scheduled into the time block that
+  // matches the clock right now, plus today's Anytime (flexible) quests and
+  // today's habits — always shown, ordered after the timed quests.
   const focusKey = currentBlockKey(blocks, new Date());
   const focusBlock =
     blocks.find((block) => block.key === focusKey) ?? blocks[0];
@@ -108,27 +108,30 @@ export default function HomeScreen() {
       title: view.habit.title,
     }));
 
-  const taskActions = focusBlock
+  const questActions = focusBlock
     ? flexibleBlock && flexibleBlock.key !== focusBlock.key
       ? [...focusBlock.actions, ...flexibleBlock.actions]
       : focusBlock.actions
     : [];
   const currentBlock = focusBlock
-    ? { ...focusBlock, actions: [...taskActions, ...habitActions] }
+    ? { ...focusBlock, actions: [...questActions, ...habitActions] }
     : focusBlock;
 
-  // Today's progress counts the sprint tasks plus today's planned habits.
+  // Today's progress counts the sprint quests plus today's planned habits.
   const habitsDone = habitActions.filter((action) => action.done).length;
-  const totalActions = totalTasks + habitActions.length;
-  const completedActions = completedTasks + habitsDone;
+  const totalActions = totalQuests + habitActions.length;
+  const completedActions = completedQuests + habitsDone;
 
   return (
     <ScreenScaffold
+      // No progress footer on a day with nothing planned.
       footer={
-        <TodayProgressCard
-          completedActions={completedActions}
-          totalActions={totalActions}
-        />
+        totalActions > 0 ? (
+          <TodayProgressCard
+            completedActions={completedActions}
+            totalActions={totalActions}
+          />
+        ) : undefined
       }
       tabClearance
       topInset
@@ -190,8 +193,8 @@ export default function HomeScreen() {
           onToggleAction={(index) => {
             const action = currentBlock.actions[index];
             if (!action) return;
-            if ("taskId" in action) {
-              toggleTask(action.taskId, !action.done);
+            if ("questId" in action) {
+              toggleQuest(action.questId, !action.done);
             } else {
               setCompletion(action.habitId, today, action.done ? null : "done");
             }
@@ -202,11 +205,13 @@ export default function HomeScreen() {
         />
       ) : (
         <Card style={[styles.currentBlock, styles.nextMoveCard]}>
-          <Image
-            contentFit="cover"
-            source={NEXT_MOVE_ART}
-            style={styles.nextMoveArt}
-          />
+          <View style={styles.nextMoveArtFrame}>
+            <Image
+              contentFit="cover"
+              source={NEXT_MOVE_ART}
+              style={styles.nextMoveArt}
+            />
+          </View>
           <View style={styles.nextMoveCopy}>
             <AppText variant="titleSm">
               Your next move is waiting{" "}
@@ -254,11 +259,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
-  /** Star-compass art on the left of the empty current-focus card. */
   nextMoveArt: {
-    borderRadius: radius.md,
-    height: controls.iconFrame.sm,
-    width: controls.iconFrame.sm,
+    height: "100%",
+    width: "100%",
+  },
+  /** Walk-road art on the left, framed like the Today's-progress portal art. */
+  nextMoveArtFrame: {
+    borderColor: colors.borderSoft,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 96,
+    overflow: "hidden",
+    width: 96,
   },
   nextMoveButton: {
     backgroundColor: colors.transparent,

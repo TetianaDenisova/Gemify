@@ -11,10 +11,12 @@ type MilestoneRow = {
   mentor: string | null;
   reward: string | null;
   status: Milestone["status"];
+  photo_uri: string | null;
 };
 
 const SELECT_MILESTONE = `
-  SELECT id, dream_id, sequence_number, title, state, artifact, mentor, reward, status
+  SELECT id, dream_id, sequence_number, title, state, artifact, mentor, reward,
+         status, photo_uri
   FROM milestones
 `;
 
@@ -29,6 +31,7 @@ function toMilestone(row: MilestoneRow): Milestone {
     mentor: row.mentor,
     reward: row.reward,
     status: row.status,
+    photoUri: row.photo_uri,
   };
 }
 
@@ -83,8 +86,8 @@ export async function insertMilestone(
 
     const inserted = await db.runAsync(
       `INSERT INTO milestones
-         (dream_id, sequence_number, title, state, artifact, mentor, reward)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (dream_id, sequence_number, title, state, artifact, mentor, reward, photo_uri)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dreamId,
         atIndex,
@@ -93,6 +96,7 @@ export async function insertMilestone(
         input.artifact?.trim() || null,
         input.mentor?.trim() || null,
         input.reward?.trim() || null,
+        input.photoUri ?? null,
       ],
     );
     milestoneId = inserted.lastInsertRowId;
@@ -132,6 +136,10 @@ export async function updateMilestone(
     assignments.push("status = ?");
     params.push(patch.status);
   }
+  if (patch.photoUri !== undefined) {
+    assignments.push("photo_uri = ?");
+    params.push(patch.photoUri);
+  }
 
   if (assignments.length > 0) {
     const db = await getDatabase();
@@ -144,8 +152,42 @@ export async function updateMilestone(
   return getMilestoneById(id);
 }
 
+export type MilestoneQuestProgress = {
+  milestoneId: number;
+  /** Active quests checked off. */
+  completed: number;
+  /** All active quests on the milestone. */
+  total: number;
+};
+
+/** Per-milestone quest counts for a dream, driving the "N of M quests" bar. */
+export async function getQuestProgressByMilestone(
+  dreamId: number,
+): Promise<MilestoneQuestProgress[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    milestone_id: number;
+    completed: number;
+    total: number;
+  }>(
+    `SELECT m.id AS milestone_id,
+            COUNT(q.id) AS total,
+            COALESCE(SUM(q.is_done), 0) AS completed
+     FROM milestones m
+     LEFT JOIN quests q ON q.milestone_id = m.id AND q.is_active = 1
+     WHERE m.dream_id = ?
+     GROUP BY m.id`,
+    [dreamId],
+  );
+  return rows.map((row) => ({
+    milestoneId: row.milestone_id,
+    completed: row.completed,
+    total: row.total,
+  }));
+}
+
 /**
- * Deletes a milestone (its quests/tasks/ideas cascade) and compacts the
+ * Deletes a milestone (its quests/ideas cascade) and compacts the
  * dream's sequence numbers back to 0..n-1.
  */
 export async function deleteMilestone(id: number): Promise<boolean> {

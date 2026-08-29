@@ -141,6 +141,7 @@ export function JourneyMilestone({
       ]}
     >
       <JourneyMilestoneLabel
+        muted={milestone.completed}
         number={milestone.id}
         side={labelSide}
         style={[
@@ -171,7 +172,13 @@ export function JourneyMilestone({
       >
         <Image
           resizeMode="contain"
-          source={milestone.active ? CIRCLE_SOURCE : CIRCLE_INACTIVE_SOURCE}
+          // Completed milestones fall back to the quiet ring, like inactive
+          // ones — only the steps still ahead glow gold.
+          source={
+            milestone.active && !milestone.completed
+              ? CIRCLE_SOURCE
+              : CIRCLE_INACTIVE_SOURCE
+          }
           style={{ width: ringWidth, height: ringHeight }}
         />
       </Pressable>
