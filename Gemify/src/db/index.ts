@@ -30,10 +30,11 @@ export {
   getDreams,
   getDreamSummaries,
   getFeelingStates,
+  getWeekAscent,
   setDreamFeelingStates,
   updateDream,
 } from "./dreamsRepository";
-export type { DreamSummary } from "./dreamsRepository";
+export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";
 
 // Milestones
 export {

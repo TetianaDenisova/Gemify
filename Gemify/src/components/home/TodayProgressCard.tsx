@@ -1,11 +1,9 @@
 import { Image } from "expo-image";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { AppText, Card, ProgressBar, ProgressRing } from "@/shared/components";
+import { AppText, Card, ProgressBar } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { shadowStyle, spacing } from "@/theme/theme";
-
-const RING_SIZE = 72;
+import { radius, shadowStyle, spacing } from "@/theme/theme";
 
 const PORTAL_ART_SOURCE = require("../../../assets/sprint-door-icon.png");
 
@@ -15,6 +13,10 @@ interface TodayProgressCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/**
+ * The day's scoreboard: portal art · "Today's progress" over a long gold
+ * bar · the big "done / total" count with an ACTIONS label.
+ */
 export function TodayProgressCard({
   completedActions,
   totalActions,
@@ -25,21 +27,27 @@ export function TodayProgressCard({
 
   return (
     <Card style={[styles.card, style]}>
-      <Image contentFit="cover" source={PORTAL_ART_SOURCE} style={styles.portalArt} />
+      <Image
+        contentFit="cover"
+        source={PORTAL_ART_SOURCE}
+        style={styles.portalArt}
+      />
       <View style={styles.body}>
-        <AppText color={colors.textPrimary} variant="bodySmall">
+        <AppText color={colors.textPrimary} variant="pill">
           Today&apos;s progress
         </AppText>
-        <ProgressBar glow style={styles.bar} value={percent} />
+        <ProgressBar glow height={7} style={styles.bar} value={percent} />
       </View>
-      <View style={styles.percent}>
-        <ProgressRing
-          backgroundColor={colors.surfaceDeep}
-          size={RING_SIZE}
-          value={percent}
-        />
-        <AppText color={colors.textSecondary} variant="caption">
-          {completedActions} / {totalActions} actions
+      <View style={styles.count}>
+        <AppText color={colors.primary} variant="cardTitle">
+          {completedActions} / {totalActions}
+        </AppText>
+        <AppText
+          color={colors.textMuted}
+          style={styles.countLabel}
+          variant="captionStrong"
+        >
+          ACTIONS
         </AppText>
       </View>
     </Card>
@@ -48,29 +56,36 @@ export function TodayProgressCard({
 
 const styles = StyleSheet.create({
   bar: {
-    marginTop: 13,
+    marginTop: spacing.lg,
   },
   body: {
     flex: 1,
     minWidth: 130,
   },
+  // Flat edge-to-edge footer strip: no rounding or border, solid surface to
+  // match the flat tab bar it sits on.
   card: {
     alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 0,
+    borderWidth: 0,
     flexDirection: "row",
-    gap: spacing.md,
+    gap: spacing.lg,
     overflow: "hidden",
     ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.12, radius: 12 }),
   },
-  percent: {
+  count: {
     alignItems: "center",
-    gap: spacing.xs,
+  },
+  countLabel: {
+    letterSpacing: 2,
   },
   portalArt: {
     borderColor: colors.borderSoft,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: 1,
-    height: 82,
+    height: 92,
     overflow: "hidden",
-    width: 96,
+    width: 92,
   },
 });

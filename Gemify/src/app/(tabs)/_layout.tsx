@@ -2,10 +2,11 @@ import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import { StyleSheet } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
 import { colors } from "@/theme/colors";
-import { layout, radius, shadows, spacing, typography } from "@/theme/theme";
+import { layout, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
@@ -86,6 +87,8 @@ function TabIcon({ focused, tab }: TabIconProps) {
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -95,7 +98,13 @@ export default function TabLayout() {
         headerTitleStyle: { color: colors.textPrimary },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: layout.tabBarHeight + insets.bottom,
+            paddingBottom: insets.bottom,
+          },
+        ],
         tabBarItemStyle: styles.tabBarItem,
         tabBarLabelStyle: styles.tabBarLabel,
       }}
@@ -179,19 +188,17 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  // Flat edge-to-edge bar: the tab bar reads as part of the screen edge, so
+  // pinned footer cards (e.g. the weekly ascent capsule) stay the only
+  // rounded surface at the bottom.
   tabBar: {
     position: "absolute",
-    bottom: spacing.sm,
-    left: spacing.lg,
-    right: spacing.lg,
-    height: layout.tabBarHeight,
-    borderTopWidth: 1,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.lg,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 0,
     backgroundColor: colors.surface,
-    overflow: "hidden",
-    ...shadows.softDark,
+    elevation: 0,
   },
 
   tabBarItem: {

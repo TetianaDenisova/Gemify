@@ -14,27 +14,28 @@ import {
 import Animated, {
   runOnJS,
   useAnimatedStyle,
-  type SharedValue,
   useSharedValue,
+  type SharedValue,
 } from "react-native-reanimated";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
-import { BlockIconArt } from "@/components/TimeBlockTabs";
+import { QuestActionSheet, TextPromptModal } from "@/components/QuestActions";
+import { ActionIconArt } from "@/components/TimeBlockCard";
+import { WeekAscentCard } from "@/components/WeekAscentCard";
 import {
   deleteQuest,
   getScheduledQuestCounts,
   getScheduledQuests,
-  getTimeBlocks,
-  getUnscheduledQuests,
+  getWeekAscent,
   rolloverOverdueQuests,
   setQuestDone,
   updateQuest,
   type QuestWithBreadcrumb,
-  type TimeBlockRecord,
+  type WeekAscentEntry,
 } from "@/db";
-import type { BlockIcon } from "@/dto/timeBlocks";
+import { questIconForId } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
   AppInput,
@@ -46,9 +47,7 @@ import {
   Chip,
   DotsIcon,
   DreamIcon,
-  HintRow,
   IconButton,
-  ListItem,
   MilestoneIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -74,33 +73,6 @@ type WeekDay = {
 /** Window-coordinate rect of a drop target (day cell or section header). */
 type DropRect = { height: number; width: number; x: number; y: number };
 
-/**
- * Key of the block a quest belongs to — same bucketing as My Day: the timed
- * block whose start time most recently precedes the quest's time; a time-less
- * quest belongs to the flexible block.
- */
-function blockKeyForQuest(
-  quest: Pick<QuestWithBreadcrumb, "scheduledTime">,
-  blocks: readonly TimeBlockRecord[],
-): string | undefined {
-  const flexibleKey =
-    blocks.find((block) => block.startTime === null)?.key ?? blocks[0]?.key;
-  if (!quest.scheduledTime) return flexibleKey;
-  let key = flexibleKey;
-  let latest: string | null = null;
-  for (const block of blocks) {
-    if (
-      block.startTime !== null &&
-      block.startTime <= quest.scheduledTime &&
-      (latest === null || block.startTime > latest)
-    ) {
-      latest = block.startTime;
-      key = block.key;
-    }
-  }
-  return key;
-}
-
 function CalendarIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -115,18 +87,6 @@ function ClockIcon({ color = colors.textSecondary, size = 15 }: { color?: string
     <Svg height={size} viewBox="0 0 24 24" width={size}>
       <Circle cx={12} cy={12} fill="none" r={8.5} stroke={color} strokeWidth={1.7} />
       <Path d="M12 7.5V12l3 2" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function GripIcon({ color = colors.textSecondary, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      {[9, 15].map((cx) =>
-        [6, 12, 18].map((cy) => (
-          <Circle cx={cx} cy={cy} fill={color} key={`${cx}-${cy}`} r={1.6} />
-        )),
-      )}
     </Svg>
   );
 }
@@ -212,7 +172,7 @@ function BreadcrumbPart({
         color={color}
         numberOfLines={1}
         style={styles.breadcrumbLabel}
-        variant="bodySmall"
+        variant="subtitle"
       >
         {label}
       </AppText>
@@ -239,75 +199,9 @@ function QuestBreadcrumb({ quest }: { quest: QuestWithBreadcrumb }) {
 }
 
 /**
- * Tappable header of a collapsible quest section: icon · label · quest count,
- * with a chevron pointing down while wrapped and up while expanded.
- */
-function SectionToggleHeader({
-  count,
-  expanded,
-  headerRef,
-  hoveredSection,
-  icon,
-  index,
-  label,
-  onToggle,
-  time,
-}: {
-  count: number;
-  expanded: boolean;
-  headerRef: (view: View | null) => void;
-  hoveredSection: SharedValue<number>;
-  icon: ReactNode;
-  index: number;
-  label: string;
-  onToggle: () => void;
-  /** Block start time ("13:00"); omitted for the flexible block. */
-  time?: string | null;
-}) {
-  const dropHighlightStyle = useAnimatedStyle(() => ({
-    opacity: hoveredSection.value === index ? 1 : 0,
-  }));
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ expanded }}
-      onPress={onToggle}
-      ref={headerRef}
-      style={({ pressed: isPressed }) => [
-        styles.sectionToggle,
-        isPressed && pressed,
-      ]}
-    >
-      {icon}
-      <AppText color={colors.primary} variant="eyebrow">
-        {label}
-      </AppText>
-      <View style={styles.sectionToggleDivider} />
-      <AppText color={colors.textSecondary} variant="bodySmall">
-        {count} {count === 1 ? "quest" : "quests"}
-      </AppText>
-      <View style={styles.sectionToggleSpacer} />
-      {time ? (
-        <AppText color={colors.textSecondary} variant="bodySmall">
-          {time}
-        </AppText>
-      ) : null}
-      <ChevronIcon
-        color={colors.textSecondary}
-        direction={expanded ? "up" : "down"}
-        size={18}
-      />
-      <Animated.View
-        style={[StyleSheet.absoluteFill, styles.sectionDropTarget, dropHighlightStyle]}
-      />
-    </Pressable>
-  );
-}
-
-/**
- * A weekly-plan quest item: grip (opens the schedule modal) · title with the
- * dream › milestone breadcrumb · circle done-toggle.
+ * A weekly-plan quest item styled like a My Day row: dream-magic icon ·
+ * title with a gold time label and the dream › milestone breadcrumb · circle
+ * done-toggle. Tapping the row body opens the quest options sheet.
  *
  * Long-pressing anywhere on the card lifts it into a drag; dropping it on a
  * week-strip day cell schedules the quest for that day.
@@ -316,7 +210,6 @@ function QuestItemCard({
   dragGesture,
   dragging,
   onOpenMenu,
-  onOpenSchedule,
   onToggleDone,
   quest,
   showTime = false,
@@ -324,7 +217,6 @@ function QuestItemCard({
   dragGesture: PanGesture;
   dragging: boolean;
   onOpenMenu: () => void;
-  onOpenSchedule: () => void;
   onToggleDone: () => void;
   quest: QuestWithBreadcrumb;
   showTime?: boolean;
@@ -334,45 +226,37 @@ function QuestItemCard({
       <Card style={[styles.questCard, dragging && styles.questCardDragging]}>
         <View style={styles.questCardRow}>
           <Pressable
-            accessibilityLabel="Schedule quest"
+            accessibilityLabel={`Options for the quest ${quest.title}`}
             accessibilityRole="button"
-            hitSlop={8}
-            onPress={onOpenSchedule}
-            style={({ pressed: isPressed }) => [styles.gripButton, isPressed && pressed]}
+            onPress={onOpenMenu}
+            style={({ pressed: isPressed }) => [
+              styles.questCardBody,
+              isPressed && pressed,
+            ]}
           >
-            <GripIcon />
+            <View style={styles.questIcon}>
+              <ActionIconArt icon={questIconForId(quest.id)} size={36} />
+            </View>
+            <View style={styles.questCardCopy}>
+              <AppText numberOfLines={2} variant="pill">{quest.title}</AppText>
+              <QuestBreadcrumb quest={quest} />
+            </View>
           </Pressable>
-          <View style={styles.questCardCopy}>
-            <AppText numberOfLines={2} variant="button">{quest.title}</AppText>
-            {showTime ? (
-              <View style={styles.questMeta}>
-                <ClockIcon />
-                <AppText color={colors.textSecondary} variant="bodySmall">
-                  {quest.scheduledTime ?? "Anytime"}
-                </AppText>
-              </View>
-            ) : null}
-            <QuestBreadcrumb quest={quest} />
-          </View>
+          {showTime ? (
+            <View style={styles.questMeta}>
+              <ClockIcon color={colors.primary} size={18} />
+              <AppText color={colors.primary} variant="labelStrong">
+                {quest.scheduledTime ?? "Anytime"}
+              </AppText>
+            </View>
+          ) : null}
           <Checkbox
             accessibilityLabel="Mark quest done"
             checked={quest.isDone}
             onPress={onToggleDone}
             shape="circle"
-            size={44}
+            size={38}
           />
-          <Pressable
-            accessibilityLabel="Quest options"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onOpenMenu}
-            style={({ pressed: isPressed }) => [
-              styles.questMenuButton,
-              isPressed && pressed,
-            ]}
-          >
-            <DotsIcon color={colors.textSecondary} size={18} />
-          </Pressable>
         </View>
       </Card>
     </GestureDetector>
@@ -414,13 +298,11 @@ const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
 function ScheduleModal({
   onClose,
   onSave,
-  onUnschedule,
   quest,
   weekDays,
 }: {
   onClose: () => void;
   onSave: (date: string, time: string | null) => void;
-  onUnschedule: () => void;
   quest: QuestWithBreadcrumb | null;
   weekDays: WeekDay[];
 }) {
@@ -466,21 +348,12 @@ function ScheduleModal({
       />
 
       <View style={styles.modalActions}>
-        {quest?.scheduledDate ? (
-          <AppButton
-            label="Unschedule"
-            onPress={onUnschedule}
-            style={styles.modalButton}
-            variant="secondary"
-          />
-        ) : (
-          <AppButton
-            label="Cancel"
-            onPress={onClose}
-            style={styles.modalButton}
-            variant="secondary"
-          />
-        )}
+        <AppButton
+          label="Cancel"
+          onPress={onClose}
+          style={styles.modalButton}
+          variant="secondary"
+        />
         <AppButton
           disabled={!selectedDate || !timeValid}
           label="Save"
@@ -498,34 +371,33 @@ export default function SprintScreen() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
+  const [ascent, setAscent] = useState<WeekAscentEntry[]>([]);
+  const [ascentOpen, setAscentOpen] = useState(false);
   const [scheduled, setScheduled] = useState<QuestWithBreadcrumb[]>([]);
-  const [unscheduled, setUnscheduled] = useState<QuestWithBreadcrumb[]>([]);
-  const [blocks, setBlocks] = useState<TimeBlockRecord[]>([]);
-  // Every section starts wrapped; a key's presence here means it is expanded.
-  const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
-  const [backlogExpanded, setBacklogExpanded] = useState(false);
   const [scheduleTarget, setScheduleTarget] =
     useState<QuestWithBreadcrumb | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [moreVisible, setMoreVisible] = useState(false);
   const [menuQuest, setMenuQuest] = useState<QuestWithBreadcrumb | null>(null);
+  const [editTarget, setEditTarget] = useState<QuestWithBreadcrumb | null>(
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<QuestWithBreadcrumb | null>(
+    null,
+  );
   const [draggingQuest, setDraggingQuest] =
     useState<QuestWithBreadcrumb | null>(null);
 
   const { width: windowWidth } = useWindowDimensions();
   const ghostWidth = Math.min(windowWidth - spacing.lg * 2, 360);
 
-  // Drag plumbing shared by every quest card: finger position, drop-target
-  // rects (measured at lift), and the currently hovered day cell / section
-  // header. Section index blocks.length is the unscheduled backlog.
+  // Drag plumbing shared by every quest card: finger position, week-strip
+  // cell rects (measured at lift), and the currently hovered day cell.
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const hoveredDay = useSharedValue(-1);
-  const hoveredSection = useSharedValue(-1);
   const dayRects = useSharedValue<DropRect[]>([]);
-  const sectionRects = useSharedValue<DropRect[]>([]);
   const dayCellRefs = useRef<(View | null)[]>([]);
-  const sectionHeaderRefs = useRef<(View | null)[]>([]);
 
   const weekDates = Array.from({ length: 7 }, (_, index) =>
     addDays(weekStart, index),
@@ -545,21 +417,19 @@ export default function SprintScreen() {
 
   const loadBoard = useCallback(async () => {
     try {
-      // Undone quests stuck on past days (yesterday included) fall back into
-      // the "Unscheduled this week" backlog.
+      // Undone quests stuck on past days (yesterday included) lose their date
+      // so they can be rescheduled from their milestone.
       await rolloverOverdueQuests(todayKey());
       const from = toDateKey(weekStart);
       const to = toDateKey(addDays(weekStart, 6));
-      const [countMap, dayQuests, backlog, blockDefs] = await Promise.all([
+      const [countMap, dayQuests, weekAscent] = await Promise.all([
         getScheduledQuestCounts(from, to),
         getScheduledQuests(selectedDate),
-        getUnscheduledQuests(),
-        getTimeBlocks(),
+        getWeekAscent(from, to),
       ]);
       setCounts(countMap);
       setScheduled(dayQuests);
-      setUnscheduled(backlog);
-      setBlocks(blockDefs);
+      setAscent(weekAscent);
     } catch (cause) {
       console.error("Failed to load the weekly plan", cause);
     }
@@ -572,8 +442,7 @@ export default function SprintScreen() {
   );
 
   /**
-   * Snapshot every drop target in window coordinates (drag just lifted):
-   * the week-strip cells and the section headers.
+   * Snapshot the week-strip cells in window coordinates (drag just lifted).
    */
   const measureDropTargets = () => {
     const emptyRect = () => ({ height: 0, width: 0, x: -1, y: -1 });
@@ -582,15 +451,6 @@ export default function SprintScreen() {
       cell?.measureInWindow((x, y, width, height) => {
         cellRects[index] = { height, width, x, y };
         dayRects.value = [...cellRects];
-      });
-    });
-
-    const sectionCount = blocks.length + 1;
-    const headerRects: DropRect[] = Array.from({ length: sectionCount }, emptyRect);
-    sectionHeaderRefs.current.slice(0, sectionCount).forEach((header, index) => {
-      header?.measureInWindow((x, y, width, height) => {
-        headerRects[index] = { height, width, x, y };
-        sectionRects.value = [...headerRects];
       });
     });
   };
@@ -604,48 +464,14 @@ export default function SprintScreen() {
     setDraggingQuest(null);
   };
 
-  const handleDrop = async (
-    quest: QuestWithBreadcrumb,
-    dayIndex: number,
-    sectionIndex: number,
-  ) => {
+  const handleDrop = async (quest: QuestWithBreadcrumb, dayIndex: number) => {
     setDraggingQuest(null);
     try {
       // A week-strip day cell: move the quest to that day, keeping its time.
-      if (dayIndex >= 0) {
-        const dateKey = toDateKey(addDays(weekStart, dayIndex));
-        if (quest.scheduledDate === dateKey) return;
-        await updateQuest(quest.id, { scheduledDate: dateKey, isPlanned: true });
-        await loadBoard();
-        return;
-      }
-      if (sectionIndex < 0) return;
-
-      // The backlog header: unschedule the quest.
-      if (sectionIndex >= blocks.length) {
-        setBacklogExpanded(true);
-        if (quest.scheduledDate === null) return;
-        await updateQuest(quest.id, {
-          scheduledDate: null,
-          scheduledTime: null,
-          isPlanned: true,
-        });
-        await loadBoard();
-        return;
-      }
-
-      // A time-block header: schedule on the selected day at the block's start.
-      const block = blocks[sectionIndex];
-      setExpandedBlocks((current) => new Set(current).add(block.key));
-      const alreadyThere =
-        quest.scheduledDate === selectedDate &&
-        blockKeyForQuest(quest, blocks) === block.key;
-      if (alreadyThere) return;
-      await updateQuest(quest.id, {
-        scheduledDate: selectedDate,
-        scheduledTime: block.startTime,
-        isPlanned: true,
-      });
+      if (dayIndex < 0) return;
+      const dateKey = toDateKey(addDays(weekStart, dayIndex));
+      if (quest.scheduledDate === dateKey) return;
+      await updateQuest(quest.id, { scheduledDate: dateKey, isPlanned: true });
       await loadBoard();
     } catch (cause) {
       console.error("Failed to move the quest", cause);
@@ -683,16 +509,13 @@ export default function SprintScreen() {
           }
           return -1;
         };
-        const hitDay = hitTest(dayRects.value);
-        hoveredDay.value = hitDay;
-        hoveredSection.value = hitDay >= 0 ? -1 : hitTest(sectionRects.value);
+        hoveredDay.value = hitTest(dayRects.value);
       })
       .onEnd(() => {
-        runOnJS(handleDrop)(quest, hoveredDay.value, hoveredSection.value);
+        runOnJS(handleDrop)(quest, hoveredDay.value);
       })
       .onFinalize(() => {
         hoveredDay.value = -1;
-        hoveredSection.value = -1;
         runOnJS(handleDragRelease)();
       });
 
@@ -701,10 +524,7 @@ export default function SprintScreen() {
   // read, but the values are only touched on the UI thread mid-gesture.
   /* eslint-disable react-hooks/refs */
   const dragGestures = new Map<number, PanGesture>(
-    [...scheduled, ...unscheduled].map((quest) => [
-      quest.id,
-      makeDragGesture(quest),
-    ]),
+    scheduled.map((quest) => [quest.id, makeDragGesture(quest)]),
   );
   /* eslint-enable react-hooks/refs */
 
@@ -721,13 +541,12 @@ export default function SprintScreen() {
   };
 
   const handleToggleDone = async (quest: QuestWithBreadcrumb) => {
-    // Optimistic flip in whichever list holds the quest; reload fixes drift.
-    const flip = (list: QuestWithBreadcrumb[]) =>
+    // Optimistic flip; reload fixes drift.
+    setScheduled((list) =>
       list.map((entry) =>
         entry.id === quest.id ? { ...entry, isDone: !entry.isDone } : entry,
-      );
-    setScheduled(flip);
-    setUnscheduled(flip);
+      ),
+    );
     try {
       await setQuestDone(quest.id, !quest.isDone);
     } catch (cause) {
@@ -751,34 +570,25 @@ export default function SprintScreen() {
     setScheduleTarget(null);
   };
 
-  const handleUnschedule = async () => {
-    if (!scheduleTarget) return;
-    try {
-      await updateQuest(scheduleTarget.id, {
-        scheduledDate: null,
-        scheduledTime: null,
-        isPlanned: true,
-      });
-      await loadBoard();
-    } catch (cause) {
-      console.error("Failed to unschedule the quest", cause);
-    }
-    setScheduleTarget(null);
-  };
-
-  // ⋮ menu: drop the quest off its day, back into the weekly backlog.
-  const handleUnscheduleFromMenu = async () => {
+  const handleMenuCompleteNow = async () => {
     if (!menuQuest) return;
     setMenuQuest(null);
     try {
-      await updateQuest(menuQuest.id, {
-        scheduledDate: null,
-        scheduledTime: null,
-        isPlanned: true,
-      });
+      await setQuestDone(menuQuest.id, true);
       await loadBoard();
     } catch (cause) {
-      console.error("Failed to unschedule the quest", cause);
+      console.error("Failed to complete the quest", cause);
+    }
+  };
+
+  const handleEditSubmit = async (value: string) => {
+    if (!editTarget) return;
+    setEditTarget(null);
+    try {
+      await updateQuest(editTarget.id, { title: value });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to rename the quest", cause);
     }
   };
 
@@ -798,11 +608,11 @@ export default function SprintScreen() {
     }
   };
 
-  const handleDeleteQuest = async () => {
-    if (!menuQuest) return;
-    setMenuQuest(null);
+  const handleDeleteConfirmed = async () => {
+    if (!deleteTarget) return;
+    setDeleteTarget(null);
     try {
-      await deleteQuest(menuQuest.id);
+      await deleteQuest(deleteTarget.id);
       await loadBoard();
     } catch (cause) {
       console.error("Failed to delete the quest", cause);
@@ -817,32 +627,24 @@ export default function SprintScreen() {
     weekday: "long",
   });
 
-  const questsByBlock = new Map<string, QuestWithBreadcrumb[]>();
-  for (const quest of scheduled) {
-    const key = blockKeyForQuest(quest, blocks);
-    if (key === undefined) continue;
-    const list = questsByBlock.get(key) ?? [];
-    list.push(quest);
-    questsByBlock.set(key, list);
-  }
-
-  const backlogSectionIndex = blocks.length;
-  const backlogHighlightStyle = useAnimatedStyle(() => ({
-    opacity: hoveredSection.value === backlogSectionIndex ? 1 : 0,
-  }));
-
-  const toggleBlock = (key: string) =>
-    setExpandedBlocks((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
   return (
     <View style={styles.screenWrap}>
       <ScreenScaffold
         backgroundGradient={SPRINT_BACKGROUND}
+        footer={
+          ascent.length > 0 ? (
+            <WeekAscentCard
+              entries={ascent}
+              expanded={ascentOpen}
+              onToggle={() => setAscentOpen((open) => !open)}
+            />
+          ) : undefined
+        }
+        footerFullBleed
+        footerScrim={{
+          onPress: () => setAscentOpen(false),
+          visible: ascentOpen && ascent.length > 0,
+        }}
         scrollProps={{ scrollEnabled: draggingQuest === null }}
         tabClearance
         topInset
@@ -901,120 +703,25 @@ export default function SprintScreen() {
           />
         </View>
 
-        {blocks.map((block, blockIndex) => {
-          const blockQuests = questsByBlock.get(block.key) ?? [];
-          const expanded = expandedBlocks.has(block.key);
-          return (
-            <View key={block.key} style={styles.blockSection}>
-              <SectionToggleHeader
-                count={blockQuests.length}
-                expanded={expanded}
-                headerRef={(view) => {
-                  sectionHeaderRefs.current[blockIndex] = view;
-                }}
-                hoveredSection={hoveredSection}
-                icon={
-                  <BlockIconArt
-                    color={colors.primary}
-                    icon={block.iconKey as BlockIcon}
-                    size={20}
-                  />
-                }
-                index={blockIndex}
-                label={block.label}
-                onToggle={() => toggleBlock(block.key)}
-                time={block.startTime}
-              />
-              {expanded ? (
-                blockQuests.length > 0 ? (
-                  blockQuests.map((quest) => (
-                    <QuestItemCard
-                      dragGesture={dragGestures.get(quest.id)!}
-                      dragging={draggingQuest?.id === quest.id}
-                      key={quest.id}
-                      onOpenMenu={() => setMenuQuest(quest)}
-                      onOpenSchedule={() => setScheduleTarget(quest)}
-                      onToggleDone={() => handleToggleDone(quest)}
-                      quest={quest}
-                      showTime
-                    />
-                  ))
-                ) : (
-                  <AppText
-                    color={colors.textMuted}
-                    style={styles.blockEmpty}
-                    variant="bodySmall"
-                  >
-                    Nothing planned here yet.
-                  </AppText>
-                )
-              ) : null}
-            </View>
-          );
-        })}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: backlogExpanded }}
-          onPress={() => setBacklogExpanded((current) => !current)}
-          ref={(view) => {
-            sectionHeaderRefs.current[backlogSectionIndex] = view;
-          }}
-          style={({ pressed: isPressed }) => [
-            styles.sectionHeader,
-            isPressed && pressed,
-          ]}
-        >
-          <AppText variant="titleSm">Unscheduled this week</AppText>
-          <View style={styles.countBadge}>
-            <AppText color={colors.accentViolet} variant="caption">
-              {unscheduled.length}
+        {scheduled.length > 0 ? (
+          scheduled.map((quest) => (
+            <QuestItemCard
+              dragGesture={dragGestures.get(quest.id)!}
+              dragging={draggingQuest?.id === quest.id}
+              key={quest.id}
+              onOpenMenu={() => setMenuQuest(quest)}
+              onToggleDone={() => handleToggleDone(quest)}
+              quest={quest}
+              showTime
+            />
+          ))
+        ) : (
+          <Card style={styles.emptyCard}>
+            <AppText align="center" variant="bodySmall">
+              Nothing planned for this day yet.
             </AppText>
-          </View>
-          <View style={styles.sectionHeaderSpacer} />
-          <ChevronIcon
-            color={colors.textSecondary}
-            direction={backlogExpanded ? "up" : "down"}
-            size={18}
-          />
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.sectionDropTarget,
-              backlogHighlightStyle,
-            ]}
-          />
-        </Pressable>
-
-        {backlogExpanded ? (
-          <>
-            {unscheduled.map((quest) => (
-              <QuestItemCard
-                dragGesture={dragGestures.get(quest.id)!}
-                dragging={draggingQuest?.id === quest.id}
-                key={quest.id}
-                onOpenMenu={() => setMenuQuest(quest)}
-                onOpenSchedule={() => setScheduleTarget(quest)}
-                onToggleDone={() => handleToggleDone(quest)}
-                quest={quest}
-              />
-            ))}
-
-            {unscheduled.length === 0 ? (
-              <Card style={styles.emptyCard}>
-                <AppText align="center" variant="bodySmall">
-                  The backlog is clear — add quests from a milestone to plan
-                  your week.
-                </AppText>
-              </Card>
-            ) : (
-              <HintRow
-                style={styles.hintRow}
-                text="Hold a quest, then drag it onto a day or a time section to schedule it."
-              />
-            )}
-          </>
-        ) : null}
+          </Card>
+        )}
 
         <MoreMenuSheet
           onClose={() => setMoreVisible(false)}
@@ -1022,32 +729,53 @@ export default function SprintScreen() {
           visible={moreVisible}
         />
 
-        <AppModal
+        <QuestActionSheet
           onClose={() => setMenuQuest(null)}
-          variant="sheet"
-          visible={menuQuest !== null}
+          onCompleteNow={handleMenuCompleteNow}
+          onSchedule={() => {
+            setScheduleTarget(menuQuest);
+            setMenuQuest(null);
+          }}
+          onUnschedule={handleRemoveFromWeek}
+          onDelete={() => {
+            setDeleteTarget(menuQuest);
+            setMenuQuest(null);
+          }}
+          onEdit={() => {
+            setEditTarget(menuQuest);
+            setMenuQuest(null);
+          }}
+          quest={
+            menuQuest
+              ? { isDone: menuQuest.isDone, title: menuQuest.title }
+              : null
+          }
+          scheduleLabel={menuQuest?.scheduledDate ? "Reschedule" : "Schedule"}
+        />
+
+        <AppModal
+          onClose={() => setDeleteTarget(null)}
+          visible={deleteTarget !== null}
         >
-          <AppText numberOfLines={2} variant="cardTitle">
-            {menuQuest?.title}
+          <AppText align="center" variant="titleSm">
+            Delete this quest?
           </AppText>
-          <View style={styles.questMenu}>
-            {menuQuest?.scheduledDate ? (
-              <ListItem
-                onPress={handleUnscheduleFromMenu}
-                subtitle="Back to Unscheduled this week"
-                title="Unschedule"
-              />
-            ) : null}
-            <ListItem
-              onPress={handleRemoveFromWeek}
-              subtitle="Quest stays on its milestone"
-              title="Remove from this week plan"
+          <AppText align="center" style={styles.confirmBody} variant="bodySerif">
+            “{deleteTarget?.title}” will be removed.
+          </AppText>
+          <View style={styles.modalActions}>
+            <AppButton
+              label="Cancel"
+              onPress={() => setDeleteTarget(null)}
+              style={styles.modalButton}
+              variant="secondary"
             />
-            <ListItem
-              last
-              onPress={handleDeleteQuest}
-              title="Delete"
-              titleColor={colors.danger}
+            <AppButton
+              label="Delete"
+              onPress={handleDeleteConfirmed}
+              style={[styles.modalButton, styles.confirmDeleteButton]}
+              textStyle={styles.confirmDeleteLabel}
+              variant="secondary"
             />
           </View>
         </AppModal>
@@ -1055,9 +783,18 @@ export default function SprintScreen() {
         <ScheduleModal
           onClose={() => setScheduleTarget(null)}
           onSave={handleSchedule}
-          onUnschedule={handleUnschedule}
           quest={scheduleTarget}
           weekDays={weekDayCells}
+        />
+
+        <TextPromptModal
+          initialValue={editTarget?.title ?? ""}
+          onClose={() => setEditTarget(null)}
+          onSubmit={handleEditSubmit}
+          placeholder="Quest title..."
+          submitLabel="Save"
+          title="Edit quest"
+          visible={editTarget !== null}
         />
 
         {calendarOpen ? (
@@ -1084,13 +821,6 @@ export default function SprintScreen() {
 }
 
 const styles = StyleSheet.create({
-  blockEmpty: {
-    marginBottom: spacing.md,
-    paddingLeft: spacing.xl,
-  },
-  blockSection: {
-    marginBottom: spacing.sm,
-  },
   breadcrumb: {
     alignItems: "center",
     flexDirection: "row",
@@ -1107,15 +837,14 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     minWidth: 0,
   },
-  countBadge: {
-    alignItems: "center",
-    borderColor: colors.accentVioletGlow,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 26,
-    justifyContent: "center",
-    minWidth: 26,
-    paddingHorizontal: spacing.xs,
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  confirmDeleteButton: {
+    borderColor: colors.danger,
+  },
+  confirmDeleteLabel: {
+    color: colors.danger,
   },
   dayCell: {
     alignItems: "center",
@@ -1192,9 +921,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingHorizontal: 0,
   },
-  hintRow: {
-    marginBottom: spacing.md,
-  },
   modalActions: {
     flexDirection: "row",
     gap: spacing.md,
@@ -1220,14 +946,16 @@ const styles = StyleSheet.create({
   modalTimeInput: {
     marginTop: spacing.lg,
   },
-  gripButton: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    width: 36,
-  },
   questCard: {
+    borderColor: colors.accentVioletGlow,
     marginBottom: spacing.md,
+  },
+  questCardBody: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    minWidth: 0,
   },
   questCardCopy: {
     flex: 1,
@@ -1241,55 +969,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
   },
-  questMenu: {
-    marginTop: spacing.sm,
-  },
-  questMenuButton: {
+  questIcon: {
     alignItems: "center",
-    height: 44,
+    height: 40,
     justifyContent: "center",
-    width: 28,
+    width: 40,
   },
   questMeta: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.xs + 2,
-    marginTop: spacing.xs,
   },
   screenWrap: {
-    flex: 1,
-  },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
-  },
-  sectionHeaderSpacer: {
-    flex: 1,
-  },
-  sectionDropTarget: {
-    borderColor: colors.accentVioletStrong,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    pointerEvents: "none",
-  },
-  sectionToggle: {
-    alignItems: "center",
-    borderBottomColor: colors.divider,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sectionToggleDivider: {
-    backgroundColor: colors.divider,
-    height: 18,
-    width: 1,
-  },
-  sectionToggleSpacer: {
     flex: 1,
   },
   weekStrip: {

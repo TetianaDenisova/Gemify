@@ -363,6 +363,7 @@ export function QuestActionSheet({
   onSchedule,
   onUnschedule,
   quest,
+  scheduleLabel = "Schedule",
 }: {
   onClose: () => void;
   onCompleteNow: () => void;
@@ -372,6 +373,8 @@ export function QuestActionSheet({
   /** When given, adds "Remove from schedule" (shown for open quests). */
   onUnschedule?: () => void;
   quest: { isDone: boolean; title: string } | null;
+  /** Label of the schedule row, e.g. "Reschedule" for already-planned quests. */
+  scheduleLabel?: string;
 }) {
   return (
     <ActionSheet
@@ -388,7 +391,7 @@ export function QuestActionSheet({
           />
           <SheetActionRow
             icon={<CalendarIcon />}
-            label="Schedule"
+            label={scheduleLabel}
             onPress={onSchedule}
           />
           {onUnschedule ? (

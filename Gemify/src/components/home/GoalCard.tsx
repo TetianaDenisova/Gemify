@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import type { Goal, ThemeColor } from "@/data/homeData";
 import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
-import { AppText, ProgressBar, ProgressRing } from "@/shared/components";
+import { AppText, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { pressed, radius, shadows, spacing } from "@/theme/theme";
 
@@ -29,6 +29,8 @@ function getThemeColor(themeColor: ThemeColor) {
 
 export function GoalCard({ goal, onPress }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
+  // A journey not yet started gets an invitation, never a "0%".
+  const notStarted = Math.round(goal.progressPercent) === 0;
 
   return (
     <Pressable
@@ -46,40 +48,29 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       <View style={styles.darkOverlay} />
 
       <View style={styles.inner}>
-        <View style={styles.topRow}>
-          <View style={styles.iconWrapper}>
-            <Image
-              source={goalIcons[goal.iconKey]}
-              style={styles.iconImage}
-              contentFit="contain"
-            />
-          </View>
-
-          <View style={styles.titleBlock}>
-            <AppText numberOfLines={2} variant="pill">
-              {goal.title}
-            </AppText>
-          </View>
-        </View>
-
-        <View style={styles.bottomContent}>
-          <View style={styles.progressContent}>
-            <ProgressBar
-              color={accentColor}
-              height={3}
-              value={goal.progressPercent}
-            />
-          </View>
-
-          <ProgressRing
-            backgroundColor={colors.surfaceGlass}
-            color={accentColor}
-            labelColor={accentColor}
-            size={48}
-            strokeWidth={2}
-            value={goal.progressPercent}
+        <View style={styles.iconWrapper}>
+          <Image
+            source={goalIcons[goal.iconKey]}
+            style={styles.iconImage}
+            contentFit="contain"
           />
         </View>
+
+        <View style={styles.titleBlock}>
+          <AppText numberOfLines={2} variant="pill">
+            {goal.title}
+          </AppText>
+        </View>
+
+        <ProgressRing
+          backgroundColor={colors.surfaceGlass}
+          color={accentColor}
+          label={notStarted ? "✦" : undefined}
+          labelColor={accentColor}
+          size={56}
+          strokeWidth={2.5}
+          value={goal.progressPercent}
+        />
       </View>
     </Pressable>
   );
@@ -110,16 +101,13 @@ const styles = StyleSheet.create({
   },
 
   inner: {
+    alignItems: "center",
     flex: 1,
-    justifyContent: "space-between",
+    flexDirection: "row",
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
     zIndex: 3,
-  },
-
-  topRow: {
-    alignItems: "center",
-    flexDirection: "row",
   },
 
   iconWrapper: {
@@ -138,16 +126,5 @@ const styles = StyleSheet.create({
   titleBlock: {
     flex: 1,
     paddingRight: 12,
-  },
-
-  bottomContent: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  progressContent: {
-    flex: 1,
-    paddingRight: 16,
   },
 });

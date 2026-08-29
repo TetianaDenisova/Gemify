@@ -4,6 +4,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -40,6 +41,16 @@ export type ScreenScaffoldProps = {
    */
   footer?: ReactNode;
   /**
+   * Stretch the footer edge-to-edge: no width cap or side padding, sitting
+   * flush on the tab bar (or the screen bottom without tabClearance).
+   */
+  footerFullBleed?: boolean;
+  /**
+   * Bottom-sheet-style backdrop: dims everything behind the footer while
+   * visible (e.g. an expanded footer card). Tapping it fires onPress.
+   */
+  footerScrim?: { onPress?: () => void; visible: boolean };
+  /**
    * Center content and cap it at layout.contentMaxWidth with the standard
    * horizontal screen padding (compact-aware). Default true.
    */
@@ -70,6 +81,8 @@ export function ScreenScaffold({
   constrained = true,
   contentStyle,
   footer,
+  footerFullBleed = false,
+  footerScrim,
   keyboardAvoiding = false,
   overlayOpacity = 0.45,
   scroll = true,
@@ -144,13 +157,29 @@ export function ScreenScaffold({
       ) : (
         body
       )}
+      {footerScrim?.visible ? (
+        <Pressable
+          accessibilityLabel="Dismiss overlay"
+          accessibilityRole="button"
+          onPress={footerScrim.onPress}
+          style={styles.scrim}
+        />
+      ) : null}
       {footer ? (
         <View
-          style={[
-            constrained && styles.constrained,
-            horizontalPadding,
-            { paddingBottom },
-          ]}
+          style={
+            footerFullBleed
+              ? {
+                  paddingBottom: tabClearance
+                    ? insets.bottom + layout.tabBarHeight
+                    : insets.bottom,
+                }
+              : [
+                  constrained && styles.constrained,
+                  horizontalPadding,
+                  { paddingBottom },
+                ]
+          }
         >
           {footer}
         </View>
@@ -177,5 +206,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     overflow: "hidden",
+  },
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: colors.scrim,
   },
 });

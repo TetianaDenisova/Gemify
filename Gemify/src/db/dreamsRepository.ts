@@ -5,6 +5,14 @@ import type { Dream, DreamPatch, FeelingState, NewDream } from "./types";
 
 const MAX_FEELING_STATES = 3;
 
+/**
+ * Planned length of every journey (Awakening → Vision). Users create
+ * milestones one at a time, so a dream often holds fewer rows than the full
+ * path — progress still measures against at least this many milestones, so
+ * finishing the first created milestone never reads as the whole dream.
+ */
+const JOURNEY_MILESTONE_COUNT = 6;
+
 type DreamRow = {
   id: number;
   seed_key: string | null;
@@ -98,10 +106,11 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
       progress_fraction: number;
     }
   >(
-    // Weighted progress: AVG at each level gives every milestone an equal
-    // slice of the dream and every active quest an equal slice of its
-    // milestone. A milestone the user marked completed counts as its full
-    // slice regardless of quest state; empty levels count as 0.
+    // Weighted progress: every milestone is an equal slice of the dream (the
+    // journey counts at least JOURNEY_MILESTONE_COUNT slices even while fewer
+    // are created) and every active quest an equal slice of its milestone. A
+    // milestone the user marked completed counts as its full slice regardless
+    // of quest state; empty levels count as 0.
     `WITH milestone_progress AS (
        SELECT m.id, m.dream_id,
               CASE WHEN m.status = 'completed' THEN 1.0
@@ -129,8 +138,11 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
              JOIN milestones m ON m.id = q.milestone_id
              WHERE m.dream_id = d.id) AS total_quests,
             COALESCE(
-              (SELECT AVG(mp.progress) FROM milestone_progress mp
-               WHERE mp.dream_id = d.id),
+              (SELECT SUM(mp.progress) FROM milestone_progress mp
+               WHERE mp.dream_id = d.id)
+              / MAX((SELECT COUNT(*) FROM milestones m
+                     WHERE m.dream_id = d.id),
+                    ${JOURNEY_MILESTONE_COUNT}),
               0) AS progress_fraction
      FROM dreams d
      WHERE d.is_archived = 0
@@ -143,6 +155,101 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
     completedQuests: row.completed_quests,
     totalQuests: row.total_quests,
     progressPercent: row.progress_fraction * 100,
+  }));
+}
+
+export type WeekAscentEntry = {
+  dreamId: number;
+  dreamTitle: string;
+  /** 0..100 — dream % the week's scheduled quests add once they are all done. */
+  expectedPercent: number;
+  /** 0..100 — dream % already earned by the week's completed quests. */
+  gainedPercent: number;
+  /** Milestone the week's plan finishes (its last open quests are scheduled). */
+  completesMilestone: string | null;
+};
+
+/**
+ * Weekly-plan ascent card: per dream, how much progress the week's plan
+ * promises (expected) and has already earned (gained). The plan is every
+ * quest scheduled in [fromDate, toDate] plus the still-unscheduled weekly
+ * backlog (is_planned without a date). Uses the same weighting as
+ * getDreamSummaries — every milestone is an equal slice of the dream and
+ * every active quest an equal slice of its milestone.
+ */
+export async function getWeekAscent(
+  fromDate: string,
+  toDate: string,
+): Promise<WeekAscentEntry[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    id: number;
+    title: string;
+    expected_fraction: number;
+    gained_fraction: number;
+  }>(
+    // The scheduled quest itself is active and belongs to the milestone, so
+    // the active-quest count in the divisor is always at least 1. The
+    // milestone's completed flag is ignored on purpose: marking a milestone
+    // done mid-week must not erase the credit its planned quests earned.
+    `WITH quest_weight AS (
+       SELECT m.dream_id, q.is_done,
+              1.0 / (MAX((SELECT COUNT(*) FROM milestones m2
+                          WHERE m2.dream_id = m.dream_id),
+                         ${JOURNEY_MILESTONE_COUNT})
+                     * (SELECT COUNT(*) FROM quests q2
+                        WHERE q2.milestone_id = m.id AND q2.is_active = 1)
+                    ) AS weight
+       FROM quests q
+       JOIN milestones m ON m.id = q.milestone_id
+       WHERE (q.scheduled_date BETWEEN ? AND ?
+              OR (q.is_planned = 1 AND q.scheduled_date IS NULL))
+         AND q.is_active = 1
+     )
+     SELECT d.id, d.title,
+            SUM(qw.weight) AS expected_fraction,
+            SUM(CASE WHEN qw.is_done = 1 THEN qw.weight ELSE 0 END)
+              AS gained_fraction
+     FROM quest_weight qw
+     JOIN dreams d ON d.id = qw.dream_id
+     WHERE d.is_archived = 0
+     GROUP BY d.id
+     ORDER BY d.id`,
+    [fromDate, toDate],
+  );
+
+  // Milestones whose every remaining open quest sits inside the week — doing
+  // the plan completes them. Earliest such milestone per dream is shown.
+  const completions = await db.getAllAsync<{ dream_id: number; title: string }>(
+    `SELECT m.dream_id, m.title
+     FROM milestones m
+     WHERE m.status != 'completed'
+       AND EXISTS (SELECT 1 FROM quests q
+                   WHERE q.milestone_id = m.id AND q.is_active = 1
+                     AND (q.scheduled_date BETWEEN ? AND ?
+                          OR (q.is_planned = 1 AND q.scheduled_date IS NULL)))
+       AND NOT EXISTS (SELECT 1 FROM quests q
+                       WHERE q.milestone_id = m.id AND q.is_active = 1
+                         AND q.is_done = 0
+                         AND (q.scheduled_date NOT BETWEEN ? AND ?
+                              OR (q.scheduled_date IS NULL
+                                  AND q.is_planned = 0)))
+     ORDER BY m.dream_id, m.sequence_number`,
+    [fromDate, toDate, fromDate, toDate],
+  );
+  const completesByDream = new Map<number, string>();
+  for (const row of completions) {
+    if (!completesByDream.has(row.dream_id)) {
+      completesByDream.set(row.dream_id, row.title);
+    }
+  }
+
+  return rows.map((row) => ({
+    dreamId: row.id,
+    dreamTitle: row.title,
+    expectedPercent: row.expected_fraction * 100,
+    gainedPercent: row.gained_fraction * 100,
+    completesMilestone: completesByDream.get(row.id) ?? null,
   }));
 }
 

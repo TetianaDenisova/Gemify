@@ -1,9 +1,10 @@
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { GoalCard, HomeHeader, TodayProgressCard } from "@/components/home";
+import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
@@ -24,7 +25,15 @@ import { colors } from "@/theme/colors";
 import { radius, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
 
-const NEXT_MOVE_ART = require("../../../assets/create-goal/walk_road.png");
+// Same enchanted-forest path art as the Milestone Quests hero.
+const NEXT_MOVE_ART = require("../../data/images/tree-milestone-header.png");
+
+/** Left-to-right shade so the copy reads over the art's dark edge. */
+const NEXT_MOVE_SHADE = [
+  "rgba(4, 7, 17, 0.98)",
+  "rgba(4, 7, 17, 0.74)",
+  "rgba(4, 7, 17, 0.12)",
+] as const;
 
 function greetingForNow(now: Date): string {
   const hour = now.getHours();
@@ -68,7 +77,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const today = todayKey();
   const { dreams, loading } = useDreamSummaries();
-  const { blocks, totalQuests, completedQuests, toggleQuest } =
+  const { blocks, completedQuests, toggleQuest, totalQuests } =
     useDayQuestBlocks(today);
 
   const { habits: habitViews, setCompletion } = useHabitWeek();
@@ -113,29 +122,44 @@ export default function HomeScreen() {
       ? [...focusBlock.actions, ...flexibleBlock.actions]
       : focusBlock.actions
     : [];
+  // Checked-off actions leave the focus list.
+  const focusActions = [...questActions, ...habitActions].filter(
+    (action) => !action.done,
+  );
   const currentBlock = focusBlock
-    ? { ...focusBlock, actions: [...questActions, ...habitActions] }
+    ? { ...focusBlock, actions: focusActions }
     : focusBlock;
 
-  // Today's progress counts the sprint quests plus today's planned habits.
+  const hasFocus = currentBlock !== undefined && currentBlock.actions.length > 0;
+
+  // Everything planned for today (all time blocks' quests + today's habits)
+  // is checked off — celebrate instead of nudging to plan.
   const habitsDone = habitActions.filter((action) => action.done).length;
-  const totalActions = totalQuests + habitActions.length;
-  const completedActions = completedQuests + habitsDone;
+  const plannedTotal = totalQuests + habitActions.length;
+  const plannedDone = completedQuests + habitsDone;
+  const allDone = plannedTotal > 0 && plannedDone === plannedTotal;
+
+  // Current block clear but open quests remain elsewhere today: surface the
+  // block that goes next (the nearest upcoming one, else earlier leftovers).
+  const now = new Date();
+  const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+  const openBlocks = blocks
+    .filter((block) => block.actions.some((action) => !action.done))
+    .map((block) => ({
+      ...block,
+      actions: block.actions.filter((action) => !action.done),
+    }));
+  const nextBlock =
+    !hasFocus && !allDone
+      ? (openBlocks
+          .filter((block) => block.time !== "Flexible" && block.time > clock)
+          .sort((a, b) => (a.time < b.time ? -1 : 1))[0] ?? openBlocks[0])
+      : undefined;
 
   return (
-    <ScreenScaffold
-      // No progress footer on a day with nothing planned.
-      footer={
-        totalActions > 0 ? (
-          <TodayProgressCard
-            completedActions={completedActions}
-            totalActions={totalActions}
-          />
-        ) : undefined
-      }
-      tabClearance
-      topInset
-    >
+    <ScreenScaffold tabClearance topInset>
       <HomeHeader greeting={greetingForNow(new Date())} />
 
       <SectionHeader
@@ -183,11 +207,24 @@ export default function HomeScreen() {
 
       <SectionHeader
         style={styles.sectionHeader}
-        title="CURRENT FOCUS"
+        // The planning nudge only appears when nothing at all is planned for
+        // today; otherwise the section names what it shows: the current
+        // focus (open or complete) or the block that goes next.
+        title={
+          hasFocus || allDone
+            ? "CURRENT FOCUS"
+            : nextBlock
+              ? "NEXT FOCUS"
+              : "PLAN YOUR WEEK"
+        }
         variant="eyebrow"
       />
 
-      {currentBlock && currentBlock.actions.length > 0 ? (
+      {allDone ? (
+        <View style={styles.currentBlock}>
+          <DayCompleteCard completed={plannedDone} total={plannedTotal} />
+        </View>
+      ) : hasFocus && currentBlock ? (
         <TimeBlockCard
           block={currentBlock}
           onToggleAction={(index) => {
@@ -203,37 +240,41 @@ export default function HomeScreen() {
           showIntro={false}
           style={styles.currentBlock}
         />
+      ) : nextBlock ? (
+        <TimeBlockCard
+          block={nextBlock}
+          onToggleAction={(index) => {
+            const action = nextBlock.actions[index];
+            if (action) toggleQuest(action.questId, !action.done);
+          }}
+          showIntro={false}
+          style={styles.currentBlock}
+        />
       ) : (
-        <Card style={[styles.currentBlock, styles.nextMoveCard]}>
-          <View style={styles.nextMoveArtFrame}>
-            <Image
-              contentFit="cover"
-              source={NEXT_MOVE_ART}
-              style={styles.nextMoveArt}
+        <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
+          <Image
+            contentFit="cover"
+            source={NEXT_MOVE_ART}
+            style={styles.nextMoveArt}
+          />
+          <LinearGradient
+            colors={[...NEXT_MOVE_SHADE]}
+            end={{ x: 1, y: 0.5 }}
+            start={{ x: 0, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.nextMoveCopy}>
+            <AppText color={colors.textPrimary} variant="body">
+              A few focused steps can move{"\n"}your dreams forward.
+            </AppText>
+            <AppButton
+              icon={<ArrowRightIcon size={20} />}
+              label="Plan my week"
+              onPress={() => router.push("/sprint")}
+              style={styles.nextMoveButton}
+              variant="secondary"
             />
           </View>
-          <View style={styles.nextMoveCopy}>
-            <AppText variant="titleSm">
-              Your next move is waiting{" "}
-              <AppText color={colors.primary} variant="titleSm">
-                ✦
-              </AppText>
-            </AppText>
-            <AppText
-              color={colors.textSecondary}
-              style={styles.nextMoveSubtitle}
-              variant="body"
-            >
-              Choose a few actions to move your goal forward.
-            </AppText>
-          </View>
-          <AppButton
-            icon={<ArrowRightIcon size={20} />}
-            label="Plan my week"
-            onPress={() => router.push("/sprint")}
-            style={styles.nextMoveButton}
-            variant="secondary"
-          />
         </Card>
       )}
     </ScreenScaffold>
@@ -260,34 +301,23 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   nextMoveArt: {
-    height: "100%",
-    width: "100%",
-  },
-  /** Walk-road art on the left, framed like the Today's-progress portal art. */
-  nextMoveArtFrame: {
-    borderColor: colors.borderSoft,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 96,
-    overflow: "hidden",
-    width: 96,
+    ...StyleSheet.absoluteFill,
   },
   nextMoveButton: {
     backgroundColor: colors.transparent,
     borderRadius: radius.round,
   },
   nextMoveCard: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-    paddingVertical: spacing.md,
+    minHeight: 180,
+    overflow: "hidden",
   },
   nextMoveCopy: {
+    alignItems: "flex-start",
     flex: 1,
-    minWidth: 200,
-  },
-  nextMoveSubtitle: {
-    marginTop: spacing.xs,
+    gap: spacing.lg,
+    justifyContent: "center",
+    maxWidth: "68%",
+    padding: spacing.lg,
+    zIndex: 1,
   },
 });

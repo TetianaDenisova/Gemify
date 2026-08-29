@@ -60,11 +60,16 @@ const QUEST_ICONS: readonly ActionIcon[] = [
   "feather",
 ];
 
+/** The dream-magic icon a quest keeps everywhere it appears. */
+export function questIconForId(questId: number): ActionIcon {
+  return QUEST_ICONS[questId % QUEST_ICONS.length];
+}
+
 function toAction(quest: QuestWithBreadcrumb): QuestBlockView["actions"][number] {
   return {
     done: quest.isDone,
     dreamTitle: quest.dreamTitle,
-    icon: QUEST_ICONS[quest.id % QUEST_ICONS.length],
+    icon: questIconForId(quest.id),
     milestoneTitle: quest.milestoneTitle,
     subtitle: "",
     questId: quest.id,

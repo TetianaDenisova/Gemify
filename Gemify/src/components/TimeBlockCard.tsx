@@ -38,7 +38,7 @@ const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   feather: colors.accentViolet,
 };
 
-function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number }) {
+export function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: number }) {
   const color = ACTION_ICON_COLOR[icon];
   const stroke = {
     fill: "none" as const,
@@ -295,6 +295,8 @@ type TimeBlockCardProps = {
   /** Makes each row's body pressable (e.g. to open an action menu). */
   onPressAction?: (index: number) => void;
   onToggleAction: (index: number) => void;
+  /** Render every action in its own card instead of rows sharing one card. */
+  separated?: boolean;
   showHeader?: boolean;
   /** Hide the identity/routine copy and show only the action rows. */
   showIntro?: boolean;
@@ -306,6 +308,7 @@ export function TimeBlockCard({
   emptySlot,
   onPressAction,
   onToggleAction,
+  separated = false,
   showHeader = true,
   showIntro = true,
   style,
@@ -350,6 +353,24 @@ export function TimeBlockCard({
 
       {block.actions.length === 0 && emptySlot ? (
         emptySlot
+      ) : separated ? (
+        <View style={[styles.separatedList, compact && styles.separatedListCompact]}>
+          {block.actions.map((action, index) => (
+            <Card
+              key={action.title}
+              style={[styles.separatedCard, compact && styles.separatedCardCompact]}
+              variant="default"
+            >
+              <ActionRow
+                action={action}
+                compact={compact}
+                last
+                onPress={onPressAction ? () => onPressAction(index) : undefined}
+                onToggle={() => onToggleAction(index)}
+              />
+            </Card>
+          ))}
+        </View>
       ) : (
       <Card
         style={[
@@ -566,5 +587,20 @@ const styles = StyleSheet.create({
   sectionTimeCompact: {
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
+  },
+  separatedCard: {
+    borderColor: colors.accentVioletGlow,
+    paddingVertical: spacing.xs,
+  },
+  separatedCardCompact: {
+    paddingVertical: 2,
+  },
+  separatedList: {
+    gap: spacing.md,
+    marginTop: 18,
+  },
+  separatedListCompact: {
+    gap: spacing.sm,
+    marginTop: 14,
   },
 });

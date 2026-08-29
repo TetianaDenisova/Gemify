@@ -505,6 +505,7 @@ export default function MyDayScreen() {
               const action = activeBlock.actions[index];
               if (action) toggleQuest(action.questId, !action.done);
             }}
+            separated
             showIntro={false}
             style={compact ? styles.blockSectionCompact : styles.blockSection}
           />
@@ -521,13 +522,12 @@ export default function MyDayScreen() {
       <View
         style={[
           styles.progressFooter,
-          { bottom: insets.bottom + layout.tabBarClearance },
-          compact && styles.progressFooterCompact,
+          // Flush against the flat tab bar, spanning the full screen width.
+          { bottom: insets.bottom + layout.tabBarHeight },
         ]}
       >
         <TodayProgressCard
           completedActions={completedQuests}
-          style={styles.progressCard}
           totalActions={totalQuests}
         />
       </View>
@@ -569,6 +569,7 @@ export default function MyDayScreen() {
         quest={
           menuQuest ? { isDone: menuQuest.done, title: menuQuest.title } : null
         }
+        scheduleLabel="Reschedule"
       />
 
       {scheduleQuest ? (
@@ -793,19 +794,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: spacing.xs,
   },
-  progressCard: {
-    maxWidth: layout.contentMaxWidth,
-    width: "100%",
-  },
   progressFooter: {
-    alignItems: "center",
     left: 0,
-    paddingHorizontal: layout.screenPaddingH,
     position: "absolute",
     right: 0,
-  },
-  progressFooterCompact: {
-    paddingHorizontal: spacing.md,
   },
   screen: {
     flex: 1,
