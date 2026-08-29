@@ -141,35 +141,43 @@ export function WeekAscentCard({
 
   if (!expanded) {
     return (
-      <Card style={[styles.card, styles.cardCompact]}>
+      <Card style={styles.card}>
         <Pressable
           accessibilityLabel="Show the week's expected progress"
           accessibilityRole="button"
           onPress={onToggle}
-          style={({ pressed: isPressed }) => [isPressed && pressed]}
+          style={({ pressed: isPressed }) => [
+            styles.compactRow,
+            isPressed && pressed,
+          ]}
         >
-          <View style={styles.compactHeader}>
-            <ActionIconArt icon="star" size={26} />
-            <AppText
-              numberOfLines={1}
-              style={styles.compactTitle}
-              variant="labelStrong"
-            >
+          <View style={styles.artThumb}>
+            <Image contentFit="cover" source={ASCENT_ART} style={styles.art} />
+          </View>
+          <View style={styles.compactBody}>
+            <AppText color={colors.textPrimary} variant="pill">
               Expected progress this week
             </AppText>
-            <View style={styles.deltaPill}>
-              <AppText color={colors.primary} variant="controlLabel">
-                {formatDelta(expectedTotal)}
-              </AppText>
-              <ChevronIcon color={colors.textMuted} direction="down" size={14} />
-            </View>
+            <ProgressBar
+              glow
+              height={7}
+              style={styles.compactTrack}
+              value={earnedShare(expectedTotal, gainedTotal)}
+            />
           </View>
-          <ProgressBar
-            glow
-            height={5}
-            style={styles.compactTrack}
-            value={earnedShare(expectedTotal, gainedTotal)}
-          />
+          <View style={styles.compactCount}>
+            <AppText color={colors.primary} variant="cardTitle">
+              {formatDelta(expectedTotal)}
+            </AppText>
+            <AppText
+              color={colors.textMuted}
+              style={styles.compactCountLabel}
+              variant="captionStrong"
+            >
+              EXPECTED
+            </AppText>
+          </View>
+          <ChevronIcon color={colors.textMuted} direction="down" size={16} />
         </Pressable>
       </Card>
     );
@@ -241,26 +249,31 @@ const styles = StyleSheet.create({
   cardCompact: {
     paddingVertical: spacing.sm + spacing.xs,
   },
-  compactHeader: {
+  artThumb: {
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    height: 68,
+    overflow: "hidden",
+    width: 68,
+  },
+  compactBody: {
+    flex: 1,
+    minWidth: 130,
+  },
+  compactCount: {
+    alignItems: "center",
+  },
+  compactCountLabel: {
+    letterSpacing: 2,
+  },
+  compactRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm + spacing.xs,
-  },
-  compactTitle: {
-    flex: 1,
-    minWidth: 0,
+    gap: spacing.lg,
   },
   compactTrack: {
-    marginTop: spacing.sm + spacing.xs,
-  },
-  deltaPill: {
-    alignItems: "center",
-    backgroundColor: colors.overlayLight,
-    borderRadius: radius.round,
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    marginTop: spacing.md,
   },
   completesRow: {
     alignItems: "center",
