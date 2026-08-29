@@ -68,7 +68,6 @@ function toGoal(dream: DreamSummary, index: number): Goal {
     id: String(dream.id),
     title: dream.title,
     progressPercent: dream.progressPercent,
-    photoUri: dream.photoUri,
     ...visuals,
   };
 }

@@ -38,8 +38,10 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       onPress={() => onPress?.(goal)}
       style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
     >
+      {/* Always the preset art for the goal's slot — the user's dream photo
+          stays on the journey map, not the home list. */}
       <Image
-        source={goal.photoUri ? { uri: goal.photoUri } : goalImages[goal.imageKey]}
+        source={goalImages[goal.imageKey]}
         style={styles.backgroundImage}
         contentFit="cover"
         transition={180}
