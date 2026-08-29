@@ -103,6 +103,17 @@ export async function getScheduledQuests(
   return rows.map(toQuestWithBreadcrumb);
 }
 
+/** Day-plan picker: every open quest not yet accepted into the plan. */
+export async function getSchedulableQuests(): Promise<QuestWithBreadcrumb[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<QuestBreadcrumbRow>(
+    `${SELECT_QUEST_WITH_BREADCRUMB}
+     WHERE q.is_done = 0 AND q.is_planned = 0 AND q.scheduled_date IS NULL
+     ORDER BY d.id, m.sequence_number, q.id`,
+  );
+  return rows.map(toQuestWithBreadcrumb);
+}
+
 /** Sprint backlog: quests added to the weekly plan but not put on a day yet. */
 export async function getUnscheduledQuests(): Promise<QuestWithBreadcrumb[]> {
   const db = await getDatabase();

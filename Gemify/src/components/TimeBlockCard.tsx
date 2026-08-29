@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import {
+  Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -19,7 +21,7 @@ import {
   SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, layout, lineHeights, spacing } from "@/theme/theme";
+import { fontSizes, layout, lineHeights, pressed, spacing } from "@/theme/theme";
 
 const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   meditate: colors.accentViolet,
@@ -202,15 +204,28 @@ function ActionRow({
   action,
   compact,
   last,
+  onPress,
   onToggle,
 }: {
   action: DayAction;
   compact: boolean;
   last: boolean;
+  onPress?: () => void;
   onToggle: () => void;
 }) {
   return (
     <View style={[styles.actionRow, compact && styles.actionRowCompact, last && styles.actionRowLast]}>
+      <Pressable
+        accessibilityLabel={`Options for ${action.title}`}
+        accessibilityRole="button"
+        disabled={!onPress}
+        onPress={onPress}
+        style={({ pressed: isPressed }) => [
+          styles.actionBody,
+          compact && styles.actionBodyCompact,
+          isPressed && pressed,
+        ]}
+      >
       <View style={[styles.actionIcon, compact && styles.actionIconCompact]}>
         <ActionIconArt icon={action.icon} size={compact ? 28 : 36} />
       </View>
@@ -257,6 +272,7 @@ function ActionRow({
           </AppText>
         )}
       </View>
+      </Pressable>
       <Checkbox
         accessibilityLabel={
           action.done
@@ -274,6 +290,10 @@ function ActionRow({
 
 type TimeBlockCardProps = {
   block: TimeBlock;
+  /** Rendered instead of the card when the block has no actions. */
+  emptySlot?: ReactNode;
+  /** Makes each row's body pressable (e.g. to open an action menu). */
+  onPressAction?: (index: number) => void;
   onToggleAction: (index: number) => void;
   showHeader?: boolean;
   /** Hide the identity/routine copy and show only the action rows. */
@@ -283,6 +303,8 @@ type TimeBlockCardProps = {
 
 export function TimeBlockCard({
   block,
+  emptySlot,
+  onPressAction,
   onToggleAction,
   showHeader = true,
   showIntro = true,
@@ -314,16 +336,21 @@ export function TimeBlockCard({
           >
             {block.time}
           </AppText>
-          <AppText
-            color={colors.textPrimary}
-            style={[styles.sectionCount, compact && styles.sectionCountCompact]}
-            variant="pill"
-          >
-            {done} / {block.actions.length}
-          </AppText>
+          {block.actions.length > 0 ? (
+            <AppText
+              color={colors.textPrimary}
+              style={[styles.sectionCount, compact && styles.sectionCountCompact]}
+              variant="pill"
+            >
+              {done} / {block.actions.length}
+            </AppText>
+          ) : null}
         </View>
       ) : null}
 
+      {block.actions.length === 0 && emptySlot ? (
+        emptySlot
+      ) : (
       <Card
         style={[
           styles.card,
@@ -367,16 +394,28 @@ export function TimeBlockCard({
               compact={compact}
               key={action.title}
               last={index === block.actions.length - 1}
+              onPress={onPressAction ? () => onPressAction(index) : undefined}
               onToggle={() => onToggleAction(index)}
             />
           ))}
         </View>
       </Card>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  actionBody: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 18,
+    minWidth: 0,
+  },
+  actionBodyCompact: {
+    gap: 14,
+  },
   actionBreadcrumb: {
     alignItems: "center",
     flexDirection: "row",

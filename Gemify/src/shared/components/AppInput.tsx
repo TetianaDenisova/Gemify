@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { forwardRef, useState, type ReactNode } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -26,21 +26,25 @@ export type AppInputProps = Omit<TextInputProps, "style"> & {
 
 /**
  * The standard text field: glass surface, gold border (brighter when
- * focused), optional label, leading icon, and character counter.
+ * focused), optional label, leading icon, and character counter. Forwards
+ * its ref to the underlying TextInput so callers can focus programmatically.
  */
-export function AppInput({
-  containerStyle,
-  icon,
-  inputStyle,
-  label,
-  maxLength,
-  multiline = false,
-  onBlur,
-  onFocus,
-  showCounter = false,
-  value,
-  ...rest
-}: AppInputProps) {
+export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput(
+  {
+    containerStyle,
+    icon,
+    inputStyle,
+    label,
+    maxLength,
+    multiline = false,
+    onBlur,
+    onFocus,
+    showCounter = false,
+    value,
+    ...rest
+  },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
   const hasCounter = showCounter && maxLength != null;
 
@@ -61,6 +65,7 @@ export function AppInput({
         {icon ? <View style={styles.icon}>{icon}</View> : null}
         <TextInput
           {...rest}
+          ref={ref}
           maxLength={maxLength}
           multiline={multiline}
           onBlur={(event) => {
@@ -83,7 +88,7 @@ export function AppInput({
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   counter: {

@@ -83,27 +83,15 @@ function TimeTab({
         styles.timeTab,
         compact && styles.timeTabCompact,
         active && styles.timeTabActive,
-        active && compact && styles.timeTabActiveCompact,
         isPressed && pressed,
       ]}
     >
-      <BlockIconArt
-        color={active ? colors.accentViolet : colors.textSecondary}
-        icon={block.icon}
-        size={compact ? 22 : 28}
-      />
-      <View style={styles.timeTabLabelRow}>
-        <AppText
-          color={colors.textSecondary}
-          numberOfLines={1}
-          style={[
-            compact && styles.timeTabLabelCompact,
-            active && styles.timeTabLabelActive,
-          ]}
-          variant="pill"
-        >
-          {block.label}
-        </AppText>
+      <View style={styles.timeTabIconWrap}>
+        <BlockIconArt
+          color={active ? colors.accentViolet : colors.primary}
+          icon={block.icon}
+          size={compact ? 22 : 28}
+        />
         {questCount > 0 ? (
           <View
             style={[
@@ -121,6 +109,14 @@ function TimeTab({
           </View>
         ) : null}
       </View>
+      <AppText
+        color={active ? colors.accentViolet : colors.primary}
+        numberOfLines={1}
+        style={compact && styles.timeTabLabelCompact}
+        variant="pill"
+      >
+        {block.label}
+      </AppText>
     </Pressable>
   );
 }
@@ -199,7 +195,7 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
                 width: event.nativeEvent.layout.width,
                 x: event.nativeEvent.layout.x,
               };
-              // The active tab widens on selection; re-center once its fresh layout lands.
+              // Layouts land after the initial useEffect; center the active tab then.
               if (block.key === activeKey) centerTab(block.key);
             }}
             style={styles.timeTabSlot}
@@ -239,22 +235,28 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
 const styles = StyleSheet.create({
   countBadge: {
     alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
     borderColor: colors.borderSoft,
     borderRadius: radius.round,
     borderWidth: 1,
-    height: 24,
+    height: 22,
     justifyContent: "center",
-    minWidth: 24,
-    paddingHorizontal: 6,
+    minWidth: 22,
+    paddingHorizontal: 5,
+    position: "absolute",
+    right: -14,
+    top: -8,
   },
   countBadgeActive: {
-    backgroundColor: "rgba(90, 55, 140, 0.55)",
-    borderColor: colors.accentVioletGlow,
+    backgroundColor: colors.accentVioletStrong,
+    borderColor: colors.accentVioletStrong,
   },
   countBadgeCompact: {
-    height: 20,
-    minWidth: 20,
-    paddingHorizontal: 5,
+    height: 19,
+    minWidth: 19,
+    paddingHorizontal: 4,
+    right: -12,
+    top: -7,
   },
   tabsArrow: {
     alignItems: "center",
@@ -292,47 +294,37 @@ const styles = StyleSheet.create({
   timeTab: {
     alignItems: "center",
     borderColor: colors.transparent,
-    borderRadius: radius.round,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     flexDirection: "column",
     gap: 6,
     justifyContent: "center",
     minHeight: 72,
-    paddingHorizontal: 24,
+    paddingHorizontal: 8,
     paddingVertical: 10,
+    width: 132,
   },
   timeTabActive: {
-    backgroundColor: "rgba(90, 55, 140, 0.28)",
+    backgroundColor: "rgba(114, 70, 190, 0.16)",
     borderColor: colors.accentViolet,
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 28,
-  },
-  timeTabActiveCompact: {
-    gap: 8,
-    paddingHorizontal: 18,
   },
   timeTabCompact: {
     gap: 4,
     minHeight: 54,
-    paddingHorizontal: 14,
+    paddingHorizontal: 6,
+    width: 108,
   },
   timeTabDivider: {
     backgroundColor: colors.borderSoft,
-    height: 30,
+    height: 56,
     width: 1,
   },
-  timeTabLabelActive: {
-    color: colors.accentViolet,
+  timeTabIconWrap: {
+    position: "relative",
   },
   timeTabLabelCompact: {
     fontSize: fontSizes.md,
     lineHeight: lineHeights.md,
-  },
-  timeTabLabelRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
   },
   timeTabSlot: {
     alignItems: "center",

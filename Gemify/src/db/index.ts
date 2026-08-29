@@ -57,6 +57,7 @@ export {
   getQuestById,
   getQuests,
   getQuestsByDream,
+  getSchedulableQuests,
   getScheduledQuestCounts,
   getScheduledQuests,
   getUnscheduledQuests,

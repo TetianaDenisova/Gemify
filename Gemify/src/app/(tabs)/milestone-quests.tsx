@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -10,12 +10,22 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import { DatePickerModal } from "@/components/DatePickerModal";
 import {
   HabitBoardRow,
   toBoardHabit,
   type BoardHabit,
 } from "@/components/HabitBoardCard";
+import {
+  AcceptQuestModal,
+  ActionSheet,
+  CalendarIcon,
+  PencilIcon,
+  QuestActionSheet,
+  SheetActionRow,
+  TextPromptModal,
+  TIME_SLOTS,
+  WEEKDAY_LABELS,
+} from "@/components/QuestActions";
 import {
   createQuest,
   deleteQuest,
@@ -32,7 +42,6 @@ import {
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
-  AppInput,
   AppModal,
   AppText,
   BackIcon,
@@ -41,7 +50,6 @@ import {
   CheckIcon,
   Checkbox,
   CloseIcon,
-  HintRow,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -72,97 +80,106 @@ type PromptState =
 
 type ContentTab = "quests" | "habits";
 
-function CalendarIcon({ color = colors.primary }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Rect
-        fill="none"
-        height={14}
-        rx={2}
-        stroke={color}
-        strokeWidth={1.7}
-        width={17}
-        x={3.5}
-        y={6}
-      />
-      <Path
-        d="M7 3.5v5M17 3.5v5M3.5 10.5h17"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
+/**
+ * Human caption for an accepted quest's schedule, e.g. "Today · After work"
+ * or "Wed 28 · Morning". Falls back to "This week" for planned quests with
+ * no date yet.
+ */
+function scheduleLabel(quest: Quest): string {
+  if (!quest.scheduledDate) return "This week";
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  let dayLabel: string;
+  if (quest.scheduledDate === toDateKey(today)) {
+    dayLabel = "Today";
+  } else if (quest.scheduledDate === toDateKey(tomorrow)) {
+    dayLabel = "Tomorrow";
+  } else {
+    const date = new Date(`${quest.scheduledDate}T12:00:00`);
+    const weekday = WEEKDAY_LABELS[date.getDay()];
+    dayLabel = `${weekday[0]}${weekday.slice(1).toLowerCase()} ${date.getDate()}`;
+  }
+
+  const slot = TIME_SLOTS.find((entry) => entry.time === quest.scheduledTime);
+  return `${dayLabel} · ${slot?.label ?? quest.scheduledTime}`;
 }
 
-function CalendarClockIcon({ color = colors.primary }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Path
-        d="M20.5 11V8a2 2 0 0 0-2-2h-13a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2H11M7 3.5v5M17 3.5v5M3.5 10.5h17"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-      <Circle
-        cx={17}
-        cy={17}
-        fill="none"
-        r={4.2}
-        stroke={color}
-        strokeWidth={1.7}
-      />
-      <Path
-        d="M17 15v2.2l1.6 1"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
+const QUEST_ICON_VARIANT_COUNT = 4;
 
-function PencilIcon({ color = colors.primary }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Path
-        d="m4 20 .8-3.8L15.6 5.4a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L7.8 19.2 4 20Z"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-      <Path
-        d="m13.8 7.2 3 3"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
+/** Ornamental spark for quest rows — four hand-drawn variants. */
+function QuestSparkIcon({
+  color = colors.primary,
+  variant,
+}: {
+  color?: string;
+  variant: number;
+}) {
+  const safeVariant =
+    ((variant % QUEST_ICON_VARIANT_COUNT) + QUEST_ICON_VARIANT_COUNT) %
+    QUEST_ICON_VARIANT_COUNT;
 
-function TrashIcon({ color = colors.danger }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Path
-        d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5m3.5 0-.9 12A2 2 0 0 1 15.1 20.5H8.9a2 2 0 0 1-2-1.9l-.9-12.1M10 10.5v6M14 10.5v6"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
+  switch (safeVariant) {
+    case 0:
+      return (
+        <Svg height={30} viewBox="0 0 32 32" width={30}>
+          <Path
+            d="M16 3c1.9 7.1 5.9 11.1 13 13-7.1 1.9-11.1 5.9-13 13-1.9-7.1-5.9-11.1-13-13 7.1-1.9 11.1-5.9 13-13Z"
+            fill="none"
+            stroke={color}
+            strokeLinejoin="round"
+            strokeWidth={1.9}
+          />
+        </Svg>
+      );
+    case 1:
+      return (
+        <Svg height={30} viewBox="0 0 32 32" width={30}>
+          <Path
+            d="M15 6c1.6 6 4.7 9.1 10.5 10.5C19.7 17.9 16.6 21 15 27c-1.6-6-4.7-9.1-10.5-10.5C10.3 15.1 13.4 12 15 6Z"
+            fill="none"
+            stroke={color}
+            strokeLinejoin="round"
+            strokeWidth={1.9}
+          />
+          <Path
+            d="m25.5 3.5.9 2.5 2.6.9-2.6.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z"
+            fill={color}
+          />
+        </Svg>
+      );
+    case 2:
+      return (
+        <Svg height={30} viewBox="0 0 32 32" width={30}>
+          <Path
+            d="M16 4v6M16 22v6M4 16h6M22 16h6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeWidth={1.9}
+          />
+          <Path
+            d="m16 10 6 6-6 6-6-6 6-6Z"
+            fill="none"
+            stroke={color}
+            strokeLinejoin="round"
+            strokeWidth={1.9}
+          />
+        </Svg>
+      );
+    default:
+      return (
+        <Svg height={30} viewBox="0 0 32 32" width={30}>
+          <Path
+            d="M16.5 5c2 6.4 5.2 9.6 11 11.5-5.8 1.9-9 5.1-11 11.5-2-6.4-5.2-9.6-11-11.5 5.8-1.9 9-5.1 11-11.5Z"
+            fill={color}
+          />
+          <Path d="m6 4 .7 2 2 .7-2 .7L6 9.4l-.7-2-2-.7 2-.7L6 4Z" fill={color} />
+        </Svg>
+      );
+  }
 }
 
 function MemoryGlyph({
@@ -225,71 +242,96 @@ function MilestoneProgressBar({ value }: { value: number }) {
 }
 
 /**
- * One flat row per quest: completion circle · title · kebab menu. A quest is
- * a single actionable item — there is nothing to expand or drill into.
+ * One flat row per quest: spark · title · trailing state. A fresh quest shows
+ * an ACCEPT pill (opens the accept modal); an accepted one turns violet,
+ * captions its schedule ("Today · After work") and shows an ACCEPTED tag; a
+ * done one shows a checked circle that un-dones. Tapping the row body opens
+ * the action sheet.
  */
 function QuestRow({
   compact,
+  onAccept,
   onOpenMenu,
   onToggleQuest,
   quest,
 }: {
   compact: boolean;
+  onAccept: () => void;
   onOpenMenu: () => void;
   onToggleQuest: () => void;
   quest: Quest;
 }) {
+  // Stable pseudo-random pick so each quest keeps its spark across renders.
+  const iconVariant = (quest.id * 31 + 7) % QUEST_ICON_VARIANT_COUNT;
+  const isAccepted = quest.isPlanned && !quest.isDone;
+
   return (
-    <Card
-      style={[styles.questCard, compact && styles.questCardCompact]}
-    >
-      <View style={styles.questTopRow}>
-        <Pressable
-          accessibilityLabel={
-            quest.isDone
-              ? "Mark the quest as not done"
-              : "Mark the quest as done"
-          }
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: quest.isDone }}
-          hitSlop={8}
-          onPress={onToggleQuest}
-        >
-          <Checkbox
-            appearance="outline"
-            checked={quest.isDone}
-            shape="circle"
-            size={44}
-          />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={`Options for the quest ${quest.title}`}
-          accessibilityRole="button"
-          onPress={onOpenMenu}
-          style={({ pressed: isPressed }) => [
-            styles.questHeaderTap,
-            isPressed && pressed,
-          ]}
-        >
-          <View style={styles.questCopy}>
-            <AppText numberOfLines={2} variant="cardTitle">
-              {quest.title}
+    <Card style={[styles.questCard, compact && styles.questCardCompact]}>
+      <Pressable
+        accessibilityLabel={`Options for the quest ${quest.title}`}
+        accessibilityRole="button"
+        onPress={onOpenMenu}
+        style={({ pressed: isPressed }) => [
+          styles.questRow,
+          isPressed && pressed,
+        ]}
+      >
+        <QuestSparkIcon color={colors.primary} variant={iconVariant} />
+        <View style={styles.questCopy}>
+          <AppText numberOfLines={2} variant="cardTitle">
+            {quest.title}
+          </AppText>
+          {isAccepted ? (
+            <View style={styles.questScheduleRow}>
+              <CalendarIcon color={colors.primary} size={iconSizes.sm} />
+              <AppText color={colors.primary} variant="labelStrong">
+                {scheduleLabel(quest)}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+        {quest.isDone ? (
+          <Pressable
+            accessibilityLabel="Mark the quest as not done"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: true }}
+            hitSlop={8}
+            onPress={onToggleQuest}
+          >
+            <Checkbox appearance="outline" checked shape="circle" size={44} />
+          </Pressable>
+        ) : isAccepted ? (
+          <View style={styles.acceptedTag}>
+            <View style={styles.acceptedDot} />
+            <AppText
+              color={colors.textMuted}
+              style={styles.acceptPillLabel}
+              variant="captionStrong"
+            >
+              ACCEPTED
             </AppText>
           </View>
-        </Pressable>
-        <Pressable
-          accessibilityLabel="Quest options"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onOpenMenu}
-          style={({ pressed: isPressed }) => [
-            styles.menuButton,
-            isPressed && pressed,
-          ]}
-        >
-          <DotsIcon />
-        </Pressable>
-      </View>
+        ) : (
+          <Pressable
+            accessibilityLabel={`Accept the quest ${quest.title}`}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={onAccept}
+            style={({ pressed: isPressed }) => [
+              styles.acceptPill,
+              isPressed && pressed,
+            ]}
+          >
+            <AppText
+              color={colors.primary}
+              style={styles.acceptPillLabel}
+              variant="captionStrong"
+            >
+              ACCEPT
+            </AppText>
+          </Pressable>
+        )}
+      </Pressable>
     </Card>
   );
 }
@@ -361,167 +403,6 @@ function ContentTabs({
   );
 }
 
-function TextPromptModal({
-  hint,
-  initialValue = "",
-  onClose,
-  onSubmit,
-  placeholder,
-  submitLabel = "Add",
-  title,
-  visible,
-}: {
-  hint?: string;
-  initialValue?: string;
-  onClose: () => void;
-  onSubmit: (value: string) => void;
-  placeholder: string;
-  submitLabel?: string;
-  title: string;
-  visible: boolean;
-}) {
-  const [value, setValue] = useState("");
-  const [wasVisible, setWasVisible] = useState(false);
-
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) setValue(initialValue);
-  }
-
-  return (
-    <AppModal onClose={onClose} visible={visible}>
-      <AppText align="center" variant="titleSm">
-        {title}
-      </AppText>
-      <AppInput
-        autoFocus
-        containerStyle={styles.promptInput}
-        onChangeText={setValue}
-        placeholder={placeholder}
-        value={value}
-      />
-      {hint ? <HintRow style={styles.promptHint} text={hint} /> : null}
-      <View style={styles.promptActions}>
-        <AppButton
-          label="Cancel"
-          onPress={onClose}
-          style={styles.promptButton}
-          variant="secondary"
-        />
-        <AppButton
-          disabled={!value.trim()}
-          label={submitLabel}
-          onPress={() => onSubmit(value.trim())}
-          style={styles.promptButton}
-        />
-      </View>
-    </AppModal>
-  );
-}
-
-function SheetActionRow({
-  danger = false,
-  icon,
-  label,
-  onPress,
-}: {
-  danger?: boolean;
-  icon: ReactNode;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed: isPressed }) => [
-        styles.sheetActionRow,
-        isPressed && pressed,
-      ]}
-    >
-      {icon}
-      <AppText color={danger ? colors.danger : colors.textPrimary} variant="button">
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
-/**
- * Bottom-sheet shell shared by the quest and habit action menus: violet
- * handle + border, the item title, then the caller's action rows.
- */
-function ActionSheet({
-  children,
-  onClose,
-  title,
-  visible,
-}: {
-  children: ReactNode;
-  onClose: () => void;
-  title: string | undefined;
-  visible: boolean;
-}) {
-  return (
-    <AppModal
-      onClose={onClose}
-      panelStyle={styles.actionSheetPanel}
-      showHandle={false}
-      variant="sheet"
-      visible={visible}
-    >
-      <View style={styles.sheetHandle} />
-      <AppText numberOfLines={3} style={styles.sheetTitle} variant="titleSm">
-        {title}
-      </AppText>
-      {children}
-    </AppModal>
-  );
-}
-
-/** Bottom sheet with the actions for one quest (mirrors the design mock). */
-function QuestActionSheet({
-  onClose,
-  onDelete,
-  onDoThisWeek,
-  onEdit,
-  onSchedule,
-  quest,
-}: {
-  onClose: () => void;
-  onDelete: () => void;
-  onDoThisWeek: () => void;
-  onEdit: () => void;
-  onSchedule: () => void;
-  quest: Quest | null;
-}) {
-  return (
-    <ActionSheet
-      onClose={onClose}
-      title={quest?.title}
-      visible={quest !== null}
-    >
-      <SheetActionRow
-        icon={<CalendarIcon />}
-        label="Do this week"
-        onPress={onDoThisWeek}
-      />
-      <SheetActionRow
-        icon={<CalendarClockIcon />}
-        label="Schedule"
-        onPress={onSchedule}
-      />
-      <SheetActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
-      <SheetActionRow
-        danger
-        icon={<TrashIcon />}
-        label="Delete"
-        onPress={onDelete}
-      />
-    </ActionSheet>
-  );
-}
-
 /** The same sheet for a habit: only Edit and Cancel (delete lives on the Habits tab). */
 function HabitActionSheet({
   habit,
@@ -560,7 +441,7 @@ export default function MilestoneQuestsScreen() {
   );
   const [menuHabit, setMenuHabit] = useState<BoardHabit | null>(null);
   const [menuQuest, setMenuQuest] = useState<Quest | null>(null);
-  const [scheduleQuest, setScheduleQuest] = useState<Quest | null>(null);
+  const [acceptQuest, setAcceptQuest] = useState<Quest | null>(null);
   const [questDeleteTarget, setQuestDeleteTarget] = useState<Quest | null>(
     null,
   );
@@ -716,34 +597,31 @@ export default function MilestoneQuestsScreen() {
     setPrompt(null);
   };
 
-  // "Do this week" clears any date, so the quest lands in the sprint board's
-  // "Unscheduled this week" backlog to be planned onto a day from there.
-  const handleQuestDoThisWeek = async () => {
-    if (!menuQuest) return;
-    setMenuQuest(null);
+  // Accepting a quest schedules it onto the chosen day (and representative
+  // time) so it shows up in the weekly plan.
+  const handleAcceptQuest = async (date: string, time: string | null) => {
+    if (!acceptQuest) return;
+    setAcceptQuest(null);
     try {
-      await updateQuest(menuQuest.id, {
-        scheduledDate: null,
-        scheduledTime: null,
+      await updateQuest(acceptQuest.id, {
+        scheduledDate: date,
+        scheduledTime: time,
         isPlanned: true,
       });
       await loadScreen();
     } catch (cause) {
-      console.error("Failed to move the quest to the weekly backlog", cause);
+      console.error("Failed to accept the quest", cause);
     }
   };
 
-  const handleQuestScheduleDate = async (date: Date) => {
-    if (!scheduleQuest) return;
-    setScheduleQuest(null);
+  const handleMenuCompleteNow = async () => {
+    if (!menuQuest) return;
+    setMenuQuest(null);
     try {
-      await updateQuest(scheduleQuest.id, {
-        scheduledDate: toDateKey(date),
-        isPlanned: true,
-      });
+      await setQuestDone(menuQuest.id, true);
       await loadScreen();
     } catch (cause) {
-      console.error("Failed to schedule the quest", cause);
+      console.error("Failed to complete the quest", cause);
     }
   };
 
@@ -881,6 +759,7 @@ export default function MilestoneQuestsScreen() {
             <QuestRow
               compact={isNarrow}
               key={quest.id}
+              onAccept={() => setAcceptQuest(quest)}
               onOpenMenu={() => setMenuQuest(quest)}
               onToggleQuest={() => handleToggleQuest(quest)}
               quest={quest}
@@ -972,11 +851,6 @@ export default function MilestoneQuestsScreen() {
       )}
 
       <TextPromptModal
-        hint={
-          prompt?.kind === "quest"
-            ? "Big quest? Split it into smaller ones — each finished quest moves your milestone forward."
-            : undefined
-        }
         initialValue={
           prompt?.kind === "editQuest" ? prompt.initialValue : ""
         }
@@ -990,11 +864,15 @@ export default function MilestoneQuestsScreen() {
 
       <QuestActionSheet
         onClose={() => setMenuQuest(null)}
+        onCompleteNow={handleMenuCompleteNow}
+        onSchedule={() => {
+          setAcceptQuest(menuQuest);
+          setMenuQuest(null);
+        }}
         onDelete={() => {
           setQuestDeleteTarget(menuQuest);
           setMenuQuest(null);
         }}
-        onDoThisWeek={handleQuestDoThisWeek}
         onEdit={() => {
           if (menuQuest) {
             setPrompt({
@@ -1005,24 +883,14 @@ export default function MilestoneQuestsScreen() {
           }
           setMenuQuest(null);
         }}
-        onSchedule={() => {
-          setScheduleQuest(menuQuest);
-          setMenuQuest(null);
-        }}
         quest={menuQuest}
       />
 
-      {scheduleQuest ? (
-        <DatePickerModal
-          initialDate={
-            scheduleQuest.scheduledDate
-              ? new Date(`${scheduleQuest.scheduledDate}T12:00:00`)
-              : new Date()
-          }
-          onClose={() => setScheduleQuest(null)}
-          onSelect={handleQuestScheduleDate}
-          today={new Date()}
-          visible
+      {acceptQuest ? (
+        <AcceptQuestModal
+          key={acceptQuest.id}
+          onAccept={handleAcceptQuest}
+          onClose={() => setAcceptQuest(null)}
         />
       ) : null}
 
@@ -1115,8 +983,30 @@ export default function MilestoneQuestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  actionSheetPanel: {
-    borderColor: colors.accentVioletGlow,
+  acceptedDot: {
+    backgroundColor: colors.textMuted,
+    borderRadius: radius.round,
+    height: 7,
+    width: 7,
+  },
+  acceptedTag: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  acceptPill: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: radius.round,
+    borderWidth: 1.5,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+  },
+  acceptPillLabel: {
+    fontSize: fontSizes.sm,
+    letterSpacing: 1.8,
+    lineHeight: lineHeights.sm,
   },
   celebrationButton: {
     marginTop: spacing.lg,
@@ -1267,12 +1157,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.sm,
   },
-  promptHint: {
-    marginTop: spacing.lg,
-  },
-  promptInput: {
-    marginTop: spacing.lg,
-  },
   questCard: {
     borderColor: "rgba(246, 232, 200, 0.18)",
     marginBottom: spacing.md,
@@ -1288,39 +1172,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  questHeaderTap: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    minWidth: 0,
-  },
-  questTopRow: {
+  questRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.lg,
-    justifyContent: "space-between",
   },
-  sheetActionRow: {
+  questScheduleRow: {
     alignItems: "center",
-    borderTopColor: "rgba(246, 232, 200, 0.13)",
-    borderTopWidth: 1,
     flexDirection: "row",
-    gap: spacing.lg,
-    minHeight: 60,
-    paddingVertical: spacing.sm,
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    backgroundColor: colors.accentVioletStrong,
-    borderRadius: radius.round,
-    height: 5,
-    marginBottom: spacing.lg,
-    opacity: 0.85,
-    width: 64,
-  },
-  sheetTitle: {
-    marginBottom: spacing.lg,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   tabButton: {
     alignItems: "center",
