@@ -2,8 +2,11 @@
 // Build the demo variant by setting APP_VARIANT=demo (see eas.json profiles).
 const IS_DEMO = process.env.APP_VARIANT === 'demo';
 
-// Square 1024x1024 build of assets/images/personal-icon.png (padded with #050811).
-const PERSONAL_ICON = './assets/images/personal-icon-1024.png';
+// 1024x1024 builds of assets/images/icon-personal.png. The adaptive variant
+// shrinks the art into the launcher mask's safe zone (padded with #050811) so
+// Android's circular crop doesn't cut the castle spire.
+const PERSONAL_ICON = './assets/images/icon-personal-1024.png';
+const PERSONAL_ICON_ADAPTIVE = './assets/images/icon-personal-adaptive.png';
 
 module.exports = ({ config }) => ({
   ...config,
@@ -17,7 +20,7 @@ module.exports = ({ config }) => ({
       ? config.android.adaptiveIcon
       : {
           ...config.android.adaptiveIcon,
-          foregroundImage: PERSONAL_ICON,
+          foregroundImage: PERSONAL_ICON_ADAPTIVE,
         },
   },
   ios: {
