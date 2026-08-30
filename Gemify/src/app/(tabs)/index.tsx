@@ -52,6 +52,45 @@ const LATER_COLORS = {
   title: "#C7C6CD",
 } as const;
 
+/** Shared art card for empty states: forest art, shade, message, one CTA. */
+function NextMoveCard({
+  buttonLabel,
+  message,
+  onPress,
+}: {
+  buttonLabel: string;
+  message: string;
+  onPress: () => void;
+}) {
+  return (
+    <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
+      <Image
+        contentFit="cover"
+        source={NEXT_MOVE_ART}
+        style={styles.nextMoveArt}
+      />
+      <LinearGradient
+        colors={[...NEXT_MOVE_SHADE]}
+        end={{ x: 1, y: 0.5 }}
+        start={{ x: 0, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.nextMoveCopy}>
+        <AppText color={colors.textPrimary} variant="body">
+          {message}
+        </AppText>
+        <AppButton
+          icon={<ArrowRightIcon size={20} />}
+          label={buttonLabel}
+          onPress={onPress}
+          style={styles.nextMoveButton}
+          variant="secondary"
+        />
+      </View>
+    </Card>
+  );
+}
+
 function greetingForNow(now: Date): string {
   const hour = now.getHours();
   if (hour < 12) return "Good morning ✦";
@@ -225,24 +264,17 @@ export default function HomeScreen() {
       ))}
 
       {!loading && dreams.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <AppText align="center" variant="cardTitle">
-            Start your first journey
-          </AppText>
-          <AppText align="center" style={styles.emptyText} variant="bodySmall">
-            Name the dream you want to live, and we will turn it into a path of
-            milestones.
-          </AppText>
-          <View style={styles.emptyButton}>
-            <AppButton
-              label="Create a dream"
-              onPress={() => router.push("/create-goal")}
-              variant="primary"
-            />
-          </View>
-        </Card>
+        <NextMoveCard
+          buttonLabel="Create a dream"
+          message={"Name the dream you want to live,\nand we will map the path."}
+          onPress={() => router.push("/create-goal")}
+        />
       ) : null}
 
+      {/* Without a dream there is nothing to focus on or plan — the whole
+          section stays hidden until the first dream exists. */}
+      {dreams.length > 0 ? (
+        <>
       <SectionHeader
         style={styles.sectionHeader}
         // The planning nudge only appears when nothing at all is planned for
@@ -433,32 +465,14 @@ export default function HomeScreen() {
         </View>
         </>
       ) : showCelebration ? null : (
-        <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
-          <Image
-            contentFit="cover"
-            source={NEXT_MOVE_ART}
-            style={styles.nextMoveArt}
-          />
-          <LinearGradient
-            colors={[...NEXT_MOVE_SHADE]}
-            end={{ x: 1, y: 0.5 }}
-            start={{ x: 0, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.nextMoveCopy}>
-            <AppText color={colors.textPrimary} variant="body">
-              A few focused steps can move{"\n"}your dreams forward.
-            </AppText>
-            <AppButton
-              icon={<ArrowRightIcon size={20} />}
-              label="Plan my week"
-              onPress={() => router.push("/sprint")}
-              style={styles.nextMoveButton}
-              variant="secondary"
-            />
-          </View>
-        </Card>
+        <NextMoveCard
+          buttonLabel="Plan my week"
+          message={"A few focused steps can move\nyour dreams forward."}
+          onPress={() => router.push("/sprint")}
+        />
       )}
+        </>
+      ) : null}
     </ScreenScaffold>
   );
 }
@@ -466,17 +480,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   currentBlock: {
     marginBottom: spacing.md,
-  },
-  emptyButton: {
-    alignItems: "center",
-    marginTop: spacing.md,
-  },
-  emptyCard: {
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.lg,
-  },
-  emptyText: {
-    marginTop: spacing.sm,
   },
   focusBreadcrumb: {
     alignItems: "center",
