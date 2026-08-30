@@ -11,7 +11,7 @@ const MAX_FEELING_STATES = 3;
  * path — progress still measures against at least this many milestones, so
  * finishing the first created milestone never reads as the whole dream.
  */
-const JOURNEY_MILESTONE_COUNT = 6;
+export const JOURNEY_MILESTONE_COUNT = 6;
 
 type DreamRow = {
   id: number;

@@ -16,7 +16,11 @@ import {
  * recently precedes its scheduled time (no time → the flexible block).
  */
 export type QuestBlockView = Omit<TimeBlock, "actions"> & {
-  actions: (TimeBlock["actions"][number] & { questId: number })[];
+  actions: (TimeBlock["actions"][number] & {
+    /** 0..100 — dream % completing this quest adds. */
+    progressPercent: number;
+    questId: number;
+  })[];
 };
 
 export type UseDayQuestBlocksResult = {
@@ -71,6 +75,7 @@ function toAction(quest: QuestWithBreadcrumb): QuestBlockView["actions"][number]
     dreamTitle: quest.dreamTitle,
     icon: questIconForId(quest.id),
     milestoneTitle: quest.milestoneTitle,
+    progressPercent: quest.progressPercent,
     subtitle: "",
     questId: quest.id,
     title: quest.title,

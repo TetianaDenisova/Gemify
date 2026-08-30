@@ -108,6 +108,12 @@ export type QuestPatch = {
 export type QuestWithBreadcrumb = Quest & {
   dreamTitle: string;
   milestoneTitle: string;
+  /**
+   * 0..100 — dream % completing this quest adds, using the same weighting as
+   * getDreamSummaries: every milestone an equal slice of the dream, every
+   * active quest an equal slice of its milestone.
+   */
+  progressPercent: number;
 };
 
 export type Idea = {

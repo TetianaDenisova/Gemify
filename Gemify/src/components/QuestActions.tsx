@@ -9,6 +9,7 @@ import {
   AppInput,
   AppModal,
   AppText,
+  ArrowRightIcon,
   CheckIcon,
   CloseIcon,
   HintRow,
@@ -24,7 +25,7 @@ import {
   shadowStyle,
   spacing,
 } from "@/theme/theme";
-import { toDateKey } from "@/utils/dates";
+import { addDays, toDateKey, todayKey } from "@/utils/dates";
 
 const ACCEPT_STAR_SOURCE = require("../../assets/images/accept-star.png");
 
@@ -352,14 +353,17 @@ export function ActionSheet({
 }
 
 /**
- * Bottom sheet with the actions for one quest: Complete now, Schedule (pick
- * a date and time via the accept modal), Edit, Delete.
+ * Bottom sheet with the actions for one quest: Complete now (or "Do it
+ * today" for an overdue quest), quick moves, Schedule (pick a date and time
+ * via the accept modal), Edit, Delete.
  */
 export function QuestActionSheet({
   onClose,
   onCompleteNow,
   onDelete,
+  onDoToday,
   onEdit,
+  onMoveToTomorrow,
   onSchedule,
   onUnschedule,
   quest,
@@ -368,12 +372,16 @@ export function QuestActionSheet({
   onClose: () => void;
   onCompleteNow: () => void;
   onDelete: () => void;
+  /** With quest.overdue, replaces "Complete now" with "Do it today". */
+  onDoToday?: () => void;
   onEdit: () => void;
+  /** When given, adds a "Move to tomorrow" quick action. */
+  onMoveToTomorrow?: () => void;
   onSchedule: () => void;
   /** When given, adds "Remove from schedule" (shown for open quests). */
   onUnschedule?: () => void;
-  quest: { isDone: boolean; title: string } | null;
-  /** Label of the schedule row, e.g. "Reschedule" for already-planned quests. */
+  quest: { isDone: boolean; overdue?: boolean; title: string } | null;
+  /** Label of the schedule row, e.g. "Choose another date" for planned quests. */
   scheduleLabel?: string;
 }) {
   return (
@@ -384,11 +392,26 @@ export function QuestActionSheet({
     >
       {quest?.isDone ? null : (
         <>
-          <SheetActionRow
-            icon={<CheckIcon color={colors.primary} size={iconSizes.lg} />}
-            label="Complete now"
-            onPress={onCompleteNow}
-          />
+          {quest?.overdue && onDoToday ? (
+            <SheetActionRow
+              icon={<SunHorizonIcon size={iconSizes.lg} />}
+              label="Do it today"
+              onPress={onDoToday}
+            />
+          ) : (
+            <SheetActionRow
+              icon={<CheckIcon color={colors.primary} size={iconSizes.lg} />}
+              label="Complete now"
+              onPress={onCompleteNow}
+            />
+          )}
+          {onMoveToTomorrow ? (
+            <SheetActionRow
+              icon={<ArrowRightIcon color={colors.primary} size={iconSizes.lg} />}
+              label="Move to tomorrow"
+              onPress={onMoveToTomorrow}
+            />
+          ) : null}
           <SheetActionRow
             icon={<CalendarIcon />}
             label={scheduleLabel}
@@ -474,24 +497,58 @@ export function TextPromptModal({
 }
 
 /**
+ * Day the reschedule modal pre-selects: a past (or unset) date suggests
+ * today, today suggests tomorrow, and a future date suggests one day later.
+ */
+export function suggestRescheduleDate(scheduledDate: string | null): Date {
+  const key = todayKey();
+  if (!scheduledDate || scheduledDate < key) return new Date();
+  if (scheduledDate === key) return addDays(new Date(), 1);
+  return addDays(new Date(`${scheduledDate}T12:00:00`), 1);
+}
+
+/**
  * "Accept quest" modal: pick a day (next 7, or any date via the ⋯ calendar
  * chip) and a time of day — five named slots plus an exact time typed into
  * inline HH:MM fields — with a pre-selected suggestion for the current
- * moment.
+ * moment. Rescheduling reuses it with its own title, CTA, and initial day.
  */
 export function AcceptQuestModal({
+  ctaLabel = "ACCEPT QUEST",
+  initialDate,
+  initialSlot,
   onAccept,
   onClose,
+  title = "Accept quest",
 }: {
+  ctaLabel?: string;
+  /** Day pre-selected on open (defaults to today). */
+  initialDate?: Date;
+  /** Time-of-day slot pre-selected on open (defaults to the current moment). */
+  initialSlot?: TimeSlotKey;
   onAccept: (date: string, time: string | null) => void;
   onClose: () => void;
+  title?: string;
 }) {
   const [today] = useState(() => new Date());
-  const [dayOffset, setDayOffset] = useState<number | "custom">(0);
-  const [customDate, setCustomDate] = useState<Date | null>(null);
+  // Day chips cover today + 6; a farther initial date lands on the ⋯ chip.
+  const initialOffset: number | "custom" = (() => {
+    if (!initialDate) return 0;
+    const dayStart = (date: Date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const diff = Math.round(
+      (dayStart(initialDate) - dayStart(today)) / 86_400_000,
+    );
+    if (diff <= 0) return 0;
+    return diff <= 6 ? diff : "custom";
+  })();
+  const [dayOffset, setDayOffset] = useState<number | "custom">(initialOffset);
+  const [customDate, setCustomDate] = useState<Date | null>(
+    initialOffset === "custom" ? (initialDate ?? null) : null,
+  );
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [slotKey, setSlotKey] = useState<TimeSlotKey | "customHour">(() =>
-    suggestTimeSlot(today.getHours()),
+  const [slotKey, setSlotKey] = useState<TimeSlotKey | "customHour">(
+    () => initialSlot ?? suggestTimeSlot(today.getHours()),
   );
   const [hourText, setHourText] = useState("");
   const [minuteText, setMinuteText] = useState("");
@@ -552,7 +609,7 @@ export function AcceptQuestModal({
         style={styles.acceptStar}
       />
       <AppText align="center" variant="titleSm">
-        Accept quest
+        {title}
       </AppText>
       <AppText
         align="center"
@@ -738,7 +795,7 @@ export function AcceptQuestModal({
         disabled={customHourSelected && !customTimeValid}
         icon={<SparkIcon color={colors.textOnPrimary} size={iconSizes.md} />}
         iconPosition="before"
-        label="ACCEPT QUEST"
+        label={ctaLabel}
         onPress={() => onAccept(toDateKey(selectedDate), acceptTime)}
         size="lg"
         style={styles.acceptCta}
@@ -747,6 +804,7 @@ export function AcceptQuestModal({
       {calendarOpen ? (
         <DatePickerModal
           initialDate={customDate ?? today}
+          minDate={today}
           onClose={() => setCalendarOpen(false)}
           onSelect={(date) => {
             setCustomDate(date);

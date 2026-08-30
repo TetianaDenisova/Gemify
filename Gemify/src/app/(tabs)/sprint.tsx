@@ -1,3 +1,5 @@
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import {
@@ -21,11 +23,18 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
-import { QuestActionSheet, TextPromptModal } from "@/components/QuestActions";
+import {
+  AcceptQuestModal,
+  QuestActionSheet,
+  suggestRescheduleDate,
+  TextPromptModal,
+} from "@/components/QuestActions";
+import { QuestPickerSheet } from "@/components/QuestPickerSheet";
 import { ActionIconArt } from "@/components/TimeBlockCard";
 import { WeekAscentCard } from "@/components/WeekAscentCard";
 import {
   deleteQuest,
+  getSchedulableQuests,
   getScheduledQuestCounts,
   getScheduledQuests,
   getWeekAscent,
@@ -38,26 +47,27 @@ import {
 import { questIconForId } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
-  AppInput,
   AppModal,
   AppText,
   Card,
   Checkbox,
   ChevronIcon,
-  Chip,
   DotsIcon,
   DreamIcon,
   IconButton,
   MilestoneIcon,
+  PlusIcon,
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { pressed, radius, spacing } from "@/theme/theme";
+import { iconSizes, pressed, radius, spacing } from "@/theme/theme";
 import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 
 /** Bespoke night-sky gradient behind the sprint board. */
 const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
+
+const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
 
 /** How long a press must be held before a quest card lifts into a drag. */
 const DRAG_ACTIVATION_MS = 220;
@@ -292,81 +302,6 @@ function DragGhost({
   );
 }
 
-const TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
-
-/** Day-of-week + optional time picker used to (re)schedule a quest. */
-function ScheduleModal({
-  onClose,
-  onSave,
-  quest,
-  weekDays,
-}: {
-  onClose: () => void;
-  onSave: (date: string, time: string | null) => void;
-  quest: QuestWithBreadcrumb | null;
-  weekDays: WeekDay[];
-}) {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [time, setTime] = useState("");
-  const [lastQuestId, setLastQuestId] = useState<number | null>(null);
-
-  if (quest && quest.id !== lastQuestId) {
-    setLastQuestId(quest.id);
-    setSelectedDate(quest.scheduledDate);
-    setTime(quest.scheduledTime ?? "");
-  }
-
-  const timeValid = time.trim() === "" || TIME_PATTERN.test(time.trim());
-
-  return (
-    <AppModal onClose={onClose} visible={quest !== null}>
-      <AppText align="center" variant="titleSm">
-        Schedule quest
-      </AppText>
-      <AppText align="center" style={styles.modalSubtitle} variant="bodySmall">
-        {quest?.title}
-      </AppText>
-
-      <View style={styles.modalDayGrid}>
-        {weekDays.map((day) => (
-          <Chip
-            key={day.dateKey}
-            label={`${day.label} ${day.date}`}
-            onPress={() => setSelectedDate(day.dateKey)}
-            selected={selectedDate === day.dateKey}
-            style={styles.modalDayChip}
-          />
-        ))}
-      </View>
-
-      <AppInput
-        containerStyle={styles.modalTimeInput}
-        label="Time (optional)"
-        onChangeText={setTime}
-        placeholder="09:00"
-        value={time}
-      />
-
-      <View style={styles.modalActions}>
-        <AppButton
-          label="Cancel"
-          onPress={onClose}
-          style={styles.modalButton}
-          variant="secondary"
-        />
-        <AppButton
-          disabled={!selectedDate || !timeValid}
-          label="Save"
-          onPress={() => {
-            if (selectedDate) onSave(selectedDate, time.trim() || null);
-          }}
-          style={styles.modalButton}
-        />
-      </View>
-    </AppModal>
-  );
-}
-
 export default function SprintScreen() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(todayKey);
@@ -387,9 +322,15 @@ export default function SprintScreen() {
   );
   const [draggingQuest, setDraggingQuest] =
     useState<QuestWithBreadcrumb | null>(null);
+  const [questPickerOpen, setQuestPickerOpen] = useState(false);
+  const [pickerQuests, setPickerQuests] = useState<QuestWithBreadcrumb[]>([]);
+  const [addTarget, setAddTarget] = useState<QuestWithBreadcrumb | null>(null);
 
-  const { width: windowWidth } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const ghostWidth = Math.min(windowWidth - spacing.lg * 2, 360);
+  // The copy and Add quest button overlay the artwork; the week strip and day
+  // heading sit above it, so it takes a bit less height than on My Day.
+  const emptyImageHeight = Math.min(480, Math.max(280, Math.round(windowHeight * 0.42)));
 
   // Drag plumbing shared by every quest card: finger position, week-strip
   // cell rects (measured at lift), and the currently hovered day cell.
@@ -540,6 +481,46 @@ export default function SprintScreen() {
     setCalendarOpen(false);
   };
 
+  const openQuestPicker = async () => {
+    try {
+      setPickerQuests(await getSchedulableQuests());
+    } catch (cause) {
+      console.error("Failed to load quests", cause);
+      setPickerQuests([]);
+    }
+    setQuestPickerOpen(true);
+  };
+
+  // "Add" in the picker hands the quest to the accept modal, pre-filled with
+  // the picked day and "Anytime". Modals can't stack, so the picker closes
+  // while the accept modal is up (and comes back on cancel).
+  const handlePickQuest = (quest: QuestWithBreadcrumb) => {
+    setQuestPickerOpen(false);
+    setAddTarget(quest);
+  };
+
+  const handleAddQuestAccept = async (date: string, time: string | null) => {
+    if (!addTarget) return;
+    const quest = addTarget;
+    setAddTarget(null);
+    try {
+      await updateQuest(quest.id, {
+        scheduledDate: date,
+        scheduledTime: time,
+        isPlanned: true,
+      });
+      setPickerQuests((current) =>
+        current.filter((entry) => entry.id !== quest.id),
+      );
+      // Jump the board to the day the quest landed on, so it's visible.
+      setWeekStart(startOfWeek(new Date(`${date}T12:00:00`)));
+      setSelectedDate(date);
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to add the quest", cause);
+    }
+  };
+
   const handleToggleDone = async (quest: QuestWithBreadcrumb) => {
     // Optimistic flip; reload fixes drift.
     setScheduled((list) =>
@@ -578,6 +559,21 @@ export default function SprintScreen() {
       await loadBoard();
     } catch (cause) {
       console.error("Failed to complete the quest", cause);
+    }
+  };
+
+  // ⋮ menu quick moves: send the quest straight to a given day, keeping its time.
+  const handleMenuMoveTo = async (dateKey: string) => {
+    if (!menuQuest) return;
+    setMenuQuest(null);
+    try {
+      await updateQuest(menuQuest.id, {
+        scheduledDate: dateKey,
+        isPlanned: true,
+      });
+      await loadBoard();
+    } catch (cause) {
+      console.error("Failed to move the quest", cause);
     }
   };
 
@@ -626,6 +622,10 @@ export default function SprintScreen() {
     month: "long",
     weekday: "long",
   });
+
+  // Quests scheduled on past days are rolled over on the next load, so
+  // adding to a day that has passed would silently vanish — don't offer it.
+  const isPastDay = selectedDate < todayKey();
 
   return (
     <View style={styles.screenWrap}>
@@ -704,23 +704,66 @@ export default function SprintScreen() {
         </View>
 
         {scheduled.length > 0 ? (
-          scheduled.map((quest) => (
-            <QuestItemCard
-              dragGesture={dragGestures.get(quest.id)!}
-              dragging={draggingQuest?.id === quest.id}
-              key={quest.id}
-              onOpenMenu={() => setMenuQuest(quest)}
-              onToggleDone={() => handleToggleDone(quest)}
-              quest={quest}
-              showTime
-            />
-          ))
+          <>
+            {scheduled.map((quest) => (
+              <QuestItemCard
+                dragGesture={dragGestures.get(quest.id)!}
+                dragging={draggingQuest?.id === quest.id}
+                key={quest.id}
+                onOpenMenu={() => setMenuQuest(quest)}
+                onToggleDone={() => handleToggleDone(quest)}
+                quest={quest}
+                showTime
+              />
+            ))}
+            {isPastDay ? null : (
+              <AppButton
+                icon={<PlusIcon color={colors.primary} size={iconSizes.md} />}
+                iconPosition="before"
+                label="Add quest"
+                onPress={openQuestPicker}
+                style={styles.addMoreButton}
+                variant="secondary"
+              />
+            )}
+          </>
         ) : (
-          <Card style={styles.emptyCard}>
-            <AppText align="center" variant="bodySmall">
-              Nothing planned for this day yet.
-            </AppText>
-          </Card>
+          <View style={[styles.emptyDay, { height: emptyImageHeight }]}>
+            <Image
+              contentFit="cover"
+              source={EMPTY_SPACE_SOURCE}
+              style={StyleSheet.absoluteFill}
+            />
+            <LinearGradient
+              colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.88)"]}
+              style={styles.emptyDayShade}
+            />
+            <View style={styles.emptyDayContent}>
+              <AppText align="center" variant="titleSm">
+                {isPastDay ? "Nothing was scheduled" : "Nothing scheduled yet"}
+              </AppText>
+              <AppText
+                align="center"
+                color={colors.textSecondary}
+                style={styles.emptyDayCopy}
+                variant="bodySmall"
+              >
+                {isPastDay
+                  ? "This day has passed — plan from today onward."
+                  : "Add a quest to make progress."}
+              </AppText>
+              {isPastDay ? null : (
+                <AppButton
+                  icon={<PlusIcon color={colors.primary} size={iconSizes.md} />}
+                  iconPosition="before"
+                  label="Add quest"
+                  onPress={openQuestPicker}
+                  style={styles.emptyDayButton}
+                  variant="secondary"
+                />
+              )}
+            </View>
+          </View>
         )}
 
         <MoreMenuSheet
@@ -732,6 +775,8 @@ export default function SprintScreen() {
         <QuestActionSheet
           onClose={() => setMenuQuest(null)}
           onCompleteNow={handleMenuCompleteNow}
+          onDoToday={() => handleMenuMoveTo(todayKey())}
+          onMoveToTomorrow={() => handleMenuMoveTo(toDateKey(addDays(new Date(), 1)))}
           onSchedule={() => {
             setScheduleTarget(menuQuest);
             setMenuQuest(null);
@@ -747,10 +792,17 @@ export default function SprintScreen() {
           }}
           quest={
             menuQuest
-              ? { isDone: menuQuest.isDone, title: menuQuest.title }
+              ? {
+                  isDone: menuQuest.isDone,
+                  overdue: Boolean(
+                    menuQuest.scheduledDate &&
+                      menuQuest.scheduledDate < todayKey(),
+                  ),
+                  title: menuQuest.title,
+                }
               : null
           }
-          scheduleLabel={menuQuest?.scheduledDate ? "Reschedule" : "Schedule"}
+          scheduleLabel="Choose another date"
         />
 
         <AppModal
@@ -780,12 +832,38 @@ export default function SprintScreen() {
           </View>
         </AppModal>
 
-        <ScheduleModal
-          onClose={() => setScheduleTarget(null)}
-          onSave={handleSchedule}
-          quest={scheduleTarget}
-          weekDays={weekDayCells}
+        {scheduleTarget ? (
+          <AcceptQuestModal
+            ctaLabel="RESCHEDULE QUEST"
+            initialDate={suggestRescheduleDate(scheduleTarget.scheduledDate)}
+            key={scheduleTarget.id}
+            onAccept={handleSchedule}
+            onClose={() => setScheduleTarget(null)}
+            title="Reschedule quest"
+          />
+        ) : null}
+
+        <QuestPickerSheet
+          onAdd={handlePickQuest}
+          onClose={() => setQuestPickerOpen(false)}
+          quests={pickerQuests}
+          subtitle="Pick quests you want to add to this day."
+          targetLabel={selectedHeading}
+          visible={questPickerOpen}
         />
+
+        {addTarget ? (
+          <AcceptQuestModal
+            initialDate={new Date(`${selectedDate}T12:00:00`)}
+            initialSlot="anytime"
+            key={addTarget.id}
+            onAccept={handleAddQuestAccept}
+            onClose={() => {
+              setAddTarget(null);
+              setQuestPickerOpen(true);
+            }}
+          />
+        ) : null}
 
         <TextPromptModal
           initialValue={editTarget?.title ?? ""}
@@ -821,6 +899,12 @@ export default function SprintScreen() {
 }
 
 const styles = StyleSheet.create({
+  addMoreButton: {
+    alignSelf: "center",
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+    minWidth: 220,
+  },
   breadcrumb: {
     alignItems: "center",
     flexDirection: "row",
@@ -913,9 +997,30 @@ const styles = StyleSheet.create({
   dragGhostCard: {
     opacity: 0.95,
   },
-  emptyCard: {
+  emptyDay: {
+    borderRadius: radius.lg,
+    justifyContent: "flex-end",
     marginBottom: spacing.md,
-    paddingVertical: spacing.lg,
+    overflow: "hidden",
+  },
+  emptyDayButton: {
+    marginTop: spacing.lg,
+    minWidth: 220,
+  },
+  emptyDayContent: {
+    alignItems: "center",
+    padding: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  emptyDayCopy: {
+    marginTop: spacing.sm,
+  },
+  emptyDayShade: {
+    bottom: 0,
+    height: "60%",
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   header: {
     marginBottom: spacing.md,
@@ -929,22 +1034,6 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     paddingHorizontal: spacing.sm,
-  },
-  modalDayChip: {
-    minWidth: 92,
-  },
-  modalDayGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    justifyContent: "center",
-    marginTop: spacing.lg,
-  },
-  modalSubtitle: {
-    marginTop: spacing.xs,
-  },
-  modalTimeInput: {
-    marginTop: spacing.lg,
   },
   questCard: {
     borderColor: colors.accentVioletGlow,

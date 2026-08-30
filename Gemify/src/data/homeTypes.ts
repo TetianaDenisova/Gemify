@@ -1,9 +1,15 @@
 export type ThemeColor = "gold" | "purple";
 
 export type GoalImageKey =
-  | "mountain_sunrise"
-  | "sailboat_sunset"
-  | "balloon_mountains";
+  | "dream_bg_1"
+  | "dream_bg_2"
+  | "dream_bg_4"
+  | "dream_bg_5"
+  | "dream_bg_6"
+  | "dream_bg_7"
+  | "dream_bg_8"
+  | "dream_bg_9"
+  | "dream_bg_10";
 
 export type GoalIconKey = "spark" | "lotus" | "mountains";
 

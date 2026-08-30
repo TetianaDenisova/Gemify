@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
@@ -24,9 +25,10 @@ import {
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
+  SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, spacing } from "@/theme/theme";
+import { radius, shadowStyle, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
 
 // Same enchanted-forest path art as the Milestone Quests hero.
@@ -73,9 +75,15 @@ const GOAL_VISUALS: readonly {
   imageKey: GoalImageKey;
   iconKey: GoalIconKey;
 }[] = [
-  { themeColor: "gold", imageKey: "mountain_sunrise", iconKey: "spark" },
-  { themeColor: "purple", imageKey: "sailboat_sunset", iconKey: "lotus" },
-  { themeColor: "purple", imageKey: "balloon_mountains", iconKey: "mountains" },
+    { themeColor: "gold", imageKey: "dream_bg_5", iconKey: "spark" },
+    { themeColor: "purple", imageKey: "dream_bg_8", iconKey: "lotus" },
+    { themeColor: "gold", imageKey: "dream_bg_2", iconKey: "spark" },
+    { themeColor: "purple", imageKey: "dream_bg_7", iconKey: "lotus" },
+    { themeColor: "gold", imageKey: "dream_bg_9", iconKey: "mountains" },
+    { themeColor: "purple", imageKey: "dream_bg_4", iconKey: "spark" },
+    { themeColor: "gold", imageKey: "dream_bg_10", iconKey: "lotus" },
+    { themeColor: "purple", imageKey: "dream_bg_1", iconKey: "mountains" },
+    { themeColor: "gold", imageKey: "dream_bg_6", iconKey: "spark" },
 ];
 
 function toGoal(dream: DreamSummary, index: number): Goal {
@@ -86,6 +94,28 @@ function toGoal(dream: DreamSummary, index: number): Goal {
     progressPercent: dream.progressPercent,
     ...visuals,
   };
+}
+
+/** Small ↗ arrow inside the focus percent pill. */
+function TrendArrowIcon({
+  color = colors.primary,
+  size = 13,
+}: {
+  color?: string;
+  size?: number;
+}) {
+  return (
+    <Svg height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M6.5 17.5 17.5 6.5M9.5 6.5h8v8"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.2}
+      />
+    </Svg>
+  );
 }
 
 export default function HomeScreen() {
@@ -128,7 +158,10 @@ export default function HomeScreen() {
       done: view.weekProgress[habitDayIndex] === "done",
       habitId: view.habit.id,
       icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
-      subtitle: view.timeLabel,
+      // The dream this habit supports — habit rows show it where quest rows
+      // show their dream › milestone breadcrumb.
+      subtitle:
+        dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
       title: view.habit.title,
     }));
 
@@ -153,6 +186,19 @@ export default function HomeScreen() {
   const plannedTotal = totalQuests + habitActions.length;
   const plannedDone = completedQuests + habitsDone;
   const allDone = plannedTotal > 0 && plannedDone === plannedTotal;
+
+  // The current focus is clear and something got done — celebrate "so far",
+  // with the dream % today's completed quests earned across all blocks.
+  const showCelebration = !hasFocus && plannedDone > 0;
+  const gainedPercent = blocks.reduce(
+    (sum, block) =>
+      sum +
+      block.actions.reduce(
+        (acc, action) => acc + (action.done ? action.progressPercent : 0),
+        0,
+      ),
+    0,
+  );
 
   // Current block clear but open quests remain elsewhere today: surface the
   // block that goes next (the nearest upcoming one, else earlier leftovers).
@@ -224,9 +270,9 @@ export default function HomeScreen() {
         style={styles.sectionHeader}
         // The planning nudge only appears when nothing at all is planned for
         // today; otherwise the section names what it shows: the current
-        // focus (open or complete) or the block that goes next.
+        // focus (open or celebrated) or the block that goes next.
         title={
-          hasFocus || allDone
+          hasFocus || showCelebration
             ? "CURRENT FOCUS"
             : nextBlock
               ? "LATER TODAY"
@@ -235,35 +281,30 @@ export default function HomeScreen() {
         variant="eyebrow"
       />
 
-      {allDone ? (
+      {showCelebration ? (
         <View style={styles.currentBlock}>
-          <DayCompleteCard completed={plannedDone} total={plannedTotal} />
+          <DayCompleteCard
+            gainedPercent={gainedPercent}
+            subtitle={
+              allDone
+                ? "Every quest planned for today is complete."
+                : "Every quest so far is complete."
+            }
+          />
         </View>
-      ) : hasFocus && currentBlock ? (
+      ) : null}
+
+      {hasFocus && currentBlock ? (
         <View style={styles.currentBlock}>
-          {currentBlock.actions.map((action) => (
-            <Card
-              key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
-              style={styles.focusCard}
-            >
-              <View style={styles.focusRow}>
-                <Checkbox
-                  accessibilityLabel={`Mark ${action.title} done`}
-                  checked={action.done}
-                  onPress={() => {
-                    if ("questId" in action) {
-                      toggleQuest(action.questId, !action.done);
-                    } else {
-                      setCompletion(
-                        action.habitId,
-                        today,
-                        action.done ? null : "done",
-                      );
-                    }
-                  }}
-                  shape="circle"
-                  size={44}
-                />
+          <Card padded={false} style={styles.focusCard}>
+            {currentBlock.actions.map((action, index) => (
+              <View
+                key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
+                style={[styles.focusRow, index > 0 && styles.focusRowDivider]}
+              >
+                <View style={styles.focusMedallion}>
+                  <SparkIcon color={colors.primary} size={22} />
+                </View>
                 <View style={styles.focusCopy}>
                   <AppText numberOfLines={2} variant="pill">
                     {action.title}
@@ -294,20 +335,64 @@ export default function HomeScreen() {
                       </AppText>
                     </View>
                   ) : action.subtitle ? (
-                    <AppText
-                      color={colors.textSecondary}
-                      style={styles.focusSubtitle}
-                      variant="subtitle"
-                    >
-                      {action.subtitle}
-                    </AppText>
+                    <View style={styles.focusBreadcrumb}>
+                      <DreamIcon size={16} />
+                      <AppText
+                        color={LATER_COLORS.label}
+                        numberOfLines={1}
+                        style={styles.laterCrumbLabel}
+                        variant="subtitle"
+                      >
+                        {action.subtitle}
+                      </AppText>
+                    </View>
                   ) : null}
                 </View>
+                {"questId" in action ? (
+                  <View style={styles.focusPercentPill}>
+                    <TrendArrowIcon />
+                    <AppText color={colors.primary} variant="labelStrong">
+                      +{Math.max(1, Math.round(action.progressPercent))}%
+                    </AppText>
+                  </View>
+                ) : null}
+                <Checkbox
+                  accessibilityLabel={`Mark ${action.title} done`}
+                  checked={action.done}
+                  onPress={() => {
+                    if ("questId" in action) {
+                      toggleQuest(action.questId, !action.done);
+                    } else {
+                      setCompletion(
+                        action.habitId,
+                        today,
+                        action.done ? null : "done",
+                      );
+                    }
+                  }}
+                  shape="circle"
+                  size={40}
+                />
               </View>
-            </Card>
-          ))}
+            ))}
+          </Card>
         </View>
       ) : nextBlock ? (
+        <>
+          {showCelebration ? (
+            <>
+              <View style={styles.laterDivider}>
+                <View style={styles.laterDividerLine} />
+                <SparkIcon color={colors.accentViolet} size={14} />
+                <View style={styles.laterDividerLine} />
+              </View>
+              <SectionHeader
+                style={styles.sectionHeader}
+                title="LATER TODAY"
+                variant="eyebrow"
+              />
+            </>
+          ) : null}
         <View style={[styles.currentBlock, styles.laterRow]}>
           <View style={styles.laterBadge}>
             <BlockIconArt
@@ -372,7 +457,8 @@ export default function HomeScreen() {
             </AppText>
           </View>
         </View>
-      ) : (
+        </>
+      ) : showCelebration ? null : (
         <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
           <Image
             contentFit="cover"
@@ -424,23 +510,51 @@ const styles = StyleSheet.create({
     gap: spacing.xs + 2,
     marginTop: spacing.xs + 2,
   },
-  /** Gold-edged card per focus action, per the mock. */
+  /** One card holds every focus action, rows split by faint dividers. */
   focusCard: {
-    borderLeftColor: colors.primary,
-    borderLeftWidth: 3,
     marginBottom: spacing.md,
   },
   focusCopy: {
     flex: 1,
     minWidth: 0,
   },
+  /** Dark gold-ringed disc with the spark, standing in for the quest icon. */
+  focusMedallion: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
+    borderColor: "rgba(245, 184, 75, 0.55)",
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+    ...shadowStyle({
+      color: colors.primary,
+      elevation: 5,
+      opacity: 0.3,
+      radius: 9,
+    }),
+  },
+  focusPercentPill: {
+    alignItems: "center",
+    borderColor: colors.borderStrong,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 1,
+  },
   focusRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.lg,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  focusSubtitle: {
-    marginTop: spacing.xs,
+  focusRowDivider: {
+    borderTopColor: colors.borderFaint,
+    borderTopWidth: 1,
   },
   sectionHeader: {
     marginBottom: spacing.sm,
@@ -477,6 +591,18 @@ const styles = StyleSheet.create({
   },
   laterCrumbLabel: {
     flexShrink: 1,
+  },
+  laterDivider: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  laterDividerLine: {
+    backgroundColor: colors.borderSoft,
+    flex: 1,
+    height: 1,
   },
   laterQuestTitle: {
     marginTop: spacing.xs,

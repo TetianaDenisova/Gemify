@@ -6,6 +6,7 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   createHabit,
+  deleteHabit,
   getDreams,
   getHabitById,
   getHabitDetails,
@@ -22,6 +23,7 @@ import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
   AppInput,
+  AppModal,
   AppText,
   Card,
   ChevronIcon,
@@ -379,6 +381,7 @@ export default function CreateHabitScreen() {
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // The dream list (a habit must attach to one) and the routine time blocks —
   // the same blocks My Day is built from.
@@ -499,6 +502,20 @@ export default function CreateHabitScreen() {
     } catch (cause) {
       console.error("Failed to save the habit", cause);
       setFormError("Something went wrong while saving. Please try again.");
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteConfirmed() {
+    if (saving) return;
+    setDeleteConfirmOpen(false);
+    setSaving(true);
+    try {
+      await deleteHabit(editHabitId);
+      handleBack();
+    } catch (cause) {
+      console.error("Failed to delete the habit", cause);
+      setFormError("Something went wrong while deleting. Please try again.");
       setSaving(false);
     }
   }
@@ -692,14 +709,71 @@ export default function CreateHabitScreen() {
         style={styles.continueButton}
         variant="primary"
       />
+
+      {isEditMode ? (
+        <AppButton
+          disabled={saving}
+          label="Delete Habit"
+          onPress={() => setDeleteConfirmOpen(true)}
+          style={[styles.continueButton, styles.deleteButton]}
+          textStyle={styles.deleteLabel}
+          variant="secondary"
+        />
+      ) : null}
+
+      <AppModal
+        onClose={() => setDeleteConfirmOpen(false)}
+        visible={deleteConfirmOpen}
+      >
+        <AppText align="center" variant="titleSm">
+          Delete this habit?
+        </AppText>
+        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
+          “{values.habitName || "This habit"}” and its progress will be
+          removed.
+        </AppText>
+        <View style={styles.confirmActions}>
+          <AppButton
+            label="Cancel"
+            onPress={() => setDeleteConfirmOpen(false)}
+            style={styles.confirmButton}
+            variant="secondary"
+          />
+          <AppButton
+            label="Delete"
+            onPress={handleDeleteConfirmed}
+            style={[styles.confirmButton, styles.deleteButton]}
+            textStyle={styles.deleteLabel}
+            variant="secondary"
+          />
+        </View>
+      </AppModal>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
+  confirmActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  confirmBody: {
+    marginTop: spacing.sm,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
   continueButton: {
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
+  },
+  deleteButton: {
+    borderColor: colors.danger,
+  },
+  deleteLabel: {
+    color: colors.danger,
   },
   dayChip: {
     minWidth: 80,

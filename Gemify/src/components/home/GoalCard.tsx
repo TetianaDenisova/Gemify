@@ -25,6 +25,15 @@ const GOAL_SHADE = [
   "rgba(4, 7, 17, 0.16)",
 ] as const;
 
+/**
+ * The dream art is ultra-wide (~2.4:1) with the glowing subject on the right,
+ * so it anchors right at full card height instead of covering (which would
+ * crop the spires). The card backing matches the art's near-black left edge,
+ * making the hand-off invisible under the shade.
+ */
+const ART_ASPECT_RATIO = 2.4;
+const ART_BACKING = "#01030E";
+
 const absoluteFill = {
   bottom: 0,
   height: "100%" as const,
@@ -97,12 +106,16 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
 
 const styles = StyleSheet.create({
   backgroundImage: {
-    ...absoluteFill,
+    aspectRatio: ART_ASPECT_RATIO,
+    bottom: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
     zIndex: 0,
   },
 
   card: {
-    backgroundColor: colors.surfaceGlass,
+    backgroundColor: ART_BACKING,
     borderColor: colors.borderSoft,
     borderRadius: radius.md,
     borderWidth: 1,

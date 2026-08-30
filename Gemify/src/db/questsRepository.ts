@@ -1,4 +1,5 @@
 import { getDatabase } from "./database";
+import { JOURNEY_MILESTONE_COUNT } from "./dreamsRepository";
 import type { Idea, Quest, QuestPatch, QuestWithBreadcrumb } from "./types";
 
 type QuestRow = {
@@ -17,6 +18,7 @@ type QuestRow = {
 type QuestBreadcrumbRow = QuestRow & {
   dream_title: string;
   milestone_title: string;
+  progress_percent: number;
 };
 
 const SELECT_QUEST = `
@@ -25,10 +27,20 @@ const SELECT_QUEST = `
   FROM quests
 `;
 
+// progress_percent uses the getDreamSummaries weighting: every milestone an
+// equal slice of the dream (at least JOURNEY_MILESTONE_COUNT slices), every
+// active quest an equal slice of its milestone.
 const SELECT_QUEST_WITH_BREADCRUMB = `
   SELECT q.id, q.milestone_id, q.title, q.is_active, q.is_done, q.created_at,
          q.scheduled_date, q.scheduled_time, q.is_planned, q.completed_at,
-         m.title AS milestone_title, d.title AS dream_title
+         m.title AS milestone_title, d.title AS dream_title,
+         100.0 / (MAX((SELECT COUNT(*) FROM milestones m2
+                       WHERE m2.dream_id = m.dream_id),
+                      ${JOURNEY_MILESTONE_COUNT})
+                  * MAX((SELECT COUNT(*) FROM quests q2
+                         WHERE q2.milestone_id = q.milestone_id
+                           AND q2.is_active = 1),
+                        1)) AS progress_percent
   FROM quests q
   JOIN milestones m ON m.id = q.milestone_id
   JOIN dreams d ON d.id = m.dream_id
@@ -54,6 +66,7 @@ function toQuestWithBreadcrumb(row: QuestBreadcrumbRow): QuestWithBreadcrumb {
     ...toQuest(row),
     dreamTitle: row.dream_title,
     milestoneTitle: row.milestone_title,
+    progressPercent: row.progress_percent,
   };
 }
 

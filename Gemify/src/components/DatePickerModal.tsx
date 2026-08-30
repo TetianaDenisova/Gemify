@@ -53,6 +53,14 @@ export function isSameDay(a: Date, b: Date) {
   );
 }
 
+/** Whether `a` falls on an earlier calendar day than `b` (times ignored). */
+function isBeforeDay(a: Date, b: Date) {
+  return (
+    new Date(a.getFullYear(), a.getMonth(), a.getDate()).getTime() <
+    new Date(b.getFullYear(), b.getMonth(), b.getDate()).getTime()
+  );
+}
+
 export function formatDayTitle(date: Date) {
   return `${WEEKDAY_NAMES[date.getDay()]}, ${MONTH_NAMES[date.getMonth()]} ${date.getDate()}`;
 }
@@ -94,6 +102,8 @@ function CalendarGlyph({ size = 22 }: { size?: number }) {
 
 type DatePickerModalProps = {
   initialDate: Date;
+  /** Days before this date are disabled (e.g. today, when scheduling). */
+  minDate?: Date;
   onClose: () => void;
   onSelect: (date: Date) => void;
   today: Date;
@@ -102,6 +112,7 @@ type DatePickerModalProps = {
 
 export function DatePickerModal({
   initialDate,
+  minDate,
   onClose,
   onSelect,
   today,
@@ -208,11 +219,13 @@ export function DatePickerModal({
             const inMonth = day.getMonth() === viewMonth;
             const selected = isSameDay(day, pendingDate);
             const isToday = isSameDay(day, today);
+            const disabled = minDate !== undefined && isBeforeDay(day, minDate);
             return (
               <Pressable
                 accessibilityLabel={formatDayTitle(day)}
                 accessibilityRole="button"
-                accessibilityState={{ selected }}
+                accessibilityState={{ disabled, selected }}
+                disabled={disabled}
                 key={day.toISOString()}
                 onPress={() => setPendingDate(day)}
                 style={({ pressed: isPressed }) => [
@@ -226,6 +239,7 @@ export function DatePickerModal({
                   style={[
                     styles.dayLabel,
                     !inMonth && styles.dayLabelOutside,
+                    disabled && styles.dayLabelDisabled,
                   ]}
                 >
                   {day.getDate()}
@@ -291,6 +305,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
+  },
+  dayLabelDisabled: {
+    color: colors.textMuted,
+    opacity: 0.4,
   },
   dayLabelOutside: {
     color: colors.textMuted,
