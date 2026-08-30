@@ -15,7 +15,10 @@ const ISLAND_ASPECT_RATIO = 882 / 809;
 const ART_BACKING = "#01030E";
 
 interface DayCompleteCardProps {
-  /** 0..100 — dream % today's completed quests earned; the line hides at 0. */
+  /**
+   * 0..100 — dream % today's completed quests earned. Always shown, floored
+   * at +1% so habit-only days still feel like movement toward the dream.
+   */
   gainedPercent: number;
   /** e.g. "Every quest so far is complete." */
   subtitle: string;
@@ -32,7 +35,7 @@ export function DayCompleteCard({
 }: DayCompleteCardProps) {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
-  const artHeight = compact ? 168 : 220;
+  const artHeight = compact ? 134 : 176;
 
   return (
     <View style={styles.card}>
@@ -46,21 +49,19 @@ export function DayCompleteCard({
       />
       <View style={styles.copy}>
         <View style={styles.titleRow}>
-          <AppText variant="screenTitle">You did it !</AppText>
-          <SparkIcon color={colors.primary} size={20} />
+          <AppText variant="cardTitle">You did it !</AppText>
+          <SparkIcon color={colors.primary} size={16} />
         </View>
-        {gainedPercent > 0 ? (
-          <AppText
-            color={colors.textSecondary}
-            style={styles.gainLine}
-            variant="body"
-          >
-            <AppText color={colors.primary} variant="cardTitle">
-              +{Math.max(1, Math.round(gainedPercent))}%
-            </AppText>{" "}
-            closer to your dream today
-          </AppText>
-        ) : null}
+        <AppText
+          color={colors.textSecondary}
+          style={styles.gainLine}
+          variant="body"
+        >
+          <AppText color={colors.primary} variant="titleSm">
+            +{Math.max(1, Math.round(gainedPercent))}%
+          </AppText>{" "}
+          closer to your dream today
+        </AppText>
         <AppText
           color={colors.textSecondary}
           style={styles.subtitle}
@@ -85,15 +86,13 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
-    // The art's right fifth is dark mist — the copy tucks over it so text
-    // gets room on compact phones without shrinking the island.
-    marginLeft: -spacing.xl,
+    marginLeft: spacing.sm,
     minWidth: 0,
-    paddingRight: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingRight: spacing.md,
+    paddingVertical: spacing.md,
   },
   gainLine: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm + 2,
   },
   subtitle: {
     marginTop: spacing.sm,

@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
 
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
@@ -94,28 +93,6 @@ function toGoal(dream: DreamSummary, index: number): Goal {
     progressPercent: dream.progressPercent,
     ...visuals,
   };
-}
-
-/** Small ↗ arrow inside the focus percent pill. */
-function TrendArrowIcon({
-  color = colors.primary,
-  size = 13,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M6.5 17.5 17.5 6.5M9.5 6.5h8v8"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.2}
-      />
-    </Svg>
-  );
 }
 
 export default function HomeScreen() {
@@ -349,12 +326,9 @@ export default function HomeScreen() {
                   ) : null}
                 </View>
                 {"questId" in action ? (
-                  <View style={styles.focusPercentPill}>
-                    <TrendArrowIcon />
-                    <AppText color={colors.primary} variant="labelStrong">
-                      +{Math.max(1, Math.round(action.progressPercent))}%
-                    </AppText>
-                  </View>
+                  <AppText color={colors.primary} variant="cardTitle">
+                    +{Math.max(1, Math.round(action.progressPercent))}%
+                  </AppText>
                 ) : null}
                 <Checkbox
                   accessibilityLabel={`Mark ${action.title} done`}
@@ -534,16 +508,6 @@ const styles = StyleSheet.create({
       opacity: 0.3,
       radius: 9,
     }),
-  },
-  focusPercentPill: {
-    alignItems: "center",
-    borderColor: colors.borderStrong,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
   },
   focusRow: {
     alignItems: "center",

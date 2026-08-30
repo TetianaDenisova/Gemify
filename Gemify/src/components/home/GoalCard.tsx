@@ -34,6 +34,26 @@ const GOAL_SHADE = [
 const ART_ASPECT_RATIO = 2.4;
 const ART_BACKING = "#01030E";
 
+/**
+ * Fixed right-hand column reserved for the progress ring. The artwork
+ * container ends before it, so the ring always sits on clean card backing
+ * regardless of screen width — never on top of the art.
+ */
+const RING_SIZE = 50;
+const RING_EDGE_GAP = spacing.md;
+const ART_RING_GAP = 14;
+const ART_RIGHT_INSET = RING_SIZE + RING_EDGE_GAP + ART_RING_GAP;
+
+/**
+ * Fades the artwork's right edge into the card backing so the seam with the
+ * progress column is invisible and the percentage stays readable.
+ */
+const SEAM_SHADE = [
+  "rgba(1, 3, 14, 0)",
+  "rgba(1, 3, 14, 0.85)",
+  ART_BACKING,
+] as const;
+
 const absoluteFill = {
   bottom: 0,
   height: "100%" as const,
@@ -60,19 +80,29 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
     >
       {/* Always the preset art for the goal's slot — the user's dream photo
-          stays on the journey map, not the home list. */}
-      <Image
-        source={goalImages[goal.imageKey]}
-        style={styles.backgroundImage}
-        contentFit="cover"
-        transition={180}
-      />
+          stays on the journey map, not the home list. The container clips the
+          art before the progress column so the ring never covers it. */}
+      <View style={styles.artContainer}>
+        <Image
+          source={goalImages[goal.imageKey]}
+          style={styles.backgroundImage}
+          contentFit="cover"
+          transition={180}
+        />
+      </View>
 
       <LinearGradient
         colors={[...GOAL_SHADE]}
         end={{ x: 1, y: 0.5 }}
         start={{ x: 0, y: 0.5 }}
         style={styles.shade}
+      />
+
+      <LinearGradient
+        colors={[...SEAM_SHADE]}
+        end={{ x: 1, y: 0.5 }}
+        start={{ x: 0, y: 0.5 }}
+        style={styles.seamShade}
       />
 
       <View style={styles.inner}>
@@ -90,28 +120,39 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           </AppText>
         </View>
 
-        <ProgressRing
-          backgroundColor={colors.surfaceGlass}
-          color={accentColor}
-          label={notStarted ? "✦" : undefined}
-          labelColor={accentColor}
-          size={56}
-          strokeWidth={2.5}
-          value={goal.progressPercent}
-        />
+        <View style={styles.progressColumn}>
+          <ProgressRing
+            backgroundColor={colors.surfaceDeep}
+            color={accentColor}
+            label={notStarted ? "✦" : undefined}
+            labelColor={accentColor}
+            size={RING_SIZE}
+            strokeWidth={2}
+            value={goal.progressPercent}
+          />
+        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  artContainer: {
+    bottom: 0,
+    left: 0,
+    overflow: "hidden",
+    position: "absolute",
+    right: ART_RIGHT_INSET,
+    top: 0,
+    zIndex: 0,
+  },
+
   backgroundImage: {
     aspectRatio: ART_ASPECT_RATIO,
     bottom: 0,
     position: "absolute",
     right: 0,
     top: 0,
-    zIndex: 0,
   },
 
   card: {
@@ -129,6 +170,15 @@ const styles = StyleSheet.create({
   shade: {
     ...absoluteFill,
     zIndex: 1,
+  },
+
+  seamShade: {
+    bottom: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: ART_RIGHT_INSET + 56,
+    zIndex: 2,
   },
 
   inner: {
@@ -157,5 +207,11 @@ const styles = StyleSheet.create({
   titleBlock: {
     flex: 1,
     paddingRight: 12,
+  },
+
+  progressColumn: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: RING_SIZE,
   },
 });
