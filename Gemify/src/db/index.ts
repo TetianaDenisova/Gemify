@@ -4,15 +4,6 @@ export { getDatabase, initDatabase, resetDatabaseForDev } from "./database";
 export { exportBackup, pickAndImportBackup } from "./backup";
 export type { ImportSummary } from "./backup";
 
-// Items (v1 demo slice)
-export {
-  createItem,
-  deleteItem,
-  getItemById,
-  getItems,
-  updateItem,
-} from "./itemsRepository";
-
 // Settings
 export {
   SETTING_KEYS,
@@ -129,14 +120,11 @@ export type {
   HabitPatch,
   HabitTimeOfDay,
   Idea,
-  Item,
-  ItemPatch,
   Milestone,
   MilestonePatch,
   MilestoneStatus,
   NewDream,
   NewHabit,
-  NewItem,
   NewMilestone,
   NewRisk,
   NewTimelineMoment,

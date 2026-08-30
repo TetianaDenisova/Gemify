@@ -38,10 +38,6 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
-          name="details"
-          options={{ headerTransparent: true, title: "Gem details" }}
-        />
-        <Stack.Screen
           name="journey-map"
           options={{ headerShown: true, headerTransparent: true }}
         />
@@ -72,10 +68,6 @@ export default function RootLayout() {
         <Stack.Screen
           name="milestone-ideas"
           options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="items-demo"
-          options={{ headerShown: true, headerTransparent: true }}
         />
       </Stack>
     </GestureHandlerRootView>
