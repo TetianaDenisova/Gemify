@@ -14,21 +14,36 @@ export { Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
 export { Chip } from "./Chip";
 export type { ChipProps } from "./Chip";
+export { ConfirmDialog } from "./ConfirmDialog";
+export type { ConfirmDialogProps } from "./ConfirmDialog";
 export {
   ArrowRightIcon,
   BackIcon,
   BulbIcon,
+  CalendarIcon,
   CheckIcon,
   ChevronIcon,
+  ClockIcon,
   CloseIcon,
   DotsIcon,
   DreamIcon,
+  GearIcon,
+  ImageIcon,
   MilestoneIcon,
   PencilIcon,
   PlusIcon,
   SparkIcon,
+  SparkleGlyphIcon,
+  StepIcon,
+  TrashIcon,
 } from "./icons";
-export type { ChevronDirection, IconProps } from "./icons";
+export type {
+  ChevronDirection,
+  DotsOrientation,
+  IconProps,
+  PencilVariant,
+  StepIconName,
+} from "./icons";
 export { HintRow } from "./HintRow";
 export type { HintRowProps } from "./HintRow";
 export { IconButton } from "./IconButton";

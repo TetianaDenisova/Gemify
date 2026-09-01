@@ -29,7 +29,7 @@ const KEYBOARD_BEHAVIOR = Platform.select<
 
 export type ScreenScaffoldProps = {
   /** Full-bleed gradient background (e.g. gradients.background). */
-  backgroundGradient?: readonly string[];
+  backgroundGradient?: readonly [string, string, ...string[]];
   /** Full-bleed cover image background with a dark overlay on top. */
   backgroundImage?: ImageSourcePropType;
   children: ReactNode;
@@ -131,7 +131,7 @@ export function ScreenScaffold({
     <View style={[styles.screen, style]}>
       {backgroundGradient ? (
         <LinearGradient
-          colors={[...backgroundGradient] as [string, string, ...string[]]}
+          colors={backgroundGradient}
           style={StyleSheet.absoluteFill}
         />
       ) : null}

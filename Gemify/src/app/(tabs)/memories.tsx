@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -26,13 +26,16 @@ import {
   AppModal,
   AppText,
   Badge,
+  CalendarIcon,
   Card,
   ChevronIcon,
   CloseIcon,
+  DotsIcon,
   IconButton,
   ListItem,
   PlusIcon,
   ScreenScaffold,
+  SparkleGlyphIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -61,6 +64,13 @@ const MEMORIES_BACK = require("../../../assets/images/memory-custle.png");
 
 const goldTint = { glow: colors.primaryGlow, main: colors.primary };
 
+// Static — hoisted so it isn't rebuilt (with a regex parse on web) per item per render.
+const timelineCircleShadow = shadowStyle({
+  color: goldTint.main,
+  opacity: 0.45,
+  radius: 10,
+});
+
 /** "Aug 23, 2026" for a YYYY-MM-DD key (noon guards against TZ day shifts). */
 function formatDateKey(dateKey: string): string {
   return new Date(`${dateKey}T12:00:00`).toLocaleDateString("en-US", {
@@ -68,52 +78,6 @@ function formatDateKey(dateKey: string): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function CalendarGlyph({ color = colors.primary, size = 20 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={15}
-        rx={2.4}
-        stroke={color}
-        strokeWidth={1.6}
-        width={18}
-        x={3}
-        y={5}
-      />
-      <Path
-        d="M7 3v4M17 3v4M3 10h18"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
-
-function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M12 2c.9 4.6 2.4 6.1 7 7-4.6.9-6.1 2.4-7 7-.9-4.6-2.4-6.1-7-7 4.6-.9 6.1-2.4 7-7Z"
-        fill={color}
-      />
-      <Path d="M19 15c.4 2 1 2.6 3 3-2 .4-2.6 1-3 3-.4-2-1-2.6-3-3 2-.4 2.6-1 3-3Z" fill={color} opacity={0.7} />
-    </Svg>
-  );
-}
-
-function DotsGlyph({ color = colors.textSecondary, size = 20 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={5} cy={12} fill={color} r={1.7} />
-      <Circle cx={12} cy={12} fill={color} r={1.7} />
-      <Circle cx={19} cy={12} fill={color} r={1.7} />
-    </Svg>
-  );
 }
 
 function LockGlyph({ color = colors.primary, size = 14 }: { color?: string; size?: number }) {
@@ -232,7 +196,7 @@ function TimelineMomentItem({
           style={[
             styles.timelineCircle,
             { borderColor: goldTint.main },
-            shadowStyle({ color: goldTint.main, opacity: 0.45, radius: 10 }),
+            timelineCircleShadow,
           ]}
         >
           <TimelineGlyph color={goldTint.main} icon={moment.icon} />
@@ -327,6 +291,9 @@ export default function MemoriesScreen() {
     goalKey?: string;
     memoryName?: string;
   }>();
+  // Render-time state adjustment (the documented "adjusting state when props
+  // change" pattern): React re-runs this component immediately with the new
+  // state, before children render — no effect roundtrip, one arrival = one open.
   const [consumedAddParam, setConsumedAddParam] = useState<string | null>(
     null,
   );
@@ -484,12 +451,17 @@ export default function MemoriesScreen() {
           ),
         )
       : 0;
-  const momentRows: TimelineMoment[][] = [];
-  if (itemsPerRow > 0) {
-    for (let start = 0; start < moments.length; start += itemsPerRow) {
-      momentRows.push(moments.slice(start, start + itemsPerRow));
+  // Memoized: per-row onLayout updates (setRowTops) re-render this screen
+  // constantly while the timeline settles — the chunking must not re-run then.
+  const momentRows = useMemo(() => {
+    const rows: TimelineMoment[][] = [];
+    if (itemsPerRow > 0) {
+      for (let start = 0; start < moments.length; start += itemsPerRow) {
+        rows.push(moments.slice(start, start + itemsPerRow));
+      }
     }
-  }
+    return rows;
+  }, [moments, itemsPerRow]);
   const fullRowWidth =
     itemsPerRow * TIMELINE_ITEM_WIDTH +
     (itemsPerRow - 1) * TIMELINE_CONNECTOR_WIDTH;
@@ -524,7 +496,7 @@ export default function MemoriesScreen() {
         <ListItem
           accessibilityLabel="Choose goal"
           last
-          leading={<SparkleGlyph size={18} />}
+          leading={<SparkleGlyphIcon size={18} />}
           onPress={() => setGoalPickerOpen((open) => !open)}
           style={styles.goalPickerRow}
           title={selectedGoal.label}
@@ -708,7 +680,7 @@ export default function MemoriesScreen() {
             onPress={() => setDatePickerOpen(true)}
             style={styles.dateField}
           >
-            <CalendarGlyph />
+            <CalendarIcon />
             <AppText color={colors.textPrimary} variant="body">
               {formatDateKey(formDate)}
             </AppText>
@@ -842,7 +814,7 @@ export default function MemoriesScreen() {
               )}
               <IconButton
                 accessibilityLabel="Memory actions"
-                icon={<DotsGlyph color={colors.primary} />}
+                icon={<DotsIcon color={colors.primary} orientation="horizontal" />}
                 onPress={() => setDetailMenuOpen((open) => !open)}
                 size="sm"
               />

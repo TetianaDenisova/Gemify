@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FEELING_STATES } from "@/data/feelingStates";
 import { createDream } from "@/db";
 import { persistMemoryPhoto } from "@/utils/memoryPhotos";
 import {
@@ -19,33 +20,11 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, fontSizes, iconSizes, pressed, spacing } from "@/theme/theme";
+import { fonts, fontSizes, iconSizes, layout, pressed, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/state_background.png");
 const CONTINUE_BUTTON = require("../../assets/state/continue-btn.png");
 const MAX_SELECTIONS = 3;
-
-const STATES = [
-  { icon: "♠", label: "Alive" },
-  { icon: "⌁", label: "Free" },
-  { icon: "♕", label: "Powerful" },
-  { icon: "♨", label: "Calm" },
-  { icon: "☾", label: "Peaceful" },
-  { icon: "∪", label: "Magnetic" },
-  { icon: "✣", label: "Creative" },
-  { icon: "♡", label: "Loved" },
-  { icon: "✦", label: "Clear" },
-  { icon: "♢", label: "Confident" },
-  { icon: "♙", label: "Connected" },
-  { icon: "☀", label: "Joyful" },
-  { icon: "⌂", label: "Safe" },
-  { icon: "ϟ", label: "Energized" },
-  { icon: "✧", label: "Desired" },
-] as const;
-
-function SparkleIcon() {
-  return <AppText style={styles.headerSparkle}>✦</AppText>;
-}
 
 function Ornament() {
   return (
@@ -70,7 +49,7 @@ export default function StateScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const compact = height < 760;
+  const compact = height < layout.shortScreenBreakpoint;
 
   const finishDream = async () => {
     if (saving) return;
@@ -127,14 +106,7 @@ export default function StateScreen() {
 
   return (
     <>
-      <ScreenHeader
-        asStackHeader
-        rightAction={{
-          accessibilityLabel: "Gemify inspiration",
-          icon: <SparkleIcon />,
-          onPress: () => undefined,
-        }}
-      />
+      <ScreenHeader asStackHeader />
 
       <ScreenScaffold
         backgroundImage={BACKGROUND}
@@ -147,7 +119,7 @@ export default function StateScreen() {
       >
         <View style={styles.brandBlock}>
           <AppText style={styles.brand} variant="eyebrow">
-            G A M I F Y
+            G E M I F Y
           </AppText>
           <Ornament />
         </View>
@@ -193,7 +165,7 @@ export default function StateScreen() {
         </View>
 
         <View style={styles.chipGrid}>
-          {STATES.map(({ icon, label }) => {
+          {FEELING_STATES.map(({ icon, label }) => {
             const isSelected = selectedSet.has(label);
             return (
               <Chip
@@ -314,10 +286,6 @@ const styles = StyleSheet.create({
   },
   footnote: {
     marginTop: spacing.md,
-  },
-  headerSparkle: {
-    color: colors.primaryBright,
-    fontSize: iconSizes.md,
   },
   headingLine: {
     backgroundColor: colors.borderStrong,

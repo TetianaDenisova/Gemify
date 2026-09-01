@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { exportBackup, pickAndImportBackup } from "@/db/backup";
+import { exportBackup, pickAndImportBackup } from "@/db";
 import { AppButton, AppModal, AppText, ListItem } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/theme";

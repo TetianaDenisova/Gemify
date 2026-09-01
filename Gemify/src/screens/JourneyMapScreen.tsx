@@ -41,7 +41,7 @@ import type {
   JourneyMilestoneBoardConfig,
   JourneyMilestoneData,
 } from "@/data/journeyMilestones";
-import { journeyPageConfigs } from "@/data/journeyPageConfig";
+import { journeyPageConfig } from "@/data/journeyPageConfig";
 import {
   createQuest,
   deleteDream,
@@ -78,6 +78,7 @@ import {
   gradients,
   iconSizes,
   inputFocusReset,
+  layout,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -525,7 +526,7 @@ function MilestoneModal({
   // Adding inserts a new step, so the path is one longer than it is now.
   const stepTotal = state?.mode === "add" ? stepCount + 1 : stepCount;
   const isCompact = width < 520;
-  const isShort = height < 760;
+  const isShort = height < layout.shortScreenBreakpoint;
   const sheetMaxHeight = Math.min(
     height - Math.max(insets.top, 10),
     height * (isCompact ? 0.72 : 0.82),
@@ -1105,7 +1106,7 @@ export function GoalJourneyMapScreen() {
     [dbMilestones],
   );
 
-  const currentConfig = journeyPageConfigs[0];
+  const currentConfig = journeyPageConfig;
   // The path anchors at the castle gates and grows downward with a fixed
   // step: the chronologically last milestone sits at the entrance, earlier
   // ones below it. Once five rings exist the spacing matches the stretched
@@ -1150,8 +1151,12 @@ export function GoalJourneyMapScreen() {
     return Math.min(Math.max(y, 0.03), 0.97);
   };
 
-  const handleMilestonePress = (milestone: JourneyMilestoneData) =>
-    setModalState({ milestone, mode: isEditMode ? "edit" : "view" });
+  // Stable identity so memoized JourneyMilestone rows can skip re-rendering.
+  const handleMilestonePress = useCallback(
+    (milestone: JourneyMilestoneData) =>
+      setModalState({ milestone, mode: isEditMode ? "edit" : "view" }),
+    [isEditMode],
+  );
 
   const handleSave = async (values: MilestoneFormValues) => {
     if (!modalState || !dream) {

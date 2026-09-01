@@ -94,7 +94,7 @@ export function AppButton({
     >
       {variant === "primary" ? (
         <LinearGradient
-          colors={[...gradients.cta] as [string, string, ...string[]]}
+          colors={gradients.cta}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={[styles.gradient, { minHeight }]}

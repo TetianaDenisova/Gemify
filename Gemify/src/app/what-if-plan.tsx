@@ -28,6 +28,7 @@ import {
   AppButton,
   AppInput,
   AppModal,
+  ConfirmDialog,
   AppText,
   Card,
   CheckIcon,
@@ -38,6 +39,7 @@ import {
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
+  type IconProps,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -55,11 +57,6 @@ import {
 
 const BACKGROUND = require("../../assets/create-goal/risk-plan-background.png");
 const RISK_IMAGE = require("../../assets/create-goal/risk-image.png");
-
-type IconProps = {
-  color: string;
-  size?: number;
-};
 
 type RiskPlan = {
   actions: readonly string[];
@@ -264,34 +261,14 @@ export default function WhatIfPlanScreen() {
         visible={modalVisible}
       />
 
-      <AppModal
-        onClose={() => setConfirmDeleteId(null)}
-        variant="center"
+      <ConfirmDialog
+        body={`“${planPendingDelete?.title}” and its protection plan will be removed.`}
+        bodyVariant="body"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete this risk?"
         visible={confirmDeleteId !== null}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this risk?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="body">
-          “{planPendingDelete?.title}” and its protection plan will be removed.
-        </AppText>
-        <View style={styles.confirmActions}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setConfirmDeleteId(null)}
-            style={styles.confirmButton}
-            textStyle={styles.confirmLabel}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteConfirmed}
-            style={[styles.confirmButton, styles.deleteButton]}
-            textStyle={[styles.confirmLabel, styles.deleteLabel]}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
+      />
     </>
   );
 }
@@ -380,18 +357,22 @@ function AddRiskModal({
             />
           </View>
 
-          <FormField
+          <AppInput
+            containerStyle={styles.fieldBlock}
             label="Risk title *"
             onChangeText={setTitle}
             placeholder="e.g. Lack of energy"
+            selectionColor={colors.primary}
             value={title}
           />
 
-          <FormField
+          <AppInput
+            containerStyle={styles.fieldBlock}
             label="Description (optional)"
             multiline
             onChangeText={setDescription}
             placeholder="What could get in the way?"
+            selectionColor={colors.primary}
             value={description}
           />
 
@@ -448,32 +429,6 @@ function AddRiskModal({
         </LinearGradient>
       </KeyboardAvoidingView>
     </AppModal>
-  );
-}
-
-function FormField({
-  label,
-  multiline = false,
-  onChangeText,
-  placeholder,
-  value,
-}: {
-  label: string;
-  multiline?: boolean;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  value: string;
-}) {
-  return (
-    <AppInput
-      containerStyle={styles.fieldBlock}
-      label={label}
-      multiline={multiline}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      selectionColor={colors.primary}
-      value={value}
-    />
   );
 }
 
@@ -1007,28 +962,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: "rgba(255, 255, 255, 0.84)",
     flex: 1,
-  },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
-  confirmActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  confirmButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
-  confirmLabel: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
-  },
-  deleteButton: {
-    borderColor: colors.danger,
-  },
-  deleteLabel: {
-    color: colors.danger,
   },
   subtitle: {
     marginTop: spacing.sm,

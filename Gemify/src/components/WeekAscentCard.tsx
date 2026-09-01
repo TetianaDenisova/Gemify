@@ -246,9 +246,6 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 0,
   },
-  cardCompact: {
-    paddingVertical: spacing.sm + spacing.xs,
-  },
   artThumb: {
     borderColor: colors.borderSoft,
     borderRadius: radius.md,

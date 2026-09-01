@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import type { ActionIcon, TimeBlock } from "@/dto/timeBlocks";
 import {
   getScheduledQuests,
-  getTimeBlocksForDate,
+  getTimeBlocks,
   setQuestDone,
   type QuestWithBreadcrumb,
 } from "@/db";
@@ -91,7 +91,7 @@ export function useDayQuestBlocks(date: string): UseDayQuestBlocksResult {
   const refresh = useCallback(async () => {
     try {
       const [blockDefs, quests] = await Promise.all([
-        getTimeBlocksForDate(date),
+        getTimeBlocks(),
         getScheduledQuests(date),
       ]);
 
@@ -123,7 +123,7 @@ export function useDayQuestBlocks(date: string): UseDayQuestBlocksResult {
         blockDefs.map((block) => ({
           key: block.key,
           label: block.label,
-          icon: block.iconKey as TimeBlock["icon"],
+          icon: block.iconKey,
           time: block.startTime ?? "Flexible",
           identity: block.identity ?? "",
           routineTitle: block.routineTitle,

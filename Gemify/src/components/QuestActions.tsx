@@ -10,10 +10,15 @@ import {
   AppModal,
   AppText,
   ArrowRightIcon,
+  CalendarIcon,
   CheckIcon,
+  ClockIcon,
   CloseIcon,
+  DotsIcon,
   HintRow,
+  PencilIcon,
   SparkIcon,
+  TrashIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -59,66 +64,6 @@ function suggestTimeSlot(hour: number): TimeSlotKey {
   if (hour < 9) return "morning";
   if (hour >= 20) return "evening";
   return "afterWork";
-}
-
-export function CalendarIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={14}
-        rx={2}
-        stroke={color}
-        strokeWidth={1.7}
-        width={17}
-        x={3.5}
-        y={6}
-      />
-      <Path
-        d="M7 3.5v5M17 3.5v5M3.5 10.5h17"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function ClockIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle
-        cx={12}
-        cy={12}
-        fill="none"
-        r={8.5}
-        stroke={color}
-        strokeWidth={1.7}
-      />
-      <Path
-        d="M12 7.5V12l3 2"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
 }
 
 function SunHorizonIcon({
@@ -236,60 +181,6 @@ function SlotIcon({
     default:
       return <SunHorizonIcon color={color} size={size} />;
   }
-}
-
-/** Horizontal ⋯ — the "more days" chip that opens the calendar. */
-function MoreDotsIcon({
-  color = colors.textMuted,
-  size = iconSizes.md,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      {[6, 12, 18].map((cx) => (
-        <Circle cx={cx} cy={12} fill={color} key={cx} r={1.8} />
-      ))}
-    </Svg>
-  );
-}
-
-export function PencilIcon({ color = colors.primary }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Path
-        d="m4 20 .8-3.8L15.6 5.4a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L7.8 19.2 4 20Z"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-      <Path
-        d="m13.8 7.2 3 3"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function TrashIcon({ color = colors.danger }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.lg} viewBox="0 0 24 24" width={iconSizes.lg}>
-      <Path
-        d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5m3.5 0-.9 12A2 2 0 0 1 15.1 20.5H8.9a2 2 0 0 1-2-1.9l-.9-12.1M10 10.5v6M14 10.5v6"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
 }
 
 export function SheetActionRow({
@@ -413,7 +304,7 @@ export function QuestActionSheet({
             />
           ) : null}
           <SheetActionRow
-            icon={<CalendarIcon />}
+            icon={<CalendarIcon size={iconSizes.lg} />}
             label={scheduleLabel}
             onPress={onSchedule}
           />
@@ -426,10 +317,16 @@ export function QuestActionSheet({
           ) : null}
         </>
       )}
-      <SheetActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
+      <SheetActionRow
+        icon={
+          <PencilIcon size={iconSizes.lg} strokeWidth={1.7} variant="detailed" />
+        }
+        label="Edit"
+        onPress={onEdit}
+      />
       <SheetActionRow
         danger
-        icon={<TrashIcon />}
+        icon={<TrashIcon size={iconSizes.lg} />}
         label="Delete"
         onPress={onDelete}
       />
@@ -622,7 +519,7 @@ export function AcceptQuestModal({
       </AppText>
 
       <View style={styles.acceptSectionLabel}>
-        <CalendarIcon />
+        <CalendarIcon size={iconSizes.lg} />
         <AppText variant="pill">Pick a day</AppText>
       </View>
       <View style={styles.acceptChipWrap}>
@@ -679,7 +576,11 @@ export function AcceptQuestModal({
                 </AppText>
               </>
             ) : (
-              <MoreDotsIcon />
+              <DotsIcon
+                color={colors.textMuted}
+                orientation="horizontal"
+                size={iconSizes.md}
+              />
             )}
           </Pressable>
           {customSelected ? (
@@ -691,7 +592,7 @@ export function AcceptQuestModal({
       </View>
 
       <View style={styles.acceptSectionLabel}>
-        <ClockIcon />
+        <ClockIcon size={iconSizes.lg} />
         <AppText variant="pill">Pick a time of day</AppText>
       </View>
       <View style={styles.acceptTimeWrap}>

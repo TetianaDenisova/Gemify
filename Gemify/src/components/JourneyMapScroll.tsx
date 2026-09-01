@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Asset } from "expo-asset";
 import { Image } from "expo-image";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   ImageSourcePropType,
   ImageURISource,
@@ -48,17 +48,23 @@ export function JourneyMapScroll({
     height: 0,
     width: 0,
   });
-  const asset = typeof source === "number" ? Asset.fromModule(source) : null;
-  const sourceCandidates = Array.isArray(source) ? source : [source];
-  const sourceWithDimensions = sourceCandidates.find(
-    (candidate): candidate is ImageURISource =>
-      typeof candidate !== "number" &&
-      typeof candidate?.width === "number" &&
-      typeof candidate?.height === "number",
-  );
-  const assetWidth = asset?.width ?? sourceWithDimensions?.width ?? viewport.width;
-  const assetHeight =
-    asset?.height ?? sourceWithDimensions?.height ?? viewport.height;
+  // Registry lookup + candidate scan only when the source changes, not per render.
+  const intrinsicSize = useMemo(() => {
+    const asset = typeof source === "number" ? Asset.fromModule(source) : null;
+    const sourceCandidates = Array.isArray(source) ? source : [source];
+    const sourceWithDimensions = sourceCandidates.find(
+      (candidate): candidate is ImageURISource =>
+        typeof candidate !== "number" &&
+        typeof candidate?.width === "number" &&
+        typeof candidate?.height === "number",
+    );
+    return {
+      height: asset?.height ?? sourceWithDimensions?.height ?? null,
+      width: asset?.width ?? sourceWithDimensions?.width ?? null,
+    };
+  }, [source]);
+  const assetWidth = intrinsicSize.width ?? viewport.width;
+  const assetHeight = intrinsicSize.height ?? viewport.height;
   const coverScale =
     viewport.width > 0 && viewport.height > 0
       ? Math.max(
@@ -69,7 +75,11 @@ export function JourneyMapScroll({
   const imageWidth = assetWidth * coverScale;
   const imageHeight = assetHeight * coverScale;
   const imageLeft = (viewport.width - imageWidth) / 2;
-  const layout: JourneyMapLayout = { imageHeight, imageWidth };
+  // Stable identity so memoized overlay children can bail out between renders.
+  const layout: JourneyMapLayout = useMemo(
+    () => ({ imageHeight, imageWidth }),
+    [imageHeight, imageWidth],
+  );
   const overlay = typeof children === "function" ? children(layout) : children;
 
   useEffect(() => {
@@ -81,7 +91,7 @@ export function JourneyMapScroll({
       animated: false,
       y: Math.max((imageHeight - viewport.height) / 2, 0),
     });
-  }, [imageHeight, viewport.height, viewport.width]);
+  }, [imageHeight, viewport.height]);
 
   const handleLayout = (event: LayoutChangeEvent) => {
     const { height, width } = event.nativeEvent.layout;
@@ -150,8 +160,6 @@ export function JourneyMapScroll({
     </View>
   );
 }
-
-export default JourneyMapScroll;
 
 const styles = StyleSheet.create({
   container: {

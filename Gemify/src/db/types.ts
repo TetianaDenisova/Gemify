@@ -187,33 +187,21 @@ export type HabitCompletionRecord = {
 // Daily routine time blocks
 // ---------------------------------------------------------------------------
 
+/** Icon vocabulary for routine time blocks (rendered by BlockIconArt). */
+export type TimeBlockIcon = "clock" | "sunrise" | "briefcase" | "sun" | "moon";
+
 export type TimeBlockRecord = {
   id: number;
   /** Stable string key ("anytime", "wake-up", ...). */
   key: string;
   label: string;
-  iconKey: string;
+  iconKey: TimeBlockIcon;
   /** HH:MM, null = flexible/anytime. */
   startTime: string | null;
   identity: string | null;
   routineTitle: string;
   routineSubtitle: string | null;
   position: number;
-};
-
-export type TimeBlockActionRecord = {
-  id: number;
-  timeBlockId: number;
-  title: string;
-  subtitle: string | null;
-  iconKey: string;
-  position: number;
-  /** Whether the action is completed for the queried date. */
-  done: boolean;
-};
-
-export type TimeBlockWithActions = TimeBlockRecord & {
-  actions: TimeBlockActionRecord[];
 };
 
 // ---------------------------------------------------------------------------

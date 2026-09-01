@@ -24,13 +24,12 @@ import {
   Card,
   CheckIcon,
   ChevronIcon,
-  IconButton,
   ListItem,
   ScreenScaffold,
+  SparkleGlyphIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
-  controls,
   fontSizes,
   fonts,
   layout,
@@ -403,32 +402,6 @@ function QuestBarsChart({
   );
 }
 
-function SparkleGlyph({ color = colors.accentViolet, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M12 2c.9 4.6 2.4 6.1 7 7-4.6.9-6.1 2.4-7 7-.9-4.6-2.4-6.1-7-7 4.6-.9 6.1-2.4 7-7Z"
-        fill={color}
-      />
-      <Path d="M19 15c.4 2 1 2.6 3 3-2 .4-2.6 1-3 3-.4-2-1-2.6-3-3 2-.4 2.6-1 3-3Z" fill={color} opacity={0.7} />
-    </Svg>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <Svg height={27} viewBox="0 0 24 24" width={27}>
-      <Path
-        d="M5 7h14M5 12h14M5 17h14"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
 export default function ProgressScreen() {
   const { width } = useWindowDimensions();
   const compact = width < layout.compactBreakpoint;
@@ -457,12 +430,6 @@ export default function ProgressScreen() {
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
       <View style={[styles.header, compact && styles.headerCompact]}>
-        <IconButton
-          accessibilityLabel="Open menu"
-          icon={<MenuIcon />}
-          onPress={() => {}}
-          size={compact ? "sm" : "md"}
-        />
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
           <AppText
             align="center"
@@ -474,15 +441,13 @@ export default function ProgressScreen() {
             {progressContent.title}
           </AppText>
         </View>
-        {/* Spacer mirrors the menu button so the title stays centered. */}
-        <View style={{ width: controls.iconButton[compact ? "sm" : "md"] }} />
       </View>
 
       <Card padded={false} style={styles.goalPicker} variant="glass">
         <ListItem
           accessibilityLabel="Choose goal"
           last
-          leading={<SparkleGlyph size={18} />}
+          leading={<SparkleGlyphIcon size={18} />}
           onPress={() => setGoalPickerOpen((open) => !open)}
           style={styles.goalPickerRow}
           title={selectedGoal.label}

@@ -1,4 +1,4 @@
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import { useCallback, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +25,8 @@ export type ScreenHeaderProps = {
    * top of their scroll content.
    */
   asStackHeader?: boolean;
+  /** Where the default back button lands when there is no history (default "/"). */
+  backFallback?: Href;
   buttonSize?: IconButtonSize;
   /** Custom centered content rendered instead of the title/subtitle block. */
   centerSlot?: ReactNode;
@@ -64,6 +66,7 @@ function ActionSlot({
  */
 export function ScreenHeader({
   asStackHeader = false,
+  backFallback = "/",
   buttonSize = "sm",
   centerSlot,
   leftAction,
@@ -88,8 +91,8 @@ export function ScreenHeader({
       return;
     }
 
-    router.replace("/");
-  }, [onBack, router]);
+    router.replace(backFallback);
+  }, [backFallback, onBack, router]);
 
   const left =
     leftAction !== undefined

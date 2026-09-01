@@ -1,3 +1,5 @@
+import type { TimeBlockIcon } from "@/db/types";
+
 /**
  * Routine icons ("meditate".."focus") are stored on time-block actions in the
  * database; the dream-magic set ("star".."feather") exists only in the view
@@ -16,7 +18,7 @@ export type ActionIcon =
   | "wand"
   | "key"
   | "feather";
-export type BlockIcon = "clock" | "sunrise" | "briefcase" | "sun" | "moon";
+export type BlockIcon = TimeBlockIcon;
 
 /** View-model for a single action rendered inside a time block. */
 export type DayAction = {

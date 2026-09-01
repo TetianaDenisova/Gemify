@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   Pressable,
   ScrollView,
@@ -137,7 +137,7 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
   const viewportWidthRef = useRef(0);
 
   // Slide the strip so the selected tab is centered in the viewport.
-  function centerTab(key: string) {
+  const centerTab = useCallback((key: string) => {
     const layoutRect = tabLayoutsRef.current[key];
     const viewportWidth = viewportWidthRef.current;
     if (!layoutRect || viewportWidth === 0) return;
@@ -145,11 +145,11 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
       animated: true,
       x: Math.max(0, layoutRect.x + layoutRect.width / 2 - viewportWidth / 2),
     });
-  }
+  }, []);
 
   useEffect(() => {
     centerTab(activeKey);
-  }, [activeKey]);
+  }, [activeKey, centerTab]);
 
   function shiftActive(delta: -1 | 1) {
     const activeIndex = blocks.findIndex((block) => block.key === activeKey);

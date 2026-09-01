@@ -16,10 +16,8 @@ export const colors = {
   accentVioletStrong: "#B46AFF",
   accentVioletGlow: "rgba(183, 140, 255, 0.45)",
   accentPink: "#EF6FAF",
-  accentPinkGlow: "rgba(239, 111, 175, 0.45)",
 
   secondary: "#1B2F4A",
-  secondarySoft: "#263F5F",
   secondaryDark: "#08111F",
 
   textPrimary: "#F6E8C8",
@@ -34,8 +32,6 @@ export const colors = {
   borderSoft: "rgba(246, 232, 200, 0.12)",
   divider: "rgba(246, 232, 200, 0.08)",
 
-  success: "#7FB069",
-  warning: "#F5B84B",
   danger: "#B85C4A",
 
   overlayDark: "rgba(2, 5, 12, 0.65)",
@@ -43,5 +39,3 @@ export const colors = {
   scrim: "rgba(2, 5, 12, 0.72)",
   transparent: "transparent",
 } as const;
-
-export type ThemeColors = typeof colors;

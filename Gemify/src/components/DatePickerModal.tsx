@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
 
 import {
   AppButton,
   AppModal,
   AppText,
+  CalendarIcon,
   ChevronIcon,
   CloseIcon,
 } from "@/shared/components";
@@ -76,30 +76,6 @@ function buildWeeks(year: number, month: number): Date[][] {
   );
 }
 
-function CalendarGlyph({ size = 22 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={15}
-        rx={2.4}
-        stroke={colors.primary}
-        strokeWidth={1.6}
-        width={18}
-        x={3}
-        y={5}
-      />
-      <Path
-        d="M7 3v4M17 3v4M3 10h18"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
-
 type DatePickerModalProps = {
   initialDate: Date;
   /** Days before this date are disabled (e.g. today, when scheduling). */
@@ -139,7 +115,7 @@ export function DatePickerModal({
     >
       <View style={styles.titleRow}>
         <View style={styles.titleGroup}>
-          <CalendarGlyph />
+          <CalendarIcon size={22} />
           <AppText variant="titleSm">
             Choose a date
           </AppText>

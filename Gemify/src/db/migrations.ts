@@ -353,6 +353,13 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // The demo "items" feature was removed; drop its leftover table.
+    toVersion: 11,
+    up: async (db) => {
+      await db.execAsync("DROP TABLE IF EXISTS items;");
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

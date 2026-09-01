@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   Pressable,
@@ -23,7 +23,6 @@ import {
   AppInput,
   AppModal,
   AppText,
-  BackIcon,
   Badge,
   Card,
   ScreenHeader,
@@ -182,7 +181,6 @@ function IdeaRow({
 }
 
 export default function MilestoneIdeasScreen() {
-  const router = useRouter();
   const { width } = useWindowDimensions();
   const isNarrow = width < layout.compactBreakpoint;
   const { milestoneId: milestoneIdParam } = useLocalSearchParams<{
@@ -261,18 +259,8 @@ export default function MilestoneIdeasScreen() {
   return (
     <ScreenScaffold topInset>
       <ScreenHeader
+        backFallback="/milestone-quests"
         buttonSize="md"
-        leftAction={{
-          accessibilityLabel: "Back",
-          icon: <BackIcon />,
-          onPress: () => {
-            if (router.canGoBack()) {
-              router.back();
-              return;
-            }
-            router.push("/(tabs)/milestone-quests");
-          },
-        }}
         style={styles.header}
         subtitle={milestone?.title}
         title="Ideas"

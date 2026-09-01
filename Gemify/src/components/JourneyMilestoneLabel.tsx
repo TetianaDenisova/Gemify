@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
 import Svg, { Line } from "react-native-svg";
@@ -6,13 +7,11 @@ import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { fonts, shadows, textGlow } from "@/theme/theme";
 
-export type JourneyMilestoneLabelSide = "left" | "right";
-
 export type JourneyMilestoneLabelProps = {
   /** Fades the whole label — used for completed milestones on the map. */
   muted?: boolean;
   number: number;
-  side?: JourneyMilestoneLabelSide;
+  side?: "left" | "right";
   style?: StyleProp<ViewStyle>;
   subtitle: string;
   title: string;
@@ -24,39 +23,38 @@ export type JourneyMilestoneLabelProps = {
 const BADGE_SIZE = 36;
 const CONNECTOR_WIDTH = 14;
 
-function GoldenConnector() {
-  return (
-    <Svg
-      height={12}
-      style={{ pointerEvents: "none" }}
-      viewBox={`0 0 ${CONNECTOR_WIDTH} 12`}
-      width={CONNECTOR_WIDTH}
-    >
-      <Line
-        opacity={0.12}
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={5}
-        x1={0}
-        x2={CONNECTOR_WIDTH}
-        y1={6}
-        y2={6}
-      />
-      <Line
-        opacity={0.82}
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1}
-        x1={0}
-        x2={CONNECTOR_WIDTH}
-        y1={6}
-        y2={6}
-      />
-    </Svg>
-  );
-}
+// Static SVG shared by every label — built once, never reconciled per render.
+const goldenConnector = (
+  <Svg
+    height={12}
+    style={{ pointerEvents: "none" }}
+    viewBox={`0 0 ${CONNECTOR_WIDTH} 12`}
+    width={CONNECTOR_WIDTH}
+  >
+    <Line
+      opacity={0.12}
+      stroke={colors.primary}
+      strokeLinecap="round"
+      strokeWidth={5}
+      x1={0}
+      x2={CONNECTOR_WIDTH}
+      y1={6}
+      y2={6}
+    />
+    <Line
+      opacity={0.82}
+      stroke={colors.primary}
+      strokeLinecap="round"
+      strokeWidth={1}
+      x1={0}
+      x2={CONNECTOR_WIDTH}
+      y1={6}
+      y2={6}
+    />
+  </Svg>
+);
 
-export function JourneyMilestoneLabel({
+export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
   muted = false,
   number,
   side = "right",
@@ -79,9 +77,7 @@ export function JourneyMilestoneLabel({
         style,
       ]}
     >
-      <View style={styles.connector}>
-        <GoldenConnector />
-      </View>
+      <View style={styles.connector}>{goldenConnector}</View>
 
       <View style={styles.badge}>
         <View style={[styles.badgeInnerRing, { pointerEvents: "none" }]} />
@@ -110,9 +106,7 @@ export function JourneyMilestoneLabel({
       </View>
     </View>
   );
-}
-
-export default JourneyMilestoneLabel;
+});
 
 const styles = StyleSheet.create({
   container: {

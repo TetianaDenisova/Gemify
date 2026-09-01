@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -7,10 +7,9 @@ import {
 } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
-import { AppText, Card, ChevronIcon } from "@/shared/components";
+import { AppText, ChevronIcon, ClockIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
-  controls,
   fontSizes,
   lineHeights,
   shadowStyle,
@@ -34,29 +33,6 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 /** Inner SVG size for the habit medallion; the frame around it is 12pt larger. */
 const ART_SIZE = 90;
 const ART_SIZE_COMPACT = 62;
-
-function ClockIcon({ size = 17 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle
-        cx={12}
-        cy={12}
-        fill="none"
-        r={8.2}
-        stroke={colors.textMuted}
-        strokeWidth={1.9}
-      />
-      <Path
-        d="M12 7.8v5l3.2 2"
-        fill="none"
-        stroke={colors.textMuted}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
-      />
-    </Svg>
-  );
-}
 
 function DayStatus({ status }: { status: HabitCompletion }) {
   if (status === "partial") {
@@ -88,15 +64,18 @@ function HabitArt({
   icon: Habit["icon"];
 }) {
   const artSize = compact ? ART_SIZE_COMPACT : ART_SIZE;
+  // shadowStyle regex-parses the color on web — compute once per accent, not per render.
+  const accentFrame = useMemo(
+    () => [
+      { borderColor: `${accent}A8` },
+      shadowStyle({ color: accent, opacity: 0.5, radius: 16 }),
+    ],
+    [accent],
+  );
 
   return (
     <View
-      style={[
-        styles.habitArt,
-        compact && styles.habitArtCompact,
-        { borderColor: `${accent}A8` },
-        shadowStyle({ color: accent, opacity: 0.5, radius: 16 }),
-      ]}
+      style={[styles.habitArt, compact && styles.habitArtCompact, ...accentFrame]}
     >
       <Svg height={artSize} viewBox="0 0 90 90" width={artSize}>
         <Circle cx={45} cy={45} fill="#050817" r={42} />
@@ -229,7 +208,11 @@ export function HabitItemHeader({
         <View style={styles.habitInfo}>
           <HabitTitle compact={compact} title={habit.title} />
           <View style={[styles.habitTimeRow, compact && styles.habitTimeRowCompact]}>
-            <ClockIcon size={compact ? 14 : 17} />
+            <ClockIcon
+              color={colors.textMuted}
+              size={compact ? 14 : 17}
+              strokeWidth={1.9}
+            />
             <AppText
               color={colors.textMuted}
               style={[styles.habitTime, compact && styles.habitTimeCompact]}
@@ -357,27 +340,6 @@ export function HabitItemRow({
   );
 }
 
-export function HabitItemCard({
-  compact = false,
-  habit,
-  onPress,
-}: {
-  compact?: boolean;
-  habit: Habit;
-  onPress?: () => void;
-}) {
-  return (
-    <Card
-      onPress={onPress}
-      padded={false}
-      style={[styles.habitCard, compact && styles.habitCardCompact]}
-      variant="strong"
-    >
-      <HabitItemHeader compact={compact} habit={habit} />
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   dayCell: {
     alignItems: "center",
@@ -448,20 +410,6 @@ const styles = StyleSheet.create({
     borderRadius: (ART_SIZE_COMPACT + 12) / 2,
     height: ART_SIZE_COMPACT + 12,
     width: ART_SIZE_COMPACT + 12,
-  },
-  habitCard: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 24,
-    minHeight: controls.row.habit,
-    paddingHorizontal: 28,
-    paddingVertical: 22,
-  },
-  habitCardCompact: {
-    gap: 12,
-    minHeight: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
   },
   habitDay: {
     alignItems: "baseline",

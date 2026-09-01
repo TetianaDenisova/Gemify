@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
-import { useCallback, useState } from "react";
-import Svg, { Circle, Path } from "react-native-svg";
+import { useCallback, useMemo, useState } from "react";
+import Svg, { Path } from "react-native-svg";
 
 import {
   HabitBoardRow,
@@ -19,12 +19,16 @@ import { useHabitWeek, type HabitWeekView } from "@/hooks/useHabitWeek";
 import {
   AppButton,
   AppModal,
+  ConfirmDialog,
   AppText,
   ChevronIcon,
+  GearIcon,
   IconButton,
+  PencilIcon,
   PlusIcon,
   ScreenScaffold,
   SparkIcon,
+  TrashIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -59,52 +63,6 @@ const GROUP_VISUAL_CYCLE = [
   { icon: "book", tint: colors.accentVioletStrong },
   { icon: "heart", tint: colors.primary },
 ] as const;
-
-function GearIcon({ size = 25 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={12} cy={12} fill="none" r={3.1} stroke={colors.primary} strokeWidth={1.6} />
-      <Path
-        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
-
-function PencilIcon({ size = 18 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0 0-3l-1-1a2.1 2.1 0 0 0-3 0L4 16v4ZM13.5 6.5l4 4"
-        fill="none"
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function TrashIcon({ size = 18 }: { size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M4 7h16M9.5 4h5M6.5 7l.8 13h9.4l.8-13M10 11v5.5M14 11v5.5"
-        fill="none"
-        stroke={colors.danger}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
 
 function HeaderOrnament({ compact }: { compact: boolean }) {
   return (
@@ -293,24 +251,28 @@ export default function HabitsScreen() {
   // Monday-first index of today, matching the week strip's order.
   const activeDayIndex = (new Date().getDay() + 6) % 7;
 
-  const groups: (HabitGroup & { views: HabitWeekView[] })[] = dreams
-    .map((dream, index) => {
-      const visuals = GROUP_VISUAL_CYCLE[index % GROUP_VISUAL_CYCLE.length];
-      const views = habitViews.filter(
-        (view) => view.habit.dreamId === dream.id,
-      );
-      return {
-        count: `${views.length} ${views.length === 1 ? "habit" : "habits"}`,
-        icon: visuals.icon,
-        tint: visuals.tint,
-        title: dream.title,
-        habits: views.map((view, habitIndex) =>
-          toBoardHabit(view, habitIndex, visuals.tint),
-        ),
-        views,
-      };
-    })
-    .filter((group) => group.habits.length > 0);
+  const groups: (HabitGroup & { views: HabitWeekView[] })[] = useMemo(
+    () =>
+      dreams
+        .map((dream, index) => {
+          const visuals = GROUP_VISUAL_CYCLE[index % GROUP_VISUAL_CYCLE.length];
+          const views = habitViews.filter(
+            (view) => view.habit.dreamId === dream.id,
+          );
+          return {
+            count: `${views.length} ${views.length === 1 ? "habit" : "habits"}`,
+            icon: visuals.icon,
+            tint: visuals.tint,
+            title: dream.title,
+            habits: views.map((view, habitIndex) =>
+              toBoardHabit(view, habitIndex, visuals.tint),
+            ),
+            views,
+          };
+        })
+        .filter((group) => group.habits.length > 0),
+    [dreams, habitViews],
+  );
 
   function handleHabitPress(id: number) {
     setExpandedHabit((current) => (current === id ? null : id));
@@ -325,8 +287,9 @@ export default function HabitsScreen() {
   }
 
   // Sections ticked today, per habit — each section keeps its own check.
-  const checksByHabit = new Map(
-    habitViews.map((view) => [view.habit.id, view.todayDetailChecks]),
+  const checksByHabit = useMemo(
+    () => new Map(habitViews.map((view) => [view.habit.id, view.todayDetailChecks])),
+    [habitViews],
   );
 
   // Ticking "Make It Easy" or the bad-day version counts today as a small
@@ -457,13 +420,15 @@ export default function HabitsScreen() {
               </View>
               <IconButton
                 accessibilityLabel={`Edit ${view.habit.title}`}
-                icon={<PencilIcon />}
+                icon={
+                  <PencilIcon size={18} strokeWidth={1.7} variant="detailed" />
+                }
                 onPress={() => handleEdit(view.habit.id)}
                 size="sm"
               />
               <IconButton
                 accessibilityLabel={`Delete ${view.habit.title}`}
-                icon={<TrashIcon />}
+                icon={<TrashIcon size={18} />}
                 onPress={() => {
                   setManageOpen(false);
                   setDeleteTarget({
@@ -489,32 +454,13 @@ export default function HabitsScreen() {
         />
       </AppModal>
 
-      <AppModal
-        onClose={() => setDeleteTarget(null)}
+      <ConfirmDialog
+        body={`“${deleteTarget?.title}” and its history will be removed.`}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete this habit?"
         visible={deleteTarget !== null}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this habit?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{deleteTarget?.title}” and its history will be removed.
-        </AppText>
-        <View style={styles.habitActionsRow}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setDeleteTarget(null)}
-            style={styles.habitActionButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteConfirmed}
-            style={[styles.habitActionButton, styles.habitDeleteButton]}
-            textStyle={styles.habitDeleteLabel}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
+      />
     </ScreenScaffold>
   );
 }
@@ -563,26 +509,8 @@ const styles = StyleSheet.create({
   groups: {
     marginTop: spacing.md,
   },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
   emptyState: {
     paddingVertical: spacing.xl,
-  },
-  habitActionButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
-  habitActionsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  habitDeleteButton: {
-    borderColor: colors.danger,
-  },
-  habitDeleteLabel: {
-    color: colors.danger,
   },
   manageClose: {
     marginTop: spacing.lg,

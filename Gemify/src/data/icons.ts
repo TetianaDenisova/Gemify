@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from "react-native";
 
-import type { FocusIconKey, GoalIconKey } from "@/data/homeData";
+import type { GoalIconKey } from "@/data/homeTypes";
 
 const sparkIcon = require("./icons/goal_icon_spark.png");
 const lotusIcon = require("./icons/goal_icon_lotus.png");
@@ -10,10 +10,4 @@ export const goalIcons: Record<GoalIconKey, ImageSourcePropType> = {
   spark: sparkIcon,
   lotus: lotusIcon,
   mountains: mountainsIcon,
-};
-
-export const focusIcons: Record<FocusIconKey, ImageSourcePropType> = {
-  lotus: lotusIcon,
-  sunrise: sparkIcon,
-  heart: lotusIcon,
 };

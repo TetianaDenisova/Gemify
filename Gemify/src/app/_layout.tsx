@@ -1,11 +1,31 @@
 import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { initDatabase } from "@/db";
 import { colors } from "@/theme/colors";
+
+/**
+ * Stack screens drawing their own header via `ScreenHeader asStackHeader` on a
+ * transparent native header. `headerTitle: ""` keeps the native header from
+ * flashing the route filename underneath.
+ */
+const TRANSPARENT_HEADER_SCREENS = [
+  "journey-map",
+  "what-if-plan",
+  "create-goal",
+  "describe-dream",
+  "see-dream",
+  "state",
+] as const;
+
+const transparentHeaderOptions = {
+  headerShown: true,
+  headerTitle: "",
+  headerTransparent: true,
+} as const;
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -26,7 +46,7 @@ export default function RootLayout() {
   }, [pathname]);
 
   return (
-    <GestureHandlerRootView style={{ backgroundColor: colors.background, flex: 1 }}>
+    <GestureHandlerRootView style={styles.root}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -37,39 +57,19 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="journey-map"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="what-if-plan"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="create-goal"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="describe-dream"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="see-dream"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="state"
-          options={{ headerShown: true, headerTransparent: true }}
-        />
-        <Stack.Screen
-          name="create-habit"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="milestone-ideas"
-          options={{ headerShown: false }}
-        />
+        {TRANSPARENT_HEADER_SCREENS.map((name) => (
+          <Stack.Screen key={name} name={name} options={transparentHeaderOptions} />
+        ))}
+        <Stack.Screen name="create-habit" options={{ headerShown: false }} />
+        <Stack.Screen name="milestone-ideas" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+});

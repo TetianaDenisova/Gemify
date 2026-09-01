@@ -1,18 +1,11 @@
 const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
-const { assetExts, sourceExts } = config.resolver;
-
-config.transformer = {
-  ...config.transformer,
-  babelTransformerPath: require.resolve("react-native-svg-transformer/expo"),
-};
 
 config.resolver = {
   ...config.resolver,
   // "wasm" is required by expo-sqlite on web.
-  assetExts: [...assetExts.filter((extension) => extension !== "svg"), "wasm"],
-  sourceExts: [...sourceExts, "svg"],
+  assetExts: [...config.resolver.assetExts, "wasm"],
 };
 
 // expo-sqlite's web worker needs SharedArrayBuffer, which browsers only

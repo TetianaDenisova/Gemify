@@ -1,56 +1,42 @@
-# Welcome to your Expo app 👋
+# Gemify
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A goal-achievement app that frames every goal as a **journey**: you name a dream, map it into milestones on a zoomable journey map, break milestones into quests and habits, plan them into your week, and collect memories as evidence that the future is becoming real.
+
+Built with [Expo](https://expo.dev) (SDK 56), `expo-router`, `react-native-svg`, Reanimated, and a local `expo-sqlite` database (no backend).
 
 ## Get started
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
 ```bash
-npm run reset-project
+npm install
+npm start          # Expo dev server (menu for iOS / Android / web)
+npm run android    # Android emulator
+npm run ios        # iOS simulator
+npm run web        # browser
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Quality checks:
 
-### Other setup steps
+```bash
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Project layout
 
-## Learn more
+| Path | What lives there |
+|---|---|
+| `src/app/` | Screens (expo-router file-based routing; `(tabs)/` is the tab bar) |
+| `src/screens/` | `JourneyMapScreen` (the zoomable journey map) |
+| `src/components/` | Feature components |
+| `src/shared/components/` | App-wide UI primitives (`AppText`, `Card`, `ScreenScaffold`, icons, …) |
+| `src/db/` | SQLite persistence: migrations, repositories, JSON backup |
+| `src/hooks/` | Focus-refreshing data hooks |
+| `src/theme/` | Design tokens (dark, gold-accented) |
+| `src/data/` | Static content, type contracts, image maps |
+| `assets/` | Art, icons, backgrounds |
 
-To learn more about developing your project with Expo, look at the following resources:
+See `CLAUDE.md` for architecture details and conventions.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Builds
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+EAS is configured (`eas.json`); the demo variant is selected with `APP_VARIANT=demo` (see `app.config.js`).

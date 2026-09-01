@@ -8,7 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 import {
   HabitBoardRow,
@@ -18,8 +18,6 @@ import {
 import {
   AcceptQuestModal,
   ActionSheet,
-  CalendarIcon,
-  PencilIcon,
   QuestActionSheet,
   SheetActionRow,
   TextPromptModal,
@@ -43,13 +41,18 @@ import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
   AppModal,
+  ConfirmDialog,
   AppText,
   BackIcon,
   BulbIcon,
+  CalendarIcon,
   Card,
   CheckIcon,
   Checkbox,
   CloseIcon,
+  DotsIcon,
+  ImageIcon,
+  PencilIcon,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -182,48 +185,6 @@ function QuestSparkIcon({
   }
 }
 
-function MemoryGlyph({
-  color = colors.textOnPrimary,
-  size = 22,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={16}
-        rx={2.6}
-        stroke={color}
-        strokeWidth={1.6}
-        width={18}
-        x={3}
-        y={4}
-      />
-      <Circle cx={8.4} cy={9} fill="none" r={1.7} stroke={color} strokeWidth={1.6} />
-      <Path
-        d="m5.5 17 4.6-4.8 3.2 3.2 2.8-2.6 2.9 4.2"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
-
-function DotsIcon({ color = colors.textSecondary }: { color?: string }) {
-  return (
-    <Svg height={iconSizes.md} viewBox="0 0 24 24" width={iconSizes.md}>
-      {[6, 12, 18].map((cy) => (
-        <Circle cx={12} cy={cy} fill={color} key={cy} r={1.7} />
-      ))}
-    </Svg>
-  );
-}
-
 function MilestoneProgressBar({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
 
@@ -267,29 +228,33 @@ function QuestRow({
 
   return (
     <Card style={[styles.questCard, compact && styles.questCardCompact]}>
-      <Pressable
-        accessibilityLabel={`Options for the quest ${quest.title}`}
-        accessibilityRole="button"
-        onPress={onOpenMenu}
-        style={({ pressed: isPressed }) => [
-          styles.questRow,
-          isPressed && pressed,
-        ]}
-      >
-        <QuestSparkIcon color={colors.primary} variant={iconVariant} />
-        <View style={styles.questCopy}>
-          <AppText numberOfLines={2} variant="cardTitle">
-            {quest.title}
-          </AppText>
-          {isAccepted ? (
-            <View style={styles.questScheduleRow}>
-              <CalendarIcon color={colors.primary} size={iconSizes.sm} />
-              <AppText color={colors.primary} variant="labelStrong">
-                {scheduleLabel(quest)}
-              </AppText>
-            </View>
-          ) : null}
-        </View>
+      {/* The trailing control is a sibling of the row pressable, not a child —
+          nested <button> elements are invalid HTML on web. */}
+      <View style={styles.questRow}>
+        <Pressable
+          accessibilityLabel={`Options for the quest ${quest.title}`}
+          accessibilityRole="button"
+          onPress={onOpenMenu}
+          style={({ pressed: isPressed }) => [
+            styles.questRowBody,
+            isPressed && pressed,
+          ]}
+        >
+          <QuestSparkIcon color={colors.primary} variant={iconVariant} />
+          <View style={styles.questCopy}>
+            <AppText numberOfLines={2} variant="cardTitle">
+              {quest.title}
+            </AppText>
+            {isAccepted ? (
+              <View style={styles.questScheduleRow}>
+                <CalendarIcon color={colors.primary} size={iconSizes.sm} />
+                <AppText color={colors.primary} variant="labelStrong">
+                  {scheduleLabel(quest)}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+        </Pressable>
         {quest.isDone ? (
           <Pressable
             accessibilityLabel="Mark the quest as not done"
@@ -331,7 +296,7 @@ function QuestRow({
             </AppText>
           </Pressable>
         )}
-      </Pressable>
+      </View>
     </Card>
   );
 }
@@ -415,7 +380,13 @@ function HabitActionSheet({
 }) {
   return (
     <ActionSheet onClose={onClose} title={habit?.title} visible={habit !== null}>
-      <SheetActionRow icon={<PencilIcon />} label="Edit" onPress={onEdit} />
+      <SheetActionRow
+        icon={
+          <PencilIcon size={iconSizes.lg} strokeWidth={1.7} variant="detailed" />
+        }
+        label="Edit"
+        onPress={onEdit}
+      />
       <SheetActionRow
         icon={<CloseIcon color={colors.textSecondary} size={iconSizes.lg} />}
         label="Cancel"
@@ -834,7 +805,7 @@ export default function MilestoneQuestsScreen() {
                     isPressed && pressed,
                   ]}
                 >
-                  <DotsIcon />
+                  <DotsIcon color={colors.textSecondary} size={iconSizes.md} />
                 </Pressable>
               }
             />
@@ -894,32 +865,13 @@ export default function MilestoneQuestsScreen() {
         />
       ) : null}
 
-      <AppModal
-        onClose={() => setQuestDeleteTarget(null)}
+      <ConfirmDialog
+        body={`“${questDeleteTarget?.title}” will be removed.`}
+        onCancel={() => setQuestDeleteTarget(null)}
+        onConfirm={handleDeleteQuestConfirmed}
+        title="Delete this quest?"
         visible={questDeleteTarget !== null}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this quest?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{questDeleteTarget?.title}” will be removed.
-        </AppText>
-        <View style={styles.promptActions}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setQuestDeleteTarget(null)}
-            style={styles.promptButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteQuestConfirmed}
-            style={[styles.promptButton, styles.habitDeleteButton]}
-            textStyle={styles.habitDeleteLabel}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
+      />
 
       <AppModal
         onClose={() => setCelebrationVisible(false)}
@@ -949,7 +901,7 @@ export default function MilestoneQuestsScreen() {
           Take a moment to capture what changed.
         </AppText>
         <AppButton
-          icon={<MemoryGlyph />}
+          icon={<ImageIcon color={colors.textOnPrimary} />}
           iconPosition="before"
           label="Add a Memory"
           onPress={handleAddMemory}
@@ -1040,9 +992,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     minHeight: controls.button.section.height,
   },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
   emptyCard: {
     marginBottom: spacing.md,
     paddingVertical: spacing.lg,
@@ -1062,12 +1011,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     paddingHorizontal: 10,
     paddingTop: 14,
-  },
-  habitDeleteButton: {
-    borderColor: colors.danger,
-  },
-  habitDeleteLabel: {
-    color: colors.danger,
   },
   header: {
     marginBottom: spacing.md,
@@ -1148,15 +1091,6 @@ const styles = StyleSheet.create({
   progressValue: {
     minWidth: 44,
   },
-  promptActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  promptButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
   questCard: {
     borderColor: "rgba(246, 232, 200, 0.18)",
     marginBottom: spacing.md,
@@ -1176,6 +1110,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.lg,
+  },
+  questRowBody: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    minWidth: 0,
   },
   questScheduleRow: {
     alignItems: "center",

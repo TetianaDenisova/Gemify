@@ -3,13 +3,14 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 import {
   AppButton,
   AppText,
   ArrowRightIcon,
   HintRow,
+  ImageIcon,
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
@@ -18,32 +19,6 @@ import { pressed, radius, shadowStyle, spacing } from "@/theme/theme";
 
 /** Same night-sky art as the describe-dream step, for a continuous flow. */
 const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
-
-function ImageGlyph({ color = colors.textSecondary, size = 96 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={16}
-        rx={2.6}
-        stroke={color}
-        strokeWidth={1.3}
-        width={18}
-        x={3}
-        y={4}
-      />
-      <Circle cx={8.4} cy={9} fill="none" r={1.7} stroke={color} strokeWidth={1.3} />
-      <Path
-        d="m5.5 17 4.6-4.8 3.2 3.2 2.8-2.6 2.9 4.2"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.3}
-      />
-    </Svg>
-  );
-}
 
 function GalleryGlyph({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (
@@ -156,7 +131,11 @@ export default function SeeDreamScreen() {
             <Image contentFit="cover" source={{ uri: photoUri }} style={styles.photo} />
           ) : (
             <View style={styles.photoPlaceholder}>
-              <ImageGlyph />
+              <ImageIcon
+                color={colors.textSecondary}
+                size={96}
+                strokeWidth={1.3}
+              />
               <AppText align="center" variant="cardTitle">
                 Add a photo
               </AppText>

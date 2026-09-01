@@ -1,28 +1,18 @@
-export { getDatabase, initDatabase, resetDatabaseForDev } from "./database";
+export { getDatabase, initDatabase } from "./database";
 
 // Backup (export / import the whole database as one JSON file)
 export { exportBackup, pickAndImportBackup } from "./backup";
 export type { ImportSummary } from "./backup";
-
-// Settings
-export {
-  SETTING_KEYS,
-  deleteSetting,
-  getSetting,
-  setSetting,
-} from "./settingsRepository";
 
 // Dreams & feeling states
 export {
   createDream,
   deleteDream,
   getDreamById,
-  getDreamFeelingStates,
   getDreams,
   getDreamSummaries,
   getFeelingStates,
   getWeekAscent,
-  setDreamFeelingStates,
   updateDream,
 } from "./dreamsRepository";
 export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";
@@ -43,7 +33,6 @@ export {
   approveIdea,
   createIdea,
   createQuest,
-  deleteIdea,
   deleteQuest,
   getIdeas,
   getQuestById,
@@ -82,10 +71,7 @@ export {
   createTimeBlock,
   deleteTimeBlock,
   getCurrentBlockKey,
-  getDayProgress,
   getTimeBlocks,
-  getTimeBlocksForDate,
-  setActionDone,
   updateTimeBlock,
 } from "./timeBlocksRepository";
 export type { NewTimeBlock, TimeBlockPatch } from "./timeBlocksRepository";
@@ -94,7 +80,6 @@ export type { NewTimeBlock, TimeBlockPatch } from "./timeBlocksRepository";
 export {
   createRisk,
   deleteRisk,
-  getRiskById,
   getRisks,
   setRiskActions,
   updateRisk,
@@ -133,9 +118,8 @@ export type {
   QuestWithBreadcrumb,
   Risk,
   RiskAction,
-  TimeBlockActionRecord,
+  TimeBlockIcon,
   TimeBlockRecord,
-  TimeBlockWithActions,
   TimelineMoment,
   TimelineMomentPatch,
 } from "./types";

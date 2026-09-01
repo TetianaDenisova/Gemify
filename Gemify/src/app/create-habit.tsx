@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
@@ -23,7 +23,7 @@ import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
   AppInput,
-  AppModal,
+  ConfirmDialog,
   AppText,
   Card,
   ChevronIcon,
@@ -33,6 +33,8 @@ import {
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
+  StepIcon,
+  type StepIconName,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { gradients, radius, shadowStyle, spacing } from "@/theme/theme";
@@ -40,21 +42,11 @@ import { gradients, radius, shadowStyle, spacing } from "@/theme/theme";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 /** Feature-art tints for the step medallions (no violet-border tokens). */
-const ICON_HIGHLIGHT = "#F1B3FF";
 const ICON_RING_BORDER = "rgba(216, 138, 255, 0.74)";
 const ICON_RING_INNER = "rgba(216, 138, 255, 0.68)";
 const ICON_RING_FILL = "rgba(32, 13, 54, 0.8)";
 
 type Day = (typeof DAYS)[number];
-
-type StepIconName =
-  | "calendar"
-  | "chat"
-  | "clock"
-  | "feather"
-  | "leaf"
-  | "shield"
-  | "sprout";
 
 type FormStep = {
   helper?: string;
@@ -113,152 +105,6 @@ function HeaderOrnament() {
       </Svg>
       <View style={styles.ornamentLine} />
     </View>
-  );
-}
-
-function Icon({ name, size = 31 }: { name: StepIconName; size?: number }) {
-  if (name === "chat") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M9 22c0-8 7-14 16-14s16 6 16 14-7 14-16 14c-2 0-4-.3-5.8-.9L10 40l3-8.1A13 13 0 0 1 9 22Z"
-          fill="none"
-          stroke={colors.accentViolet}
-          strokeLinejoin="round"
-          strokeWidth={2.6}
-        />
-        {[19, 25, 31].map((cx) => (
-          <Circle cx={cx} cy={22} fill={ICON_HIGHLIGHT} key={cx} r={1.9} />
-        ))}
-      </Svg>
-    );
-  }
-
-  if (name === "calendar") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Rect
-          fill="none"
-          height={29}
-          rx={4}
-          stroke={colors.accentViolet}
-          strokeWidth={2.5}
-          width={32}
-          x={8}
-          y={11}
-        />
-        <Path
-          d="M16 7v8M32 7v8M8 19h32M18 28h.01M24 28h.01M30 28h.01M18 34h.01M24 34h.01"
-          fill="none"
-          stroke={ICON_HIGHLIGHT}
-          strokeLinecap="round"
-          strokeWidth={2.5}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "clock") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Circle
-          cx={24}
-          cy={24}
-          fill="none"
-          r={15.5}
-          stroke={colors.accentViolet}
-          strokeWidth={2.6}
-        />
-        <Path
-          d="M24 14v10.5l7 5"
-          fill="none"
-          stroke={ICON_HIGHLIGHT}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2.6}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "shield") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M24 5 39 11v11c0 10-6 17-15 21C15 39 9 32 9 22V11l15-6Z"
-          fill="none"
-          stroke={colors.accentViolet}
-          strokeLinejoin="round"
-          strokeWidth={2.7}
-        />
-        <Path
-          d="m19 24 3.4 3.4L30 20"
-          fill="none"
-          stroke={ICON_HIGHLIGHT}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2.7}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "sprout") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M24 39V24M24 25c-9-1-14-7-14-15 9 0 14 6 14 15ZM24 27c10-2 15-9 15-18-10 1-15 8-15 18Z"
-          fill="none"
-          stroke={colors.accentViolet}
-          strokeLinejoin="round"
-          strokeWidth={2.7}
-        />
-        <Path
-          d="M17 39h14"
-          fill="none"
-          stroke={ICON_HIGHLIGHT}
-          strokeLinecap="round"
-          strokeWidth={2.7}
-        />
-      </Svg>
-    );
-  }
-
-  if (name === "leaf") {
-    return (
-      <Svg height={size} viewBox="0 0 48 48" width={size}>
-        <Path
-          d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
-          fill="none"
-          stroke={colors.accentViolet}
-          strokeLinejoin="round"
-          strokeWidth={2.7}
-        />
-        <Path
-          d="M14 34c7-8 13-13 21-18M18 30l-2 10"
-          fill="none"
-          stroke={ICON_HIGHLIGHT}
-          strokeLinecap="round"
-          strokeWidth={2.5}
-        />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg height={size} viewBox="0 0 48 48" width={size}>
-      <Path
-        d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
-        fill={colors.accentViolet}
-      />
-      <Path
-        d="M14 34c7-8 13-13 21-18M18 30l-2 10"
-        fill="none"
-        stroke="#32143D"
-        strokeLinecap="round"
-        strokeWidth={2.4}
-      />
-    </Svg>
   );
 }
 
@@ -328,11 +174,11 @@ function DropdownField({
   );
 }
 
-function StepIcon({ name }: { name: StepIconName }) {
+function StepIconMedallion({ name }: { name: StepIconName }) {
   return (
     <View style={styles.stepIcon}>
       <View style={[styles.stepIconRing, { pointerEvents: "none" }]} />
-      <Icon name={name} />
+      <StepIcon name={name} />
     </View>
   );
 }
@@ -550,7 +396,7 @@ export default function CreateHabitScreen() {
   function renderTextStep(step: FormStep) {
     return (
       <View key={step.title} style={styles.formRow}>
-        <StepIcon name={step.icon} />
+        <StepIconMedallion name={step.icon} />
         <View style={styles.formMain}>
           <AppInput
             accessibilityLabel={step.title}
@@ -594,7 +440,7 @@ export default function CreateHabitScreen() {
         {renderTextStep(textSteps[1])}
 
         <View style={styles.formRow}>
-          <StepIcon name="leaf" />
+          <StepIconMedallion name="leaf" />
           <View style={styles.formMain}>
             <AppText
               color={colors.primary}
@@ -624,7 +470,7 @@ export default function CreateHabitScreen() {
         </View>
 
         <View style={styles.formRow}>
-          <StepIcon name="calendar" />
+          <StepIconMedallion name="calendar" />
           <View style={styles.formMain}>
             <AppText
               color={colors.primary}
@@ -651,7 +497,7 @@ export default function CreateHabitScreen() {
         </View>
 
         <View style={styles.formRow}>
-          <StepIcon name="clock" />
+          <StepIconMedallion name="clock" />
           <View style={styles.formMain}>
             <AppText
               color={colors.primary}
@@ -721,50 +567,18 @@ export default function CreateHabitScreen() {
         />
       ) : null}
 
-      <AppModal
-        onClose={() => setDeleteConfirmOpen(false)}
+      <ConfirmDialog
+        body={`“${values.habitName || "This habit"}” and its progress will be removed.`}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete this habit?"
         visible={deleteConfirmOpen}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this habit?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{values.habitName || "This habit"}” and its progress will be
-          removed.
-        </AppText>
-        <View style={styles.confirmActions}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setDeleteConfirmOpen(false)}
-            style={styles.confirmButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteConfirmed}
-            style={[styles.confirmButton, styles.deleteButton]}
-            textStyle={styles.deleteLabel}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
+      />
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  confirmActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
-  confirmButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
   continueButton: {
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,

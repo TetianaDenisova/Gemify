@@ -1,12 +1,12 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
-import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeData";
+import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
@@ -121,11 +121,12 @@ const GOAL_VISUALS: readonly {
     { themeColor: "purple", imageKey: "dream_bg_4", iconKey: "spark" },
     { themeColor: "gold", imageKey: "dream_bg_10", iconKey: "lotus" },
     { themeColor: "purple", imageKey: "dream_bg_1", iconKey: "mountains" },
-    { themeColor: "gold", imageKey: "dream_bg_6", iconKey: "spark" },
 ];
 
-function toGoal(dream: DreamSummary, index: number): Goal {
-  const visuals = GOAL_VISUALS[index % GOAL_VISUALS.length];
+function toGoal(dream: DreamSummary): Goal {
+  // Keyed by the dream's id (not its list position) so a dream keeps its art
+  // when other dreams are added or archived.
+  const visuals = GOAL_VISUALS[dream.id % GOAL_VISUALS.length];
   return {
     id: String(dream.id),
     title: dream.title,
@@ -154,86 +155,109 @@ export default function HomeScreen() {
     }, [today]),
   );
 
-  // Current focus = the sprint quests scheduled into the time block that
-  // matches the clock right now, plus today's Anytime (flexible) quests and
-  // today's habits — always shown, ordered after the timed quests.
-  const focusKey = currentBlockKey(blocks, new Date());
-  const focusBlock =
-    blocks.find((block) => block.key === focusKey) ?? blocks[0];
-  const flexibleBlock = blocks.find((block) => block.time === "Flexible");
+  // The whole focus/next-block derivation is pure computation over the loaded
+  // data — memoized so it doesn't re-run (with fresh Dates and array churn)
+  // on every unrelated re-render.
+  const {
+    allDone,
+    currentBlock,
+    gainedPercent,
+    hasFocus,
+    nextBlock,
+    showCelebration,
+  } = useMemo(() => {
+    const now = new Date();
 
-  // Monday-first index of today, matching the habit week arrays.
-  const habitDayIndex = (new Date().getDay() + 6) % 7;
-  const habitActions = habitViews
-    .filter(
-      (view) =>
-        view.scheduleDays.length === 0 ||
-        view.scheduleDays.includes(habitDayIndex),
-    )
-    .map((view) => ({
-      done: view.weekProgress[habitDayIndex] === "done",
-      habitId: view.habit.id,
-      icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
-      // The dream this habit supports — habit rows show it where quest rows
-      // show their dream › milestone breadcrumb.
-      subtitle:
-        dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
-      title: view.habit.title,
-    }));
+    // Current focus = the sprint quests scheduled into the time block that
+    // matches the clock right now, plus today's Anytime (flexible) quests and
+    // today's habits — always shown, ordered after the timed quests.
+    const focusKey = currentBlockKey(blocks, now);
+    const focusBlock =
+      blocks.find((block) => block.key === focusKey) ?? blocks[0];
+    const flexibleBlock = blocks.find((block) => block.time === "Flexible");
 
-  const questActions = focusBlock
-    ? flexibleBlock && flexibleBlock.key !== focusBlock.key
-      ? [...focusBlock.actions, ...flexibleBlock.actions]
-      : focusBlock.actions
-    : [];
-  // Checked-off actions leave the focus list.
-  const focusActions = [...questActions, ...habitActions].filter(
-    (action) => !action.done,
-  );
-  const currentBlock = focusBlock
-    ? { ...focusBlock, actions: focusActions }
-    : focusBlock;
+    // Monday-first index of today, matching the habit week arrays.
+    const habitDayIndex = (now.getDay() + 6) % 7;
+    const habitActions = habitViews
+      .filter(
+        (view) =>
+          view.scheduleDays.length === 0 ||
+          view.scheduleDays.includes(habitDayIndex),
+      )
+      .map((view) => ({
+        done: view.weekProgress[habitDayIndex] === "done",
+        habitId: view.habit.id,
+        icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
+        // The dream this habit supports — habit rows show it where quest rows
+        // show their dream › milestone breadcrumb.
+        subtitle:
+          dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
+        title: view.habit.title,
+      }));
 
-  const hasFocus = currentBlock !== undefined && currentBlock.actions.length > 0;
+    const questActions = focusBlock
+      ? flexibleBlock && flexibleBlock.key !== focusBlock.key
+        ? [...focusBlock.actions, ...flexibleBlock.actions]
+        : focusBlock.actions
+      : [];
+    // Checked-off actions leave the focus list.
+    const focusActions = [...questActions, ...habitActions].filter(
+      (action) => !action.done,
+    );
+    const currentBlock = focusBlock
+      ? { ...focusBlock, actions: focusActions }
+      : focusBlock;
 
-  // Everything planned for today (all time blocks' quests + today's habits)
-  // is checked off — celebrate instead of nudging to plan.
-  const habitsDone = habitActions.filter((action) => action.done).length;
-  const plannedTotal = totalQuests + habitActions.length;
-  const plannedDone = completedQuests + habitsDone;
-  const allDone = plannedTotal > 0 && plannedDone === plannedTotal;
+    const hasFocus =
+      currentBlock !== undefined && currentBlock.actions.length > 0;
 
-  // The current focus is clear and something got done — celebrate "so far",
-  // with the dream % today's completed quests earned across all blocks.
-  const showCelebration = !hasFocus && plannedDone > 0;
-  const gainedPercent = blocks.reduce(
-    (sum, block) =>
-      sum +
-      block.actions.reduce(
-        (acc, action) => acc + (action.done ? action.progressPercent : 0),
-        0,
-      ),
-    0,
-  );
+    // Everything planned for today (all time blocks' quests + today's habits)
+    // is checked off — celebrate instead of nudging to plan.
+    const habitsDone = habitActions.filter((action) => action.done).length;
+    const plannedTotal = totalQuests + habitActions.length;
+    const plannedDone = completedQuests + habitsDone;
+    const allDone = plannedTotal > 0 && plannedDone === plannedTotal;
 
-  // Current block clear but open quests remain elsewhere today: surface the
-  // block that goes next (the nearest upcoming one, else earlier leftovers).
-  const now = new Date();
-  const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
-  const openBlocks = blocks
-    .filter((block) => block.actions.some((action) => !action.done))
-    .map((block) => ({
-      ...block,
-      actions: block.actions.filter((action) => !action.done),
-    }));
-  const nextBlock =
-    !hasFocus && !allDone
-      ? (openBlocks
+    // The current focus is clear and something got done — celebrate "so far",
+    // with the dream % today's completed quests earned across all blocks.
+    const showCelebration = !hasFocus && plannedDone > 0;
+    const gainedPercent = blocks.reduce(
+      (sum, block) =>
+        sum +
+        block.actions.reduce(
+          (acc, action) => acc + (action.done ? action.progressPercent : 0),
+          0,
+        ),
+      0,
+    );
+
+    // Current block clear but open quests remain elsewhere today: surface the
+    // block that goes next (the nearest upcoming one, else earlier leftovers).
+    const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
+    const openBlocks = blocks
+      .filter((block) => block.actions.some((action) => !action.done))
+      .map((block) => ({
+        ...block,
+        actions: block.actions.filter((action) => !action.done),
+      }));
+    const nextBlock =
+      !hasFocus && !allDone
+        ? (openBlocks
           .filter((block) => block.time !== "Flexible" && block.time > clock)
           .sort((a, b) => (a.time < b.time ? -1 : 1))[0] ?? openBlocks[0])
-      : undefined;
+        : undefined;
+
+    return {
+      allDone,
+      currentBlock,
+      gainedPercent,
+      hasFocus,
+      nextBlock,
+      showCelebration,
+    };
+  }, [blocks, habitViews, dreams, completedQuests, totalQuests]);
 
   return (
     <ScreenScaffold tabClearance topInset>
@@ -250,9 +274,9 @@ export default function HomeScreen() {
         variant="eyebrow"
       />
 
-      {dreams.map((dream, index) => (
+      {dreams.map((dream) => (
         <GoalCard
-          goal={toGoal(dream, index)}
+          goal={toGoal(dream)}
           key={dream.id}
           onPress={() =>
             router.push({
@@ -468,7 +492,7 @@ export default function HomeScreen() {
         <NextMoveCard
           buttonLabel="Plan my week"
           message={"A few focused steps can move\nyour dreams forward."}
-          onPress={() => router.push("/sprint")}
+                  onPress={() => router.navigate("/sprint")}
         />
       )}
         </>

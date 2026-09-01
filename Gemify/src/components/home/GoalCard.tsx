@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import type { Goal, ThemeColor } from "@/data/homeData";
+import type { Goal, ThemeColor } from "@/data/homeTypes";
 import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
 import { AppText, ProgressRing } from "@/shared/components";
@@ -35,23 +35,23 @@ const ART_ASPECT_RATIO = 2.4;
 const ART_BACKING = "#01030E";
 
 /**
- * Fixed right-hand column reserved for the progress ring. The artwork
- * container ends before it, so the ring always sits on clean card backing
- * regardless of screen width — never on top of the art.
+ * Fixed right-hand column reserved for the progress ring; it sizes the scrim
+ * below so the ring area darkens just enough for the percentage to read.
  */
 const RING_SIZE = 50;
 const RING_EDGE_GAP = spacing.md;
 const ART_RING_GAP = 14;
-const ART_RIGHT_INSET = RING_SIZE + RING_EDGE_GAP + ART_RING_GAP;
+const RING_COLUMN_WIDTH = RING_SIZE + RING_EDGE_GAP + ART_RING_GAP;
 
 /**
- * Fades the artwork's right edge into the card backing so the seam with the
- * progress column is invisible and the percentage stays readable.
+ * Soft scrim under the progress column. The art runs edge to edge, so this
+ * only dims the ring area for readability — it must never go opaque, or it
+ * swallows the glowing subject that sits on the art's right side.
  */
 const SEAM_SHADE = [
   "rgba(1, 3, 14, 0)",
-  "rgba(1, 3, 14, 0.85)",
-  ART_BACKING,
+  "rgba(1, 3, 14, 0.32)",
+  "rgba(1, 3, 14, 0.7)",
 ] as const;
 
 const absoluteFill = {
@@ -80,8 +80,8 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
     >
       {/* Always the preset art for the goal's slot — the user's dream photo
-          stays on the journey map, not the home list. The container clips the
-          art before the progress column so the ring never covers it. */}
+          stays on the journey map, not the home list. The art bleeds to the
+          card's right edge; the seam scrim keeps the ring readable over it. */}
       <View style={styles.artContainer}>
         <Image
           source={goalImages[goal.imageKey]}
@@ -92,14 +92,14 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       </View>
 
       <LinearGradient
-        colors={[...GOAL_SHADE]}
+        colors={GOAL_SHADE}
         end={{ x: 1, y: 0.5 }}
         start={{ x: 0, y: 0.5 }}
         style={styles.shade}
       />
 
       <LinearGradient
-        colors={[...SEAM_SHADE]}
+        colors={SEAM_SHADE}
         end={{ x: 1, y: 0.5 }}
         start={{ x: 0, y: 0.5 }}
         style={styles.seamShade}
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     left: 0,
     overflow: "hidden",
     position: "absolute",
-    right: ART_RIGHT_INSET,
+    right: 0,
     top: 0,
     zIndex: 0,
   },
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    width: ART_RIGHT_INSET + 56,
+    width: RING_COLUMN_WIDTH + 56,
     zIndex: 2,
   },
 

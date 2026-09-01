@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { type QuestWithBreadcrumb } from "@/db";
@@ -71,7 +71,8 @@ export function QuestPickerSheet({
   const [collapsedDreams, setCollapsedDreams] = useState<Set<string>>(
     () => new Set(),
   );
-  const groups = groupQuests(quests);
+  // Regrouping is O(n²) — don't redo it on collapse/expand toggles.
+  const groups = useMemo(() => groupQuests(quests), [quests]);
 
   const toggleDream = (dreamTitle: string) => {
     setCollapsedDreams((current) => {

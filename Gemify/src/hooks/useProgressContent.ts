@@ -16,6 +16,7 @@ import {
   type Dream,
   type Milestone,
   type Quest,
+  type TimelineMoment,
 } from "@/db";
 import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
 
@@ -266,15 +267,7 @@ function buildForecast(quests: Quest[]): ProgressContent["forecast"] {
 }
 
 function toProgressMoment(
-  moment: {
-    description: string | null;
-    iconKey: string | null;
-    id: number;
-    isLocked: boolean;
-    label: string;
-    occurredOn: string;
-    photoUris: string[];
-  },
+  moment: Omit<TimelineMoment, "dreamId">,
   index: number,
 ): ProgressTimelineMoment {
   const iconKey = TIMELINE_ICONS.includes(moment.iconKey as TimelineIconKey)
@@ -354,11 +347,17 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
     }, [refresh]),
   );
 
+  // `milestones` only feeds the weight table — isolate it so a milestone-array
+  // identity change doesn't rebuild the whole content object below.
+  const weights = useMemo(
+    () => questWeights(milestones, quests),
+    [milestones, quests],
+  );
+
   const content = useMemo<ProgressContent>(() => {
     const week = weekBuckets();
     const month = monthBuckets();
     const sixMonths = sixMonthBuckets();
-    const weights = questWeights(milestones, quests);
 
     return {
       title: "Progress",
@@ -410,7 +409,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       overallLabel: "Overall Goal Progress",
       hasChartData: quests.some((quest) => quest.isDone),
     };
-  }, [dreams, milestones, moments, quests]);
+  }, [dreams, moments, quests, weights]);
 
   return { content, dreamId, loading, refresh };
 }

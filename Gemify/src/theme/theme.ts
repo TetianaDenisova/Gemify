@@ -23,6 +23,10 @@ export const spacing = {
 export const layout = {
   /** Below this window width screens switch to their compact layout. */
   compactBreakpoint: 560,
+  /** Min-height of the ScreenHeader row; also the top offset under a transparent stack header. */
+  headerHeight: 68,
+  /** Below this window height (or in landscape) screens tighten vertical spacing. */
+  shortScreenBreakpoint: 760,
   /** Max readable width for screen content on tablets/web. */
   contentMaxWidth: 820,
   /** Horizontal screen padding (collapses to spacing.md when compact). */
@@ -42,14 +46,8 @@ const fantasySerif = Platform.select({
   web: "Georgia, 'Times New Roman', serif",
 });
 
-const systemSans = Platform.select({
-  default: undefined,
-  web: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-});
-
 export const fonts = {
   serif: fantasySerif,
-  sans: systemSans,
 } as const;
 
 export const fontSizes = {
@@ -64,7 +62,6 @@ export const fontSizes = {
   cardTitle: 30,
   screenTitle: 36,
   stat: 44,
-  display: 56,
 } as const;
 
 export const lineHeights = {
@@ -79,26 +76,16 @@ export const lineHeights = {
   cardTitle: 36,
   screenTitle: 42,
   stat: 52,
-  display: 66,
 } as const;
 
 /** Shared icon sizes — use these for SVG/text glyphs instead of ad-hoc numbers. */
 export const iconSizes = {
-  xs: 14,
   sm: 18,
   md: 22,
   lg: 28,
-  xl: 34,
 } as const;
 
 export const typography = {
-  display: {
-    color: colors.textPrimary,
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.display,
-    fontWeight: "500",
-    lineHeight: lineHeights.display,
-  } satisfies TextStyle,
   screenTitle: {
     color: colors.textPrimary,
     fontFamily: fonts.serif,
@@ -277,39 +264,11 @@ export const controls = {
       minWidth: 176,
       paddingHorizontal: 22,
     },
-    hero: {
-      borderRadius: radius.sm,
-      height: 88,
-      paddingHorizontal: 48,
-    },
-  },
-  chip: {
-    day: {
-      borderRadius: 40,
-      height: 80,
-      width: 80,
-    },
-    time: {
-      borderRadius: radius.lg,
-      height: 64,
-      minWidth: 160,
-      paddingHorizontal: 18,
-    },
-  },
-  field: {
-    height: 76,
-    borderRadius: radius.sm,
-    paddingHorizontal: 24,
   },
   iconButton: {
     sm: 48,
     md: 56,
     lg: 68,
-  },
-  iconFrame: {
-    sm: 88,
-    md: 96,
-    lg: 100,
   },
   row: {
     option: 74,
@@ -340,7 +299,7 @@ export const pressed = {
 } satisfies ViewStyle;
 
 /** `color` at `opacity`, as an rgba() string (accepts #rgb, #rrggbb, rgb/rgba). */
-function withOpacity(color: string, opacity: number): string {
+export function withOpacity(color: string, opacity: number): string {
   const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
   if (hex) {
     const full =
@@ -417,11 +376,14 @@ export const shadows = {
   }),
 } as const;
 
-export const gradients = {
+/** Gradient color stops, typed as tuples so expo-linear-gradient accepts them directly. */
+export const gradients: {
+  background: readonly [string, string, ...string[]];
+  cta: readonly [string, string, ...string[]];
+  shimmer: readonly [string, string, ...string[]];
+} = {
   background: [colors.background, colors.backgroundSoft, colors.secondaryDark],
-  primary: [colors.primary, colors.primarySoft, colors.primaryDark],
   cta: [colors.primaryBright, colors.primary, colors.primarySoft],
-  surface: [colors.surface, colors.backgroundSoft],
   shimmer: [
     colors.transparent,
     colors.overlayLight,
@@ -429,22 +391,3 @@ export const gradients = {
     colors.transparent,
   ],
 } as const;
-
-export const theme = {
-  colors,
-  controls,
-  fonts,
-  fontSizes,
-  gradients,
-  iconSizes,
-  inputFocusReset,
-  layout,
-  lineHeights,
-  pressed,
-  radius,
-  shadows,
-  spacing,
-  typography,
-} as const;
-
-export type AppTheme = typeof theme;

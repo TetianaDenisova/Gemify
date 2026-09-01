@@ -1,4 +1,6 @@
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { memo, useMemo } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { JourneyMilestoneLabel } from "@/components/JourneyMilestoneLabel";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
@@ -16,18 +18,12 @@ export type JourneyMilestonePosition = {
   y: number;
 };
 
-export type JourneyMilestoneLayout = {
+type JourneyMilestoneLayout = {
   groupHeight: number;
   groupWidth: number;
-  labelHeight: number;
   left: number;
-  ringCenterX: number;
-  ringCenterY: number;
   ringHeight: number;
   ringWidth: number;
-  titleFontSize: number;
-  titleLineHeight: number;
-  titleWidth: number;
   top: number;
 };
 
@@ -43,7 +39,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function getJourneyMilestoneLayout(
+function getJourneyMilestoneLayout(
   imageHeight: number,
   imageWidth: number,
   milestone: JourneyMilestoneData,
@@ -79,20 +75,19 @@ export function getJourneyMilestoneLayout(
   return {
     groupHeight,
     groupWidth,
-    labelHeight: 0,
     left,
-    ringCenterX: left + groupWidth / 2,
-    ringCenterY: top + ringHeight / 2,
     ringHeight,
     ringWidth,
-    titleFontSize: 0,
-    titleLineHeight: 0,
-    titleWidth: 0,
     top,
   };
 }
 
-export function JourneyMilestone({
+/**
+ * Memoized: the journey map renders one of these per milestone inside a
+ * frequently re-rendering screen, so identical props must skip reconciling
+ * the ring image and label subtree.
+ */
+export const JourneyMilestone = memo(function JourneyMilestone({
   imageHeight,
   imageWidth,
   milestone,
@@ -106,11 +101,9 @@ export function JourneyMilestone({
     ringHeight,
     ringWidth,
     top,
-  } = getJourneyMilestoneLayout(
-    imageHeight,
-    imageWidth,
-    milestone,
-    position,
+  } = useMemo(
+    () => getJourneyMilestoneLayout(imageHeight, imageWidth, milestone, position),
+    [imageHeight, imageWidth, milestone, position],
   );
 
   const labelSide = milestone.id % 2 === 0 ? "left" : "right";
@@ -171,7 +164,7 @@ export function JourneyMilestone({
         ]}
       >
         <Image
-          resizeMode="contain"
+          contentFit="contain"
           // Completed milestones fall back to the quiet ring, like inactive
           // ones — only the steps still ahead glow gold.
           source={
@@ -184,9 +177,7 @@ export function JourneyMilestone({
       </Pressable>
     </View>
   );
-}
-
-export default JourneyMilestone;
+});
 
 const styles = StyleSheet.create({
   group: {

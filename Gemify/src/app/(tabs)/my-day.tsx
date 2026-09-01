@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePickerModal";
 import { TodayProgressCard } from "@/components/home";
@@ -27,9 +26,11 @@ import {
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
-  AppModal,
+  ConfirmDialog,
   AppText,
+  CalendarIcon,
   Card,
+  GearIcon,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -43,37 +44,6 @@ const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
 /** Extra scroll clearance so content is not hidden behind the fixed footer. */
 const FOOTER_CLEARANCE = 150;
 const FOOTER_CLEARANCE_COMPACT = 120;
-
-function CalendarIcon({ color = colors.primary, size = 20 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect fill="none" height={15} rx={2.4} stroke={color} strokeWidth={1.6} width={18} x={3} y={5} />
-      <Path
-        d="M7 3v4M17 3v4M3 10h18"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
-
-function GearIcon({ color = colors.primary, size = 20 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={12} cy={12} fill="none" r={3.1} stroke={color} strokeWidth={1.6} />
-      <Path
-        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.6}
-      />
-    </Svg>
-  );
-}
 
 /** The quest a day-plan row points at, for the action sheet and its modals. */
 type DayQuestRef = { done: boolean; questId: number; title: string };
@@ -411,32 +381,13 @@ export default function MyDayScreen() {
         visible={editQuest !== null}
       />
 
-      <AppModal
-        onClose={() => setDeleteTarget(null)}
+      <ConfirmDialog
+        body={`“${deleteTarget?.title}” will be removed.`}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete this quest?"
         visible={deleteTarget !== null}
-      >
-        <AppText align="center" variant="titleSm">
-          Delete this quest?
-        </AppText>
-        <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-          “{deleteTarget?.title}” will be removed.
-        </AppText>
-        <View style={styles.confirmActions}>
-          <AppButton
-            label="Cancel"
-            onPress={() => setDeleteTarget(null)}
-            style={styles.confirmButton}
-            variant="secondary"
-          />
-          <AppButton
-            label="Delete"
-            onPress={handleDeleteConfirmed}
-            style={[styles.confirmButton, styles.confirmDeleteButton]}
-            textStyle={styles.confirmDeleteLabel}
-            variant="secondary"
-          />
-        </View>
-      </AppModal>
+      />
 
       {calendarOpen ? (
         <DatePickerModal
@@ -460,24 +411,6 @@ const styles = StyleSheet.create({
   },
   blockSectionCompact: {
     marginTop: spacing.md,
-  },
-  confirmActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
-  confirmButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
-  confirmDeleteButton: {
-    borderColor: colors.danger,
-  },
-  confirmDeleteLabel: {
-    color: colors.danger,
   },
   emptyBlock: {
     borderRadius: radius.lg,

@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -19,7 +19,6 @@ import Animated, {
   useSharedValue,
   type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
@@ -47,11 +46,13 @@ import {
 import { questIconForId } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
-  AppModal,
+  ConfirmDialog,
   AppText,
+  CalendarIcon,
   Card,
   Checkbox,
   ChevronIcon,
+  ClockIcon,
   DotsIcon,
   DreamIcon,
   IconButton,
@@ -82,24 +83,6 @@ type WeekDay = {
 
 /** Window-coordinate rect of a drop target (day cell or section header). */
 type DropRect = { height: number; width: number; x: number; y: number };
-
-function CalendarIcon({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect fill="none" height={15} rx={2.4} stroke={color} strokeWidth={1.7} width={17} x={3.5} y={5.5} />
-      <Path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function ClockIcon({ color = colors.textSecondary, size = 15 }: { color?: string; size?: number }) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={12} cy={12} fill="none" r={8.5} stroke={color} strokeWidth={1.7} />
-      <Path d="M12 7.5V12l3 2" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} />
-    </Svg>
-  );
-}
 
 function DayCell({
   cellRef,
@@ -385,7 +368,7 @@ export default function SprintScreen() {
   /**
    * Snapshot the week-strip cells in window coordinates (drag just lifted).
    */
-  const measureDropTargets = () => {
+  const measureDropTargets = useCallback(() => {
     const emptyRect = () => ({ height: 0, width: 0, x: -1, y: -1 });
     const cellRects: DropRect[] = Array.from({ length: 7 }, emptyRect);
     dayCellRefs.current.forEach((cell, index) => {
@@ -394,79 +377,99 @@ export default function SprintScreen() {
         dayRects.value = [...cellRects];
       });
     });
-  };
+  }, [dayRects]);
 
-  const handleDragStart = (quest: QuestWithBreadcrumb) => {
-    setDraggingQuest(quest);
-    measureDropTargets();
-  };
-
-  const handleDragRelease = () => {
-    setDraggingQuest(null);
-  };
-
-  const handleDrop = async (quest: QuestWithBreadcrumb, dayIndex: number) => {
-    setDraggingQuest(null);
-    try {
-      // A week-strip day cell: move the quest to that day, keeping its time.
-      if (dayIndex < 0) return;
-      const dateKey = toDateKey(addDays(weekStart, dayIndex));
-      if (quest.scheduledDate === dateKey) return;
-      await updateQuest(quest.id, { scheduledDate: dateKey, isPlanned: true });
-      await loadBoard();
-    } catch (cause) {
-      console.error("Failed to move the quest", cause);
-      await loadBoard();
-    }
-  };
-
-  /**
-   * Long-press-to-lift pan gesture for one quest card. Tracks the finger in
-   * window coordinates, hit-tests the week-strip cells, and reports the drop.
-   */
-  const makeDragGesture = (quest: QuestWithBreadcrumb) =>
-    Gesture.Pan()
-      .activateAfterLongPress(DRAG_ACTIVATION_MS)
-      .maxPointers(1)
-      .onStart((event) => {
-        dragX.value = event.absoluteX;
-        dragY.value = event.absoluteY;
-        runOnJS(handleDragStart)(quest);
-      })
-      .onUpdate((event) => {
-        dragX.value = event.absoluteX;
-        dragY.value = event.absoluteY;
-        const hitTest = (rects: DropRect[]) => {
-          for (let index = 0; index < rects.length; index += 1) {
-            const rect = rects[index];
-            if (
-              event.absoluteX >= rect.x &&
-              event.absoluteX <= rect.x + rect.width &&
-              event.absoluteY >= rect.y &&
-              event.absoluteY <= rect.y + rect.height
-            ) {
-              return index;
-            }
-          }
-          return -1;
-        };
-        hoveredDay.value = hitTest(dayRects.value);
-      })
-      .onEnd(() => {
-        runOnJS(handleDrop)(quest, hoveredDay.value);
-      })
-      .onFinalize(() => {
-        hoveredDay.value = -1;
-        runOnJS(handleDragRelease)();
-      });
-
-  // Gestures must be constructed at render time for GestureDetector. The lint
-  // sees shared-value access in the worklet closures as a render-time ref
-  // read, but the values are only touched on the UI thread mid-gesture.
-  /* eslint-disable react-hooks/refs */
-  const dragGestures = new Map<number, PanGesture>(
-    scheduled.map((quest) => [quest.id, makeDragGesture(quest)]),
+  const handleDragStart = useCallback(
+    (quest: QuestWithBreadcrumb) => {
+      setDraggingQuest(quest);
+      measureDropTargets();
+    },
+    [measureDropTargets],
   );
+
+  const handleDragRelease = useCallback(() => {
+    setDraggingQuest(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (quest: QuestWithBreadcrumb, dayIndex: number) => {
+      setDraggingQuest(null);
+      try {
+        // A week-strip day cell: move the quest to that day, keeping its time.
+        if (dayIndex < 0) return;
+        const dateKey = toDateKey(addDays(weekStart, dayIndex));
+        if (quest.scheduledDate === dateKey) return;
+        await updateQuest(quest.id, { scheduledDate: dateKey, isPlanned: true });
+        await loadBoard();
+      } catch (cause) {
+        console.error("Failed to move the quest", cause);
+        await loadBoard();
+      }
+    },
+    [weekStart, loadBoard],
+  );
+
+  // One long-press-to-lift pan gesture per quest card, rebuilt only when the
+  // scheduled set or the drop handler changes — NOT on every render (each
+  // gesture identity change forces GestureDetector to re-register).
+  //
+  // The lint sees shared-value access in the worklet closures as a render-time
+  // ref read, but the values are only touched on the UI thread mid-gesture.
+  /* eslint-disable react-hooks/refs */
+  const dragGestures = useMemo(() => {
+    /**
+     * Tracks the finger in window coordinates, hit-tests the week-strip
+     * cells, and reports the drop.
+     */
+    const makeDragGesture = (quest: QuestWithBreadcrumb) =>
+      Gesture.Pan()
+        .activateAfterLongPress(DRAG_ACTIVATION_MS)
+        .maxPointers(1)
+        .onStart((event) => {
+          dragX.value = event.absoluteX;
+          dragY.value = event.absoluteY;
+          runOnJS(handleDragStart)(quest);
+        })
+        .onUpdate((event) => {
+          dragX.value = event.absoluteX;
+          dragY.value = event.absoluteY;
+          const hitTest = (rects: DropRect[]) => {
+            for (let index = 0; index < rects.length; index += 1) {
+              const rect = rects[index];
+              if (
+                event.absoluteX >= rect.x &&
+                event.absoluteX <= rect.x + rect.width &&
+                event.absoluteY >= rect.y &&
+                event.absoluteY <= rect.y + rect.height
+              ) {
+                return index;
+              }
+            }
+            return -1;
+          };
+          hoveredDay.value = hitTest(dayRects.value);
+        })
+        .onEnd(() => {
+          runOnJS(handleDrop)(quest, hoveredDay.value);
+        })
+        .onFinalize(() => {
+          hoveredDay.value = -1;
+          runOnJS(handleDragRelease)();
+        });
+
+    return new Map<number, PanGesture>(
+      scheduled.map((quest) => [quest.id, makeDragGesture(quest)]),
+    );
+  }, [
+    scheduled,
+    handleDragStart,
+    handleDrop,
+    handleDragRelease,
+    dragX,
+    dragY,
+    dayRects,
+    hoveredDay,
+  ]);
   /* eslint-enable react-hooks/refs */
 
   const shiftWeek = (weeks: number) => {
@@ -663,7 +666,7 @@ export default function SprintScreen() {
           rightSlot={
             <IconButton
               accessibilityLabel="Open calendar"
-              icon={<CalendarIcon />}
+              icon={<CalendarIcon size={22} strokeWidth={1.7} />}
               onPress={() => setCalendarOpen(true)}
             />
           }
@@ -805,32 +808,13 @@ export default function SprintScreen() {
           scheduleLabel="Choose another date"
         />
 
-        <AppModal
-          onClose={() => setDeleteTarget(null)}
+        <ConfirmDialog
+          body={`“${deleteTarget?.title}” will be removed.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirmed}
+          title="Delete this quest?"
           visible={deleteTarget !== null}
-        >
-          <AppText align="center" variant="titleSm">
-            Delete this quest?
-          </AppText>
-          <AppText align="center" style={styles.confirmBody} variant="bodySerif">
-            “{deleteTarget?.title}” will be removed.
-          </AppText>
-          <View style={styles.modalActions}>
-            <AppButton
-              label="Cancel"
-              onPress={() => setDeleteTarget(null)}
-              style={styles.modalButton}
-              variant="secondary"
-            />
-            <AppButton
-              label="Delete"
-              onPress={handleDeleteConfirmed}
-              style={[styles.modalButton, styles.confirmDeleteButton]}
-              textStyle={styles.confirmDeleteLabel}
-              variant="secondary"
-            />
-          </View>
-        </AppModal>
+        />
 
         {scheduleTarget ? (
           <AcceptQuestModal
@@ -920,15 +904,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     gap: spacing.xs,
     minWidth: 0,
-  },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
-  confirmDeleteButton: {
-    borderColor: colors.danger,
-  },
-  confirmDeleteLabel: {
-    color: colors.danger,
   },
   dayCell: {
     alignItems: "center",
@@ -1025,15 +1000,6 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.md,
     paddingHorizontal: 0,
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  modalButton: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   questCard: {
     borderColor: colors.accentVioletGlow,
