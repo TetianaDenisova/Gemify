@@ -30,6 +30,7 @@ export {
   GearIcon,
   ImageIcon,
   MilestoneIcon,
+  MinusIcon,
   PencilIcon,
   PlusIcon,
   SparkIcon,

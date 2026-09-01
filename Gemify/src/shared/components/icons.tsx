@@ -132,6 +132,24 @@ export function PlusIcon({
   );
 }
 
+export function MinusIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M5 12h14"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 /** Open book — marks a dream in breadcrumbs and journey UI. */
 export function DreamIcon({
   color = colors.accentViolet,

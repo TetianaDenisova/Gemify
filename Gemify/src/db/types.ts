@@ -10,6 +10,15 @@ export type Dream = {
   visionStatement: string | null;
   /** Attached vision image (durable app-storage URI), null when skipped. */
   photoUri: string | null;
+  /**
+   * Vision-image framing: which part of the photo the cropped frame shows.
+   * Object-position-style fraction of the hidden overflow — 0 keeps the
+   * left/top edge in view, 1 the right/bottom edge, 0.5 centers.
+   */
+  photoFocusX: number;
+  photoFocusY: number;
+  /** Zoom multiplier over the frame-covering fit (1 = plain cover). */
+  photoScale: number;
   isArchived: boolean;
 };
 
@@ -25,6 +34,9 @@ export type DreamPatch = {
   title?: string;
   visionStatement?: string | null;
   photoUri?: string | null;
+  photoFocusX?: number;
+  photoFocusY?: number;
+  photoScale?: number;
   isArchived?: boolean;
 };
 

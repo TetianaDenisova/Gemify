@@ -163,7 +163,7 @@ export default function HomeScreen() {
     currentBlock,
     gainedPercent,
     hasFocus,
-    nextBlock,
+    laterBlocks,
     showCelebration,
   } = useMemo(() => {
     const now = new Date();
@@ -231,30 +231,36 @@ export default function HomeScreen() {
       0,
     );
 
-    // Current block clear but open quests remain elsewhere today: surface the
-    // block that goes next (the nearest upcoming one, else earlier leftovers).
+    // Everything still waiting today outside the current focus: every block
+    // with open quests, upcoming ones first (nearest first), then earlier
+    // leftovers. The focus and flexible blocks are excluded — their open
+    // quests already sit in the focus list.
     const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
       now.getMinutes(),
     ).padStart(2, "0")}`;
-    const openBlocks = blocks
-      .filter((block) => block.actions.some((action) => !action.done))
+    const laterBlocks = blocks
+      .filter(
+        (block) =>
+          block.key !== focusBlock?.key &&
+          block.time !== "Flexible" &&
+          block.actions.some((action) => !action.done),
+      )
       .map((block) => ({
         ...block,
         actions: block.actions.filter((action) => !action.done),
-      }));
-    const nextBlock =
-      !hasFocus && !allDone
-        ? (openBlocks
-          .filter((block) => block.time !== "Flexible" && block.time > clock)
-          .sort((a, b) => (a.time < b.time ? -1 : 1))[0] ?? openBlocks[0])
-        : undefined;
+        upcoming: block.time > clock,
+      }))
+      .sort((a, b) => {
+        if (a.upcoming !== b.upcoming) return a.upcoming ? -1 : 1;
+        return a.time < b.time ? -1 : 1;
+      });
 
     return {
       allDone,
       currentBlock,
       gainedPercent,
       hasFocus,
-      nextBlock,
+      laterBlocks,
       showCelebration,
     };
   }, [blocks, habitViews, dreams, completedQuests, totalQuests]);
@@ -307,7 +313,7 @@ export default function HomeScreen() {
         title={
           hasFocus || showCelebration
             ? "CURRENT FOCUS"
-            : nextBlock
+            : laterBlocks.length > 0
               ? "LATER TODAY"
               : "PLAN YOUR WEEK"
         }
@@ -407,9 +413,11 @@ export default function HomeScreen() {
             ))}
           </Card>
         </View>
-      ) : nextBlock ? (
+      ) : null}
+
+      {laterBlocks.length > 0 ? (
         <>
-          {showCelebration ? (
+          {hasFocus || showCelebration ? (
             <>
               <View style={styles.laterDivider}>
                 <View style={styles.laterDividerLine} />
@@ -423,78 +431,88 @@ export default function HomeScreen() {
               />
             </>
           ) : null}
-        <View style={[styles.currentBlock, styles.laterRow]}>
-          <View style={styles.laterBadge}>
-            <BlockIconArt
-              color={LATER_COLORS.icon}
-              icon={nextBlock.icon}
-              size={26}
-            />
-          </View>
-          <View style={styles.laterCopy}>
-            <View style={styles.laterTitleRow}>
-              <AppText color={LATER_COLORS.label} variant="controlLabel">
-                {nextBlock.label}
-              </AppText>
-              {nextBlock.time !== "Flexible" ? (
-                <>
+          {laterBlocks.map((block) => (
+            <View
+              key={block.key}
+              style={[styles.currentBlock, styles.laterRow]}
+            >
+              <View style={styles.laterBadge}>
+                <BlockIconArt
+                  color={LATER_COLORS.icon}
+                  icon={block.icon}
+                  size={26}
+                />
+              </View>
+              <View style={styles.laterCopy}>
+                <View style={styles.laterTitleRow}>
+                  <AppText color={LATER_COLORS.label} variant="controlLabel">
+                    {block.label}
+                  </AppText>
                   <AppText color={LATER_COLORS.crumb} variant="controlLabel">
                     ·
                   </AppText>
                   <AppText color={LATER_COLORS.time} variant="controlLabel">
-                    {nextBlock.time}
+                    {block.time}
                   </AppText>
-                </>
-              ) : null}
+                </View>
+                {block.actions.map((action, index) => (
+                  <View
+                    key={action.questId}
+                    style={index > 0 ? styles.laterActionSpacing : undefined}
+                  >
+                    <AppText
+                      color={LATER_COLORS.title}
+                      numberOfLines={2}
+                      style={styles.laterQuestTitle}
+                      variant="body"
+                    >
+                      {action.title}
+                    </AppText>
+                    <View style={styles.laterBreadcrumb}>
+                      <DreamIcon color={LATER_COLORS.icon} size={16} />
+                      <AppText
+                        color={LATER_COLORS.crumb}
+                        numberOfLines={1}
+                        style={styles.laterCrumbLabel}
+                        variant="subtitle"
+                      >
+                        {action.dreamTitle}
+                      </AppText>
+                      <ChevronIcon
+                        color={LATER_COLORS.crumb}
+                        direction="right"
+                        size={13}
+                      />
+                      <MilestoneIcon color={LATER_COLORS.icon} size={16} />
+                      <AppText
+                        color={LATER_COLORS.crumb}
+                        numberOfLines={1}
+                        style={styles.laterCrumbLabel}
+                        variant="subtitle"
+                      >
+                        {action.milestoneTitle}
+                      </AppText>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.upcomingPill}>
+                <AppText color={LATER_COLORS.pillText} variant="labelStrong">
+                  {block.upcoming ? "Upcoming" : "Waiting"}
+                </AppText>
+              </View>
             </View>
-            <AppText
-              color={LATER_COLORS.title}
-              numberOfLines={2}
-              style={styles.laterQuestTitle}
-              variant="body"
-            >
-              {nextBlock.actions[0]?.title}
-            </AppText>
-            <View style={styles.laterBreadcrumb}>
-              <DreamIcon color={LATER_COLORS.icon} size={16} />
-              <AppText
-                color={LATER_COLORS.crumb}
-                numberOfLines={1}
-                style={styles.laterCrumbLabel}
-                variant="subtitle"
-              >
-                {nextBlock.actions[0]?.dreamTitle}
-              </AppText>
-              <ChevronIcon
-                color={LATER_COLORS.crumb}
-                direction="right"
-                size={13}
-              />
-              <MilestoneIcon color={LATER_COLORS.icon} size={16} />
-              <AppText
-                color={LATER_COLORS.crumb}
-                numberOfLines={1}
-                style={styles.laterCrumbLabel}
-                variant="subtitle"
-              >
-                {nextBlock.actions[0]?.milestoneTitle}
-              </AppText>
-            </View>
-          </View>
-          <View style={styles.upcomingPill}>
-            <AppText color={LATER_COLORS.pillText} variant="labelStrong">
-              Upcoming
-            </AppText>
-          </View>
-        </View>
+          ))}
         </>
-      ) : showCelebration ? null : (
+      ) : null}
+
+      {!hasFocus && !showCelebration && laterBlocks.length === 0 ? (
         <NextMoveCard
           buttonLabel="Plan my week"
           message={"A few focused steps can move\nyour dreams forward."}
-                  onPress={() => router.navigate("/sprint")}
+          onPress={() => router.navigate("/sprint")}
         />
-      )}
+      ) : null}
         </>
       ) : null}
     </ScreenScaffold>
@@ -560,6 +578,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   /** Quiet variant of the time-block disc, matched to the mock. */
+  /** Breathing room between stacked quests inside one Later-today block. */
+  laterActionSpacing: {
+    marginTop: spacing.sm,
+  },
   laterBadge: {
     alignItems: "center",
     backgroundColor: "rgba(24, 14, 42, 0.7)",

@@ -30,6 +30,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 
+import type { DreamPhotoTransform } from "@/components/DreamPhotoFrame";
 import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
 import {
@@ -536,11 +537,12 @@ function MilestoneModal({
   const isDirty =
     MILESTONE_DETAIL_FIELDS.some(
       (field) => draft[field.key] !== initialValues[field.key],
-    ) || draft.photoUri !== initialValues.photoUri;
-  // Only title and state are mandatory (title is read-only in edit mode);
-  // artifact, mentor, and reward are optional.
-  const requiredKeys: readonly ("title" | "state")[] =
-    mode === "add" ? ["title", "state"] : ["state"];
+    ) ||
+    draft.title !== initialValues.title ||
+    draft.photoUri !== initialValues.photoUri;
+  // Only title and state are mandatory; artifact, mentor, and reward are
+  // optional.
+  const requiredKeys: readonly ("title" | "state")[] = ["title", "state"];
   const requiredComplete = requiredKeys.every(
     (key) => draft[key].trim().length > 0,
   );
@@ -601,7 +603,7 @@ function MilestoneModal({
                   STEP {displayNumber} OF {stepTotal}
                 </AppText>
 
-                {mode === "add" ? (
+                {mode !== "view" ? (
                   <View style={styles.requiredInputRow}>
                     <MilestoneFieldInput
                       onChangeText={(text) => setDraftField("title", text)}
@@ -1190,6 +1192,7 @@ export function GoalJourneyMapScreen() {
             }
           }
           await updateMilestone(dbId, {
+            title: values.title,
             state: values.state,
             artifact: values.artifact,
             mentor: values.mentor,
@@ -1231,6 +1234,7 @@ export function GoalJourneyMapScreen() {
     name: string,
     vision: string,
     photoUri: string | null,
+    photoTransform: DreamPhotoTransform,
   ) => {
     if (!dream) return;
     try {
@@ -1245,6 +1249,9 @@ export function GoalJourneyMapScreen() {
         title: name,
         visionStatement: vision || null,
         photoUri: storedPhoto,
+        photoFocusX: photoTransform.focusX,
+        photoFocusY: photoTransform.focusY,
+        photoScale: photoTransform.scale,
       });
       if (updated) setDream(updated);
     } catch (cause) {
@@ -1388,6 +1395,15 @@ export function GoalJourneyMapScreen() {
         dreamId={dream?.id}
         dreamName={dream?.title ?? ""}
         editMode={isEditMode}
+        photoTransform={
+          dream
+            ? {
+                focusX: dream.photoFocusX,
+                focusY: dream.photoFocusY,
+                scale: dream.photoScale,
+              }
+            : undefined
+        }
         photoUri={dream?.photoUri ?? null}
         onDeleteDream={handleDeleteDream}
         onEnterEditMode={() => {

@@ -186,6 +186,19 @@ const backupUpgrades: BackupUpgrade[] = [
       delete doc.tables.tasks;
     },
   },
+  {
+    // v12 added the dream photo framing (focus point + zoom); older backups
+    // show the image centered at cover scale, matching the old rendering.
+    // (v11 only dropped the leftover demo table — nothing to reshape.)
+    toVersion: 12,
+    up: (doc) => {
+      for (const row of doc.tables.dreams ?? []) {
+        if (row.photo_focus_x === undefined) row.photo_focus_x = 0.5;
+        if (row.photo_focus_y === undefined) row.photo_focus_y = 0.5;
+        if (row.photo_scale === undefined) row.photo_scale = 1;
+      }
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

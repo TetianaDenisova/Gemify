@@ -360,6 +360,21 @@ export const migrations: Migration[] = [
       await db.execAsync("DROP TABLE IF EXISTS items;");
     },
   },
+  {
+    // Dream vision image framing: the user drags/zooms the photo to choose
+    // what stays visible in the cropped frame. Focus is an
+    // object-position-style fraction of the hidden overflow (0 = left/top
+    // edge in view, 1 = right/bottom edge); scale multiplies the
+    // frame-covering fit (1 = plain cover, the previous rendering).
+    toVersion: 12,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE dreams ADD COLUMN photo_focus_x REAL NOT NULL DEFAULT 0.5;
+        ALTER TABLE dreams ADD COLUMN photo_focus_y REAL NOT NULL DEFAULT 0.5;
+        ALTER TABLE dreams ADD COLUMN photo_scale REAL NOT NULL DEFAULT 1;
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

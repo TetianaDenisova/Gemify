@@ -19,11 +19,15 @@ type DreamRow = {
   title: string;
   vision_statement: string | null;
   photo_uri: string | null;
+  photo_focus_x: number;
+  photo_focus_y: number;
+  photo_scale: number;
   is_archived: number;
 };
 
 const SELECT_DREAM = `
-  SELECT id, seed_key, title, vision_statement, photo_uri, is_archived
+  SELECT id, seed_key, title, vision_statement, photo_uri,
+         photo_focus_x, photo_focus_y, photo_scale, is_archived
   FROM dreams
 `;
 
@@ -34,6 +38,9 @@ function toDream(row: DreamRow): Dream {
     title: row.title,
     visionStatement: row.vision_statement,
     photoUri: row.photo_uri,
+    photoFocusX: row.photo_focus_x,
+    photoFocusY: row.photo_focus_y,
+    photoScale: row.photo_scale,
     isArchived: row.is_archived === 1,
   };
 }
@@ -122,7 +129,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
        FROM milestones m
      )
      SELECT d.id, d.seed_key, d.title, d.vision_statement, d.photo_uri,
-            d.is_archived,
+            d.photo_focus_x, d.photo_focus_y, d.photo_scale, d.is_archived,
             COALESCE(
               (SELECT m.title FROM milestones m
                WHERE m.dream_id = d.id AND m.status = 'active'
@@ -284,6 +291,18 @@ export async function updateDream(
   if (patch.photoUri !== undefined) {
     assignments.push("photo_uri = ?");
     params.push(patch.photoUri);
+  }
+  if (patch.photoFocusX !== undefined) {
+    assignments.push("photo_focus_x = ?");
+    params.push(patch.photoFocusX);
+  }
+  if (patch.photoFocusY !== undefined) {
+    assignments.push("photo_focus_y = ?");
+    params.push(patch.photoFocusY);
+  }
+  if (patch.photoScale !== undefined) {
+    assignments.push("photo_scale = ?");
+    params.push(patch.photoScale);
   }
   if (patch.isArchived !== undefined) {
     assignments.push("is_archived = ?");
