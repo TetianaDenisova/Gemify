@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View, type TextInput } from "react-native";
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import { getTimeBlocks, type TimeBlockRecord } from "@/db";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
@@ -361,6 +362,7 @@ export function AcceptQuestModal({
   onClose: () => void;
   title?: string;
 }) {
+  const { phone } = useLayoutSize();
   const [today] = useState(() => new Date());
   const [blocks, setBlocks] = useState<TimeBlockRecord[]>([]);
   // Day chips cover today + 6; a farther initial date lands on the ⋯ chip.
@@ -458,20 +460,23 @@ export function AcceptQuestModal({
       <Image
         contentFit="contain"
         source={ACCEPT_STAR_SOURCE}
-        style={styles.acceptStar}
+        style={[styles.acceptStar, phone && styles.acceptStarPhone]}
       />
       <AppText align="center" variant="titleSm">
         {title}
       </AppText>
-      <AppText
-        align="center"
-        color={colors.textSecondary}
-        style={styles.acceptSubtitle}
-        variant="bodySmall"
-      >
-        Choose when you&rsquo;ll do it.{"\n"}We&rsquo;ve picked a time based on
-        your current moment.
-      </AppText>
+      {/* The two section labels below say both halves of this. */}
+      {phone ? null : (
+        <AppText
+          align="center"
+          color={colors.textSecondary}
+          style={styles.acceptSubtitle}
+          variant="bodySmall"
+        >
+          Choose when you&rsquo;ll do it.{"\n"}We&rsquo;ve picked a time based on
+          your current moment.
+        </AppText>
+      )}
 
       <View style={styles.acceptSectionLabel}>
         <CalendarIcon size={iconSizes.lg} />
@@ -489,7 +494,11 @@ export function AcceptQuestModal({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 onPress={() => setDayOffset(offset)}
-                style={[styles.dayChip, selected && styles.acceptChipSelected]}
+                style={[
+                  styles.dayChip,
+                  phone && styles.chipPhone,
+                  selected && styles.acceptChipSelected,
+                ]}
               >
                 <AppText color={accent} numberOfLines={1} variant="captionStrong">
                   {label}
@@ -515,7 +524,11 @@ export function AcceptQuestModal({
             accessibilityRole="button"
             accessibilityState={{ selected: customSelected }}
             onPress={() => setCalendarOpen(true)}
-            style={[styles.dayChip, customSelected && styles.acceptChipSelected]}
+            style={[
+              styles.dayChip,
+              phone && styles.chipPhone,
+              customSelected && styles.acceptChipSelected,
+            ]}
           >
             {customSelected && customDate ? (
               <>
@@ -560,7 +573,11 @@ export function AcceptQuestModal({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 onPress={() => setSlotKey(entry.key)}
-                style={[styles.timeChip, selected && styles.acceptChipSelected]}
+                style={[
+                  styles.timeChip,
+                  phone && styles.chipPhone,
+                  selected && styles.acceptChipSelected,
+                ]}
               >
                 <BlockIconArt color={accent} icon={entry.icon} size={22} />
                 <AppText
@@ -587,6 +604,7 @@ export function AcceptQuestModal({
             onPress={() => setSlotKey("customHour")}
             style={[
               styles.timeChip,
+              phone && styles.chipPhone,
               customHourSelected && styles.acceptChipSelected,
             ]}
           >
@@ -748,6 +766,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     width: 76,
   },
+  acceptStarPhone: {
+    height: 56,
+    width: 56,
+  },
   acceptSubtitle: {
     marginTop: spacing.sm,
   },
@@ -765,6 +787,9 @@ const styles = StyleSheet.create({
   },
   actionSheetPanel: {
     borderColor: colors.accentVioletGlow,
+  },
+  chipPhone: {
+    height: 60,
   },
   dayChip: {
     alignItems: "center",

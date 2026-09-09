@@ -2,6 +2,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 
 import { getDreamSummaries, type DreamSummary } from "@/db";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 
 export type UseDreamSummariesResult = {
   dreams: DreamSummary[];
@@ -35,6 +36,8 @@ export function useDreamSummaries(): UseDreamSummariesResult {
       if (mounted.current) setLoading(false);
     }
   }, []);
+
+  useRefreshOnSync(refresh);
 
   useFocusEffect(
     useCallback(() => {

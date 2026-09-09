@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { AppText, Card, ProgressBar } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { radius, shadowStyle, spacing } from "@/theme/theme";
@@ -22,33 +23,45 @@ export function TodayProgressCard({
   totalActions,
   style,
 }: TodayProgressCardProps) {
+  const { phone } = useLayoutSize();
   const percent =
     totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
 
   return (
-    <Card style={[styles.card, style]}>
+    <Card style={[styles.card, phone && styles.cardPhone, style]}>
       <Image
         contentFit="cover"
         source={PORTAL_ART_SOURCE}
-        style={styles.portalArt}
+        style={[styles.portalArt, phone && styles.portalArtPhone]}
       />
       <View style={styles.body}>
         <AppText color={colors.textPrimary} variant="pill">
           Today&apos;s progress
         </AppText>
-        <ProgressBar glow height={7} style={styles.bar} value={percent} />
+        <ProgressBar
+          glow
+          height={7}
+          style={[styles.bar, phone && styles.barPhone]}
+          value={percent}
+        />
       </View>
       <View style={styles.count}>
-        <AppText color={colors.primary} variant="cardTitle">
+        <AppText
+          color={colors.primary}
+          variant={phone ? "titleSm" : "cardTitle"}
+        >
           {completedActions} / {totalActions}
         </AppText>
-        <AppText
-          color={colors.textMuted}
-          style={styles.countLabel}
-          variant="captionStrong"
-        >
-          ACTIONS
-        </AppText>
+        {/* "3 / 7" beside "Today's progress" reads as actions unaided. */}
+        {phone ? null : (
+          <AppText
+            color={colors.textMuted}
+            style={styles.countLabel}
+            variant="captionStrong"
+          >
+            ACTIONS
+          </AppText>
+        )}
       </View>
     </Card>
   );
@@ -57,6 +70,9 @@ export function TodayProgressCard({
 const styles = StyleSheet.create({
   bar: {
     marginTop: spacing.lg,
+  },
+  barPhone: {
+    marginTop: spacing.sm,
   },
   body: {
     flex: 1,
@@ -74,6 +90,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.12, radius: 12 }),
   },
+  cardPhone: {
+    gap: spacing.md,
+  },
   count: {
     alignItems: "center",
   },
@@ -87,5 +106,9 @@ const styles = StyleSheet.create({
     height: 92,
     overflow: "hidden",
     width: 92,
+  },
+  portalArtPhone: {
+    height: 64,
+    width: 64,
   },
 });

@@ -5,20 +5,25 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { layout, typography } from "@/theme/theme";
+import { layout, tabBarHeightFor, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
+  /** No label under the icon on phones, so it centers itself in the bar. */
+  phone: boolean;
   tab: MenuTab | "habits" | "memories";
 }
 
-function TabIcon({ focused, tab }: TabIconProps) {
+function TabIcon({ focused, phone, tab }: TabIconProps) {
+  const iconStyle = phone ? styles.tabIconPhone : styles.tabIcon;
+
   if (tab === "memories") {
     const tint = focused ? colors.primary : colors.textMuted;
 
     return (
-      <Svg height={28} viewBox="0 0 28 28" width={28} style={styles.tabIcon}>
+      <Svg height={28} viewBox="0 0 28 28" width={28} style={iconStyle}>
         <Rect
           fill={focused ? "rgba(245, 184, 75, 0.14)" : colors.transparent}
           height={19}
@@ -46,7 +51,7 @@ function TabIcon({ focused, tab }: TabIconProps) {
     const tint = focused ? colors.primary : colors.textMuted;
 
     return (
-      <Svg height={28} viewBox="0 0 28 28" width={28} style={styles.tabIcon}>
+      <Svg height={28} viewBox="0 0 28 28" width={28} style={iconStyle}>
         <Circle
           cx={14}
           cy={14}
@@ -80,7 +85,7 @@ function TabIcon({ focused, tab }: TabIconProps) {
   return (
     <Image
       source={iconSource}
-      style={styles.tabIcon}
+      style={iconStyle}
       contentFit="contain"
     />
   );
@@ -88,6 +93,9 @@ function TabIcon({ focused, tab }: TabIconProps) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  // Six tabs share 402 pt on a phone (~67 pt each), so the labels go and the
+  // bar drops to 56 pt. Tablets keep the 72 pt bar with its labels.
+  const { phone } = useLayoutSize();
 
   return (
     <Tabs
@@ -98,14 +106,18 @@ export default function TabLayout() {
         headerTitleStyle: { color: colors.textPrimary },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarShowLabel: !phone,
         tabBarStyle: [
           styles.tabBar,
           {
-            height: layout.tabBarHeight + insets.bottom,
+            height: tabBarHeightFor(phone) + insets.bottom,
             paddingBottom: insets.bottom,
           },
         ],
-        tabBarItemStyle: styles.tabBarItem,
+        tabBarItemStyle: [
+          styles.tabBarItem,
+          phone && styles.tabBarItemPhone,
+        ],
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -113,10 +125,11 @@ export default function TabLayout() {
         name="index"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Home",
           tabBarLabel: "Home",
           title: "Home",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="home" />
+            <TabIcon focused={focused} phone={phone} tab="home" />
           ),
         }}
       />
@@ -124,10 +137,11 @@ export default function TabLayout() {
         name="my-day"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Today",
           tabBarLabel: "Today",
           title: "My Day",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="today" />
+            <TabIcon focused={focused} phone={phone} tab="today" />
           ),
         }}
       />
@@ -143,10 +157,11 @@ export default function TabLayout() {
         name="habits"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Habits",
           tabBarLabel: "Habits",
           title: "Habits",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="habits" />
+            <TabIcon focused={focused} phone={phone} tab="habits" />
           ),
         }}
       />
@@ -154,10 +169,11 @@ export default function TabLayout() {
         name="sprint"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Weekly Plan",
           tabBarLabel: "Weekly Plan",
           title: "Weekly Plan",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="sprint" />
+            <TabIcon focused={focused} phone={phone} tab="sprint" />
           ),
         }}
       />
@@ -165,10 +181,11 @@ export default function TabLayout() {
         name="progress"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Progress",
           tabBarLabel: "Progress",
           title: "Progress",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="progress" />
+            <TabIcon focused={focused} phone={phone} tab="progress" />
           ),
         }}
       />
@@ -176,10 +193,11 @@ export default function TabLayout() {
         name="memories"
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: "Memories",
           tabBarLabel: "Memories",
           title: "Memories",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} tab="memories" />
+            <TabIcon focused={focused} phone={phone} tab="memories" />
           ),
         }}
       />
@@ -205,6 +223,13 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
 
+  /** No label to sit under, so the icon centers in a 44 pt touch target. */
+  tabBarItemPhone: {
+    justifyContent: "center",
+    minHeight: layout.minTouchTarget,
+    paddingVertical: 6,
+  },
+
   tabBarLabel: {
     ...typography.micro,
     marginTop: 0,
@@ -214,5 +239,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     marginBottom: 4,
+  },
+
+  tabIconPhone: {
+    width: 28,
+    height: 28,
+    marginBottom: 0,
   },
 });

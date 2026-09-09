@@ -39,6 +39,7 @@ export {
   SparkleGlyphIcon,
   StepIcon,
   SunHorizonIcon,
+  SyncIcon,
   TrashIcon,
 } from "./icons";
 export type {

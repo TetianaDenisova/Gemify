@@ -3,12 +3,17 @@ import { useCallback, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { controls, spacing } from "@/theme/theme";
+import { layout, spacing } from "@/theme/theme";
 
 import { AppText } from "./AppText";
 import { BackIcon } from "./icons";
-import { IconButton, type IconButtonSize } from "./IconButton";
+import {
+  IconButton,
+  iconButtonSide,
+  type IconButtonSize,
+} from "./IconButton";
 
 export type ScreenHeaderAction = {
   accessibilityLabel: string;
@@ -46,12 +51,16 @@ export type ScreenHeaderProps = {
 
 function ActionSlot({
   action,
+  phone,
   size,
 }: {
   action: ScreenHeaderAction | null;
+  phone: boolean;
   size: IconButtonSize;
 }) {
-  const side = controls.iconButton[size];
+  // The empty slot has to match the button it stands in for, or the centered
+  // title drifts off center on the tier with the smaller button.
+  const side = iconButtonSide(size, phone);
 
   if (!action) {
     return <View style={{ height: side, width: side }} />;
@@ -79,6 +88,7 @@ export function ScreenHeader({
 }: ScreenHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { phone } = useLayoutSize();
 
   const handleBack = useCallback(() => {
     if (onBack) {
@@ -106,8 +116,8 @@ export function ScreenHeader({
   const hasTitle = Boolean(title);
 
   const row = (
-    <View style={[styles.row, style]}>
-      <ActionSlot action={left} size={buttonSize} />
+    <View style={[styles.row, phone && styles.rowPhone, style]}>
+      <ActionSlot action={left} phone={phone} size={buttonSize} />
 
       {centerSlot ? (
         <View style={styles.centerSlot}>{centerSlot}</View>
@@ -126,7 +136,9 @@ export function ScreenHeader({
         <View style={styles.flexSpacer} />
       )}
 
-      {rightSlot ?? <ActionSlot action={rightAction} size={buttonSize} />}
+      {rightSlot ?? (
+        <ActionSlot action={rightAction} phone={phone} size={buttonSize} />
+      )}
     </View>
   );
 
@@ -156,8 +168,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "space-between",
-    minHeight: 68,
+    minHeight: layout.headerHeight,
     paddingHorizontal: spacing.lg,
+  },
+  rowPhone: {
+    minHeight: layout.headerHeightPhone,
+    paddingHorizontal: spacing.md,
   },
   stackHeader: {
     backgroundColor: colors.transparent,

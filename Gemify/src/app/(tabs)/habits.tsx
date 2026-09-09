@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useCallback, useMemo, useState } from "react";
 import Svg, { Path } from "react-native-svg";
 
@@ -39,10 +39,10 @@ import {
   SparkIcon,
   TrashIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
-  layout,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -74,21 +74,35 @@ const GROUP_VISUAL_CYCLE = [
   { icon: "heart", tint: colors.primary },
 ] as const;
 
-function HeaderOrnament({ compact }: { compact: boolean }) {
+function HeaderOrnament({
+  compact,
+  phone,
+}: {
+  compact: boolean;
+  phone: boolean;
+}) {
   return (
     <View style={styles.ornamentRow}>
-      <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
-      <SparkIcon size={compact ? 24 : 32} />
-      <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
+      {/* Decoration on the widest row of the screen — the spark stays, the
+          rules either side of it go. */}
+      {phone ? null : (
+        <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
+      )}
+      <SparkIcon size={phone ? 18 : compact ? 24 : 32} />
+      {phone ? null : (
+        <View style={[styles.ornamentLine, compact && styles.ornamentLineCompact]} />
+      )}
     </View>
   );
 }
 
 function TodayBar({
   compact,
+  phone,
   totalHabits,
 }: {
   compact: boolean;
+  phone: boolean;
   totalHabits: number;
 }) {
   const dateLabel = new Date().toLocaleDateString("en-US", {
@@ -109,14 +123,20 @@ function TodayBar({
           Today
         </AppText>
       </View>
-      <View style={styles.todayDivider} />
-      <AppText
-        numberOfLines={1}
-        style={[styles.todayDate, compact && styles.todayDateCompact]}
-        variant="subtitle"
-      >
-        {dateLabel}
-      </AppText>
+      {/* Every habit row highlights today in its own week strip, so the
+          spelled-out date is the first thing to go on a phone. */}
+      {phone ? null : (
+        <>
+          <View style={styles.todayDivider} />
+          <AppText
+            numberOfLines={1}
+            style={[styles.todayDate, compact && styles.todayDateCompact]}
+            variant="subtitle"
+          >
+            {dateLabel}
+          </AppText>
+        </>
+      )}
       <AppText
         color={colors.textMuted}
         style={compact && styles.todayCountCompact}
@@ -180,6 +200,7 @@ function HabitRow({
   onDetailToggle,
   onOpenMenu,
   onPress,
+  phone,
 }: {
   activeDayIndex: number;
   checkedSections: readonly HabitDetailSection[];
@@ -190,6 +211,7 @@ function HabitRow({
   onDetailToggle: (section: HabitDetailSection) => void;
   onOpenMenu: () => void;
   onPress: () => void;
+  phone: boolean;
 }) {
   return (
     <HabitBoardRow
@@ -199,6 +221,7 @@ function HabitRow({
       containerStyle={[
         styles.habitRow,
         compact && styles.habitRowCompact,
+        phone && styles.habitRowPhone,
         expanded && styles.habitRowExpanded,
         expanded && compact && styles.habitRowExpandedCompact,
       ]}
@@ -207,6 +230,7 @@ function HabitRow({
       onDayPress={onDayPress}
       onDetailToggle={onDetailToggle}
       onPress={onPress}
+      phone={phone}
       trailing={
         <Pressable
           accessibilityLabel={`Options for the habit ${habit.title}`}
@@ -225,7 +249,15 @@ function HabitRow({
   );
 }
 
-function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }) {
+function GroupHeader({
+  compact,
+  group,
+  phone,
+}: {
+  compact: boolean;
+  group: HabitGroup;
+  phone: boolean;
+}) {
   return (
     <View style={[styles.groupHeader, compact && styles.groupHeaderCompact]}>
       <View style={[styles.groupTitleRow, compact && styles.groupTitleRowCompact]}>
@@ -237,13 +269,16 @@ function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }
         >
           {group.title}
         </AppText>
-        <AppText
-          color={colors.textMuted}
-          style={[styles.groupCount, compact && styles.groupCountCompact]}
-          variant="subtitle"
-        >
-          {group.count}
-        </AppText>
+        {/* The rows it counts are directly below. */}
+        {phone ? null : (
+          <AppText
+            color={colors.textMuted}
+            style={[styles.groupCount, compact && styles.groupCountCompact]}
+            variant="subtitle"
+          >
+            {group.count}
+          </AppText>
+        )}
       </View>
       {group.habits.length === 0 ? <ChevronIcon /> : null}
     </View>
@@ -252,8 +287,7 @@ function GroupHeader({ compact, group }: { compact: boolean; group: HabitGroup }
 
 export default function HabitsScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, phone } = useLayoutSize();
   const [expandedHabit, setExpandedHabit] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
@@ -426,7 +460,7 @@ export default function HabitsScreen() {
           >
             My Habits
           </AppText>
-          <HeaderOrnament compact={compact} />
+          <HeaderOrnament compact={compact} phone={phone} />
         </View>
         <IconButton
           accessibilityLabel="Add habit"
@@ -436,17 +470,22 @@ export default function HabitsScreen() {
         />
       </View>
 
-      <TodayBar compact={compact} totalHabits={habitViews.length} />
+      <TodayBar
+        compact={compact}
+        phone={phone}
+        totalHabits={habitViews.length}
+      />
 
       <View style={styles.groups}>
         {groups.map((group) => (
           <View key={group.title} style={styles.group}>
-            <GroupHeader compact={compact} group={group} />
+            <GroupHeader compact={compact} group={group} phone={phone} />
             {group.habits.map((habit) => (
               <HabitRow
                 activeDayIndex={activeDayIndex}
                 checkedSections={checksByHabit.get(habit.id) ?? []}
                 compact={compact}
+                phone={phone}
                 expanded={expandedHabit === habit.id}
                 habit={habit}
                 key={habit.id}
@@ -509,9 +548,12 @@ export default function HabitsScreen() {
         <AppText align="center" color={colors.primary} variant="titleSm">
           Finished Habits
         </AppText>
-        <AppText align="center" style={styles.manageSubtitle} variant="bodySmall">
-          Finished habits rest here — restore one to keep going
-        </AppText>
+        {/* The restore button is on every row below. */}
+        {phone ? null : (
+          <AppText align="center" style={styles.manageSubtitle} variant="bodySmall">
+            Finished habits rest here — restore one to keep going
+          </AppText>
+        )}
         <View style={styles.manageList}>
           {completedHabits.map(({ doneCount, habit }) => (
             <View key={habit.id} style={styles.manageRow}>
@@ -719,6 +761,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     paddingHorizontal: 2,
     paddingTop: 14,
+  },
+  /** The 52 pt medallion and 24 pt day dots leave the row shorter. */
+  habitRowPhone: {
+    paddingBottom: spacing.sm,
+    paddingTop: spacing.sm,
   },
   habitRowExpandedCompact: {
     paddingHorizontal: 10,

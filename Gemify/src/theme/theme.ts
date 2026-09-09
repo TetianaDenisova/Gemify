@@ -23,8 +23,12 @@ export const spacing = {
 export const layout = {
   /** Below this window width screens switch to their compact layout. */
   compactBreakpoint: 560,
+  /** Below this width screens use the phone layout (iPhone 17 family: 402-440 pt). */
+  phoneBreakpoint: 480,
   /** Min-height of the ScreenHeader row; also the top offset under a transparent stack header. */
   headerHeight: 68,
+  /** Phone-tier ScreenHeader height — replaces headerHeight below phoneBreakpoint. */
+  headerHeightPhone: 56,
   /** Below this window height (or in landscape) screens tighten vertical spacing. */
   shortScreenBreakpoint: 760,
   /** Max readable width for screen content on tablets/web. */
@@ -33,11 +37,26 @@ export const layout = {
   screenPaddingH: 22,
   /** Height of the floating tab bar in (tabs)/_layout. */
   tabBarHeight: 72,
+  /** Phone-tier tab bar height — icons only, no labels. */
+  tabBarHeightPhone: 56,
   /** Bottom clearance so scroll content is not hidden behind the tab bar. */
   tabBarClearance: 72 + spacing.sm * 2,
   /** Minimum touch target for interactive elements. */
   minTouchTarget: 44,
 } as const;
+
+/** Height of the tab bar on the active tier (phone drops the labels). */
+export function tabBarHeightFor(phone: boolean): number {
+  return phone ? layout.tabBarHeightPhone : layout.tabBarHeight;
+}
+
+/**
+ * Scroll clearance for a tab bar of `barHeight`. Equals layout.tabBarClearance
+ * (88) at the tablet's 72 pt bar, so the tablet path is unchanged.
+ */
+export function tabBarClearanceFor(barHeight: number): number {
+  return barHeight + spacing.sm * 2;
+}
 
 const fantasySerif = Platform.select({
   android: "serif",
@@ -250,6 +269,48 @@ export const typography = {
   } satisfies TextStyle,
 } as const;
 
+/**
+ * Phone-tier overrides for the display roles only. A variant missing here
+ * renders from `typography` unchanged, and nothing above phoneBreakpoint ever
+ * reads this table.
+ */
+export const typographyPhone: Partial<Record<keyof typeof typography, TextStyle>> = {
+  cardTitle: {
+    fontSize: fontSizes.xxxl,
+    lineHeight: lineHeights.xxxl,
+  },
+  screenTitle: {
+    fontSize: 30,
+    lineHeight: 36,
+  },
+  stat: {
+    fontSize: fontSizes.screenTitle,
+    lineHeight: lineHeights.screenTitle,
+  },
+};
+
+/**
+ * Ceiling on the iOS Dynamic Type multiplier, phone tier only — display roles
+ * are the ones that break the fixed control heights first, so they cap lower.
+ * Tablets pass `undefined` and keep RN's unbounded default.
+ */
+const DISPLAY_ROLES: readonly (keyof typeof typography)[] = [
+  "cardTitle",
+  "screenTitle",
+  "sectionTitle",
+  "stat",
+  "title",
+  "titleSm",
+];
+
+export function maxFontScaleFor(
+  variant: keyof typeof typography,
+  phone: boolean,
+): number | undefined {
+  if (!phone) return undefined;
+  return DISPLAY_ROLES.includes(variant) ? 1.4 : 1.8;
+}
+
 export const controls = {
   button: {
     pill: {
@@ -279,6 +340,23 @@ export const controls = {
     borderRadius: 22,
     cardRadius: 20,
     cardPadding: 20,
+  },
+} as const;
+
+/**
+ * Phone-tier control metrics. These are `minHeight`, not `height`: a control
+ * whose label grows under Dynamic Type gets taller instead of clipping, while
+ * the tablet keeps the fixed heights in `controls`.
+ */
+export const controlsPhone = {
+  button: {
+    pill: { minHeight: 42 },
+    section: { minHeight: 48 },
+  },
+  iconButton: {
+    sm: 44,
+    md: 48,
+    lg: 56,
   },
 } as const;
 

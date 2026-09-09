@@ -1,5 +1,9 @@
 import { Platform } from "react-native";
 
+// Imported from the module rather than the @/sync barrel: the barrel pulls in
+// the sync engine, which imports @/db, and that round trip is a cycle.
+import { finishRestoreForSync } from "@/sync/localStore";
+
 import { getDatabase } from "./database";
 import { LATEST_SCHEMA_VERSION } from "./migrations";
 
@@ -33,6 +37,18 @@ const BACKUP_TABLES = [
   "timeline_moments",
   "timeline_moment_photos",
 ] as const;
+
+/**
+ * Sync bookkeeping the import must not carry over. `uid` is kept — it is the
+ * row's identity across devices — but the clock and the unpushed flag are
+ * restamped afterwards, and a storage key from another account would never
+ * resolve, so its photo re-uploads instead.
+ */
+const RESTORE_SKIPPED_COLUMNS = new Set([
+  "photo_remote_key",
+  "sync_dirty",
+  "updated_at",
+]);
 
 /** Marks a photo row whose file travels in the backup's `photos` list. */
 const PHOTO_URI_PREFIX = "backup-photo:";
@@ -451,8 +467,9 @@ async function restoreBackup(document: BackupDocument): Promise<void> {
               : row;
         if (!resolved) continue;
 
-        const columns = Object.keys(resolved).filter((column) =>
-          /^[a-z_]+$/.test(column),
+        const columns = Object.keys(resolved).filter(
+          (column) =>
+            /^[a-z_]+$/.test(column) && !RESTORE_SKIPPED_COLUMNS.has(column),
         );
         if (columns.length === 0) continue;
 
@@ -464,6 +481,8 @@ async function restoreBackup(document: BackupDocument): Promise<void> {
       }
     }
   });
+
+  await finishRestoreForSync(db);
 }
 
 /** Restores bundled photo files into the memories directory; name → new URI. */

@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,8 +18,9 @@ import {
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { fonts, fontSizes, iconSizes, layout, pressed, spacing } from "@/theme/theme";
+import { fonts, fontSizes, iconSizes, pressed, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../assets/state_background.png");
 const CONTINUE_BUTTON = require("../../assets/state/continue-btn.png");
@@ -39,7 +39,7 @@ function Ornament() {
 export default function StateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { phone, short: compact } = useLayoutSize();
   const { name, description, photoUri } = useLocalSearchParams<{
     name?: string;
     description?: string;
@@ -49,7 +49,6 @@ export default function StateScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const compact = height < layout.shortScreenBreakpoint;
 
   const finishDream = async () => {
     if (saving) return;
@@ -112,17 +111,20 @@ export default function StateScreen() {
         backgroundImage={BACKGROUND}
         contentStyle={[
           styles.content,
-          { paddingTop: insets.top + (compact ? 61 : 70) },
+          { paddingTop: insets.top + (phone ? 49 : compact ? 61 : 70) },
         ]}
         keyboardAvoiding
         overlayOpacity={0.2}
       >
-        <View style={styles.brandBlock}>
-          <AppText style={styles.brand} variant="eyebrow">
-            G E M I F Y
-          </AppText>
-          <Ornament />
-        </View>
+        {/* The app's own chrome, on the app's own screen. */}
+        {phone ? null : (
+          <View style={styles.brandBlock}>
+            <AppText style={styles.brand} variant="eyebrow">
+              G E M I F Y
+            </AppText>
+            <Ornament />
+          </View>
+        )}
 
         <AppText
           align="center"
@@ -183,7 +185,7 @@ export default function StateScreen() {
                 label={label}
                 onPress={() => toggleState(label)}
                 selected={isSelected}
-                style={styles.chip}
+                style={[styles.chip, phone && styles.chipPhone]}
               />
             );
           })}
@@ -222,7 +224,7 @@ export default function StateScreen() {
           <Image
             resizeMode="contain"
             source={CONTINUE_BUTTON}
-            style={styles.continueImage}
+            style={[styles.continueImage, phone && styles.continueImagePhone]}
           />
         </Pressable>
 
@@ -232,9 +234,12 @@ export default function StateScreen() {
           </AppText>
         ) : null}
 
-        <AppText style={styles.footnote} variant="caption">
-          ▣  You can change this anytime
-        </AppText>
+        {/* Reassurance copy — the first thing a 402 pt screen can spare. */}
+        {phone ? null : (
+          <AppText style={styles.footnote} variant="caption">
+            ▣  You can change this anytime
+          </AppText>
+        )}
       </ScreenScaffold>
     </>
   );
@@ -253,6 +258,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     width: "31.5%",
   },
+  /** Still three-up at 370 pt, with the padding giving way instead. */
+  chipPhone: {
+    paddingHorizontal: spacing.xs,
+  },
   chipGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -270,6 +279,10 @@ const styles = StyleSheet.create({
   continueImage: {
     height: 140,
     width: 210,
+  },
+  continueImagePhone: {
+    height: 106,
+    width: 160,
   },
   continueImageButton: {
     marginTop: spacing.md,

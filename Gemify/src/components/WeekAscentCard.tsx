@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { ActionIconArt } from "@/components/TimeBlockCard";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import type { WeekAscentEntry } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
 import {
@@ -126,6 +127,8 @@ export function WeekAscentCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { phone } = useLayoutSize();
+
   if (entries.length === 0) {
     return null;
   }
@@ -151,7 +154,7 @@ export function WeekAscentCard({
             isPressed && pressed,
           ]}
         >
-          <View style={styles.artThumb}>
+          <View style={[styles.artThumb, phone && styles.artThumbPhone]}>
             <Image contentFit="cover" source={ASCENT_ART} style={styles.art} />
           </View>
           <View style={styles.compactBody}>
@@ -166,16 +169,23 @@ export function WeekAscentCard({
             />
           </View>
           <View style={styles.compactCount}>
-            <AppText color={colors.primary} variant="cardTitle">
+            <AppText
+              color={colors.primary}
+              variant={phone ? "titleSm" : "cardTitle"}
+            >
               {formatDelta(expectedTotal)}
             </AppText>
-            <AppText
-              color={colors.textMuted}
-              style={styles.compactCountLabel}
-              variant="captionStrong"
-            >
-              EXPECTED
-            </AppText>
+            {/* The row title beside it already reads "Expected progress
+                this week". */}
+            {phone ? null : (
+              <AppText
+                color={colors.textMuted}
+                style={styles.compactCountLabel}
+                variant="captionStrong"
+              >
+                EXPECTED
+              </AppText>
+            )}
           </View>
           <ChevronIcon color={colors.textMuted} direction="down" size={16} />
         </Pressable>
@@ -192,9 +202,12 @@ export function WeekAscentCard({
         style={({ pressed: isPressed }) => [isPressed && pressed]}
       >
         <View style={styles.row}>
-          <View style={styles.artFrame}>
-            <Image contentFit="cover" source={ASCENT_ART} style={styles.art} />
-          </View>
+          {/* Decoration inside a card that is already covering the board. */}
+          {phone ? null : (
+            <View style={styles.artFrame}>
+              <Image contentFit="cover" source={ASCENT_ART} style={styles.art} />
+            </View>
+          )}
           <AscentProgress
             expectedPercent={expectedTotal}
             gainedPercent={gainedTotal}
@@ -253,6 +266,10 @@ const styles = StyleSheet.create({
     height: 68,
     overflow: "hidden",
     width: 68,
+  },
+  artThumbPhone: {
+    height: 51,
+    width: 51,
   },
   compactBody: {
     flex: 1,

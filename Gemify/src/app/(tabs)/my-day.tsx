@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePickerModal";
@@ -35,8 +35,15 @@ import {
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { iconSizes, layout, radius, spacing } from "@/theme/theme";
+import {
+  iconSizes,
+  radius,
+  spacing,
+  tabBarClearanceFor,
+  tabBarHeightFor,
+} from "@/theme/theme";
 import { addDays, toDateKey, todayKey } from "@/utils/dates";
 
 const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
@@ -44,17 +51,23 @@ const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
 /** Extra scroll clearance so content is not hidden behind the fixed footer. */
 const FOOTER_CLEARANCE = 150;
 const FOOTER_CLEARANCE_COMPACT = 120;
+/** The phone footer card is shorter (64 pt art, tighter bar). */
+const FOOTER_CLEARANCE_PHONE = 96;
 
 /** The quest a day-plan row points at, for the action sheet and its modals. */
 type DayQuestRef = { done: boolean; questId: number; title: string };
 
 export default function MyDayScreen() {
   const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, height, phone } = useLayoutSize();
+  const tabBarHeight = tabBarHeightFor(phone);
   // The copy and Add quest button overlay the artwork, so it can take most of
   // the free vertical space while everything stays visible.
-  const emptyImageHeight = Math.min(560, Math.max(300, Math.round(height * 0.5)));
+  // 874 * 0.5 = 437 pt of empty art on a 402 pt-wide screen; the phone takes
+  // a third of the height instead.
+  const emptyImageHeight = phone
+    ? Math.min(360, Math.max(220, Math.round(height * 0.3)))
+    : Math.min(560, Math.max(300, Math.round(height * 0.5)));
 
   // No explicit selection yet → the block matching the clock right now.
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -197,8 +210,12 @@ export default function MyDayScreen() {
         contentStyle={{
           paddingBottom:
             insets.bottom +
-            layout.tabBarClearance +
-            (compact ? FOOTER_CLEARANCE_COMPACT : FOOTER_CLEARANCE),
+            tabBarClearanceFor(tabBarHeight) +
+            (phone
+              ? FOOTER_CLEARANCE_PHONE
+              : compact
+                ? FOOTER_CLEARANCE_COMPACT
+                : FOOTER_CLEARANCE),
         }}
         tabClearance
         topInset
@@ -215,7 +232,8 @@ export default function MyDayScreen() {
             onPress: () => setBlockSettingsOpen(true),
           }}
           style={styles.header}
-          subtitle="Focus only on what matters now."
+          // A tagline costs a whole line under the title on every visit.
+          subtitle={phone ? undefined : "Focus only on what matters now."}
           title={headerTitle}
         />
 
@@ -262,7 +280,10 @@ export default function MyDayScreen() {
                       iconPosition="before"
                       label="Add quest"
                       onPress={openQuestPicker}
-                      style={styles.emptyBlockButton}
+                      style={[
+                        styles.emptyBlockButton,
+                        phone && styles.buttonPhone,
+                      ]}
                       variant="secondary"
                     />
                   )}
@@ -301,7 +322,7 @@ export default function MyDayScreen() {
         style={[
           styles.progressFooter,
           // Flush against the flat tab bar, spanning the full screen width.
-          { bottom: insets.bottom + layout.tabBarHeight },
+          { bottom: insets.bottom + tabBarHeight },
         ]}
       >
         <TodayProgressCard
@@ -421,6 +442,11 @@ const styles = StyleSheet.create({
   emptyBlockButton: {
     marginTop: spacing.lg,
     minWidth: 220,
+  },
+  /** 220 pt does not fit beside anything on a 370 pt row. */
+  buttonPhone: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   emptyBlockCard: {
     marginTop: spacing.md,

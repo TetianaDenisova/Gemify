@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
@@ -60,6 +59,7 @@ import {
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   controls,
@@ -219,10 +219,12 @@ function QuestRow({
   onAccept,
   onOpenMenu,
   onToggleQuest,
+  phone,
   quest,
   timeBlocks,
 }: {
   compact: boolean;
+  phone: boolean;
   onAccept: () => void;
   onOpenMenu: () => void;
   onToggleQuest: () => void;
@@ -249,7 +251,7 @@ function QuestRow({
         >
           <QuestSparkIcon color={colors.primary} variant={iconVariant} />
           <View style={styles.questCopy}>
-            <AppText numberOfLines={2} variant="cardTitle">
+            <AppText numberOfLines={2} variant={phone ? "pill" : "cardTitle"}>
               {quest.title}
             </AppText>
             {isAccepted ? (
@@ -270,7 +272,12 @@ function QuestRow({
             hitSlop={8}
             onPress={onToggleQuest}
           >
-            <Checkbox appearance="outline" checked shape="circle" size={44} />
+            <Checkbox
+              appearance="outline"
+              checked
+              shape="circle"
+              size={phone ? 36 : 44}
+            />
           </Pressable>
         ) : isAccepted ? (
           <View style={styles.acceptedTag}>
@@ -405,8 +412,7 @@ function HabitActionSheet({
 
 export default function MilestoneQuestsScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isNarrow = width < layout.compactBreakpoint;
+  const { compact: isNarrow, phone } = useLayoutSize();
   const { milestoneId: milestoneIdParam, dreamId: dreamIdParam } =
     useLocalSearchParams<{
       milestoneId?: string;
@@ -673,7 +679,10 @@ export default function MilestoneQuestsScreen() {
         title="Milestone Quests"
       />
 
-      <Card padded={false} style={styles.milestoneCard}>
+      <Card
+        padded={false}
+        style={[styles.milestoneCard, phone && styles.milestoneCardPhone]}
+      >
         <Image
           contentFit="cover"
           source={TREE_MILESTONE_HEADER_SOURCE}
@@ -693,10 +702,16 @@ export default function MilestoneQuestsScreen() {
           colors={["rgba(4, 7, 17, 0.04)", "rgba(4, 7, 17, 0.8)"]}
           style={styles.heroBottomShade}
         />
-        <View style={styles.milestoneCopy}>
-          <AppText color={colors.accentViolet} variant="eyebrow">
-            CURRENT MILESTONE
-          </AppText>
+        <View
+          style={[styles.milestoneCopy, phone && styles.milestoneCopyPhone]}
+        >
+          {/* The card is the only hero here and the bar identifies it, so the
+              label gives its line to a two-line title. */}
+          {phone ? null : (
+            <AppText color={colors.accentViolet} variant="eyebrow">
+              CURRENT MILESTONE
+            </AppText>
+          )}
           <AppText numberOfLines={2} style={styles.milestoneTitle} variant="cardTitle">
             {milestone?.title ?? "No milestone yet"}
           </AppText>
@@ -712,9 +727,12 @@ export default function MilestoneQuestsScreen() {
       />
 
       <View style={styles.listToolbar}>
-        <AppText color={colors.textSecondary} variant="meta">
-          {visibleLabel}
-        </AppText>
+        {/* The tab above prints the same number in its pill. */}
+        {phone ? null : (
+          <AppText color={colors.textSecondary} variant="meta">
+            {visibleLabel}
+          </AppText>
+        )}
         {activeTab === "quests" ? (
           <Pressable
             accessibilityRole="button"
@@ -762,6 +780,7 @@ export default function MilestoneQuestsScreen() {
               onAccept={() => setAcceptQuest(quest)}
               onOpenMenu={() => setMenuQuest(quest)}
               onToggleQuest={() => handleToggleQuest(quest)}
+              phone={phone}
               quest={quest}
               timeBlocks={timeBlocks}
             />
@@ -798,14 +817,17 @@ export default function MilestoneQuestsScreen() {
                 style={styles.completeButton}
               />
             ) : (
-              <AppText
-                align="center"
-                color={colors.textMuted}
-                style={styles.completeHint}
-                variant="bodySmall"
-              >
-                To complete this milestone, complete all of its quests.
-              </AppText>
+              // Instruction-only copy in the most common state.
+              phone ? null : (
+                <AppText
+                  align="center"
+                  color={colors.textMuted}
+                  style={styles.completeHint}
+                  variant="bodySmall"
+                >
+                  To complete this milestone, complete all of its quests.
+                </AppText>
+              )
             )
           ) : null}
         </>
@@ -819,6 +841,7 @@ export default function MilestoneQuestsScreen() {
                 styles.habitCard,
                 isNarrow && styles.habitCardCompact,
               ]}
+              phone={phone}
               expanded={expandedHabitIds.has(habit.id)}
               habit={habit}
               key={habit.id}
@@ -1100,6 +1123,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     minHeight: controls.button.section.height,
   },
+  milestoneCardPhone: {
+    minHeight: 150,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
   milestoneCard: {
     borderColor: colors.accentVioletGlow,
     minHeight: 200,
@@ -1112,6 +1140,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     maxWidth: "68%",
     zIndex: 1,
+  },
+  /** The art is a backdrop — on 370 pt the title needs the extra width. */
+  milestoneCopyPhone: {
+    maxWidth: "76%",
   },
   menuButton: {
     alignItems: "center",

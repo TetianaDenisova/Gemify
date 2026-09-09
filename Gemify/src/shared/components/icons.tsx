@@ -191,6 +191,32 @@ export function RepeatIcon({
 }
 
 /** Sun over the horizon — "do it today" actions. */
+/** Two arrows chasing each other in a circle — cloud sync. */
+export function SyncIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M22 4v6h-6M2 20v-6h6"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M4.6 9.2a8 8 0 0 1 13.3-3L22 10M2 14l4.1 3.8a8 8 0 0 0 13.3-3"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function SunHorizonIcon({
   color = colors.primary,
   size = 20,

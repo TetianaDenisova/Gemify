@@ -31,6 +31,16 @@ All user data lives in a local SQLite database behind `src/db/` (barrel: `@/db`)
 - `backup.ts` — versioned JSON export/import of the whole database
 - Screens load via hooks in `src/hooks/` (`useDreamSummaries`, `useDayQuestBlocks`, `useHabitWeek`, `useProgressContent`) that refresh on focus. No Redux/Zustand — React state + focus-driven refresh only. No backend API.
 
+### Cloud sync (optional, Supabase)
+Sync is additive: without `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` the app is exactly the offline app it was, and `isSyncConfigured()` turns the feature off.
+
+- **Local side (migration 17).** Every synced table carries `uid` (identity across devices), `updated_at` (last-write-wins clock) and `sync_dirty` (unpushed), maintained by three SQL triggers per table; deletes leave a row in `sync_tombstones`. Repositories write plain SQL and know nothing about sync. `PRAGMA recursive_triggers = ON` (set in `database.ts`) is what makes `ON DELETE CASCADE` tombstone the children too.
+- **Natural-key rows** (habit completions, schedule days, dream/feeling pairs, time blocks, feeling states) derive their `uid` from that key, so two devices creating "the same" row converge instead of tripping a UNIQUE constraint. Only `milestones` needs code: a clash on `(dream_id, sequence_number)` is resolved by uid comparison in `resolveSequenceClash`, identically on both devices.
+- **Server side** is one generic table, `sync_rows(user_id, table_name, uid, data jsonb, deleted, client_updated_at, server_updated_at)`, plus a private storage bucket — see `supabase/schema.sql`. It models nothing, so adding a column locally needs no server change. RLS scopes rows to `auth.uid()`; a BEFORE trigger enforces last-write-wins.
+- **The engine** (`src/sync/engine.ts`) pushes dirty rows and tombstones, pulls everything newer than the stored cursor, then downloads missing photo files. Foreign keys travel as the parent's `uid` (row ids are per-device); `applyPulledRows` writes with the triggers muted via the `sync_state` "applying" marker.
+- **Auth** is an emailed one-time code (`src/sync/auth.ts`), so there is no deep-link setup. UI lives in `src/app/cloud-sync.tsx`, reached from `MoreMenuSheet`.
+- `useAutoSync` (root layout) syncs on open, every 5 minutes while the app is up, and on backgrounding; screens pick up pulled changes through `useRefreshOnSync`, which every focus-refreshing hook calls. Home shows a sync button only while the device is not signed in — once it is, syncing is automatic and the screen lives in the ⋮ menu.
+
 ### Routing and screens
 **File-based routing** via `expo-router`:
 - `src/app/(tabs)/` — bottom-tabbed screens (Home, My Day, Milestone Quests, Habits, Sprint/Weekly Plan, Progress, Memories)
@@ -70,6 +80,10 @@ Centralized design tokens in `src/theme/`:
 | `src/app/what-if-plan.tsx` | Risk/contingency planner ("if tired, do 5-min version") |
 | `src/screens/JourneyMapScreen.tsx` | The zoomable journey map + milestone editing |
 | `src/db/migrations.ts` | Schema migrations (append-only) |
+| `src/sync/engine.ts` | Push / pull / photo download — one sync pass |
+| `src/sync/localStore.ts` | Everything sync does to the local database |
+| `src/sync/tables.ts` | Synced tables: order, foreign keys, photo columns |
+| `supabase/schema.sql` | Server setup: row store, RLS, storage bucket |
 | `src/data/journeyMilestones.ts` | Milestone type contracts (content comes from the DB) |
 | `src/theme/colors.ts` | Color palette (dark, gold-accented) |
 | `src/theme/theme.ts` | Spacing, radius, shadows, typography, gradients |
@@ -78,7 +92,7 @@ Centralized design tokens in `src/theme/`:
 
 **New tab screen:** Create `src/app/(tabs)/[name].tsx`, export a default component, and add a `<Tabs.Screen>` entry in `src/app/(tabs)/_layout.tsx`. Add icon data to `src/data/menuIcons.ts`.
 
-**New persisted data:** Append a migration in `src/db/migrations.ts`, add a repository (or extend one) with an explicit row mapper, export it from `src/db/index.ts`, and load it through a focus-refreshing hook in `src/hooks/`. Add new tables to `BACKUP_TABLES` in `src/db/backup.ts` (parents before children).
+**New persisted data:** Append a migration in `src/db/migrations.ts`, add a repository (or extend one) with an explicit row mapper, export it from `src/db/index.ts`, and load it through a focus-refreshing hook in `src/hooks/`. Add new tables to `BACKUP_TABLES` in `src/db/backup.ts` (parents before children). A **new column** syncs on its own (the engine reads columns from `PRAGMA table_info`); a **new table** needs a migration that adds its `uid` / `updated_at` / `sync_dirty` columns and the three sync triggers, plus an entry in `SYNC_TABLES` (`src/sync/tables.ts`) with its foreign keys, placed after its parents.
 
 **Styling:** Always use theme exports (`colors.*`, `spacing.*`, etc.). No magic numbers for padding, font size, or color. For an alpha variant of a token use `withOpacity`.
 
@@ -91,3 +105,4 @@ Centralized design tokens in `src/theme/`:
 - **expo-sqlite on web** needs `wasm` in Metro's assetExts and cross-origin isolation headers — both configured in `metro.config.js`; don't remove them.
 - **Dynamic imports:** `expo-file-system`, `expo-sharing`, `expo-document-picker` are loaded via `await import()` in `src/db/backup.ts` — dependency scanners that only see static imports will wrongly flag them as unused.
 - **No test infrastructure.** No Jest, no testing library. Manual testing in dev (plus `npm run typecheck` and `npm run lint`) is the current bar.
+- **Sync conflicts are last-write-wins per row, not per field.** Two devices editing different fields of the same row keep only the later row. Deleting a parent on one device beats an edit to its child on the other.

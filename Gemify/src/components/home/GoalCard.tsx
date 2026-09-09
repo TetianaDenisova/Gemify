@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import type { Goal, ThemeColor } from "@/data/homeTypes";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
 import { AppText, ProgressRing } from "@/shared/components";
@@ -39,9 +40,11 @@ const ART_BACKING = "#01030E";
  * below so the ring area darkens just enough for the percentage to read.
  */
 const RING_SIZE = 50;
+const RING_SIZE_PHONE = 42;
 const RING_EDGE_GAP = spacing.md;
 const ART_RING_GAP = 14;
-const RING_COLUMN_WIDTH = RING_SIZE + RING_EDGE_GAP + ART_RING_GAP;
+const ringColumnWidth = (ringSize: number) =>
+  ringSize + RING_EDGE_GAP + ART_RING_GAP;
 
 /**
  * Soft scrim under the progress column. The art runs edge to edge, so this
@@ -70,12 +73,18 @@ function getThemeColor(themeColor: ThemeColor) {
 
 export function GoalCard({ goal, onPress }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
+  const { phone } = useLayoutSize();
+  const ringSize = phone ? RING_SIZE_PHONE : RING_SIZE;
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => onPress?.(goal)}
-      style={({ pressed: isPressed }) => [styles.card, isPressed && pressed]}
+      style={({ pressed: isPressed }) => [
+        styles.card,
+        phone && styles.cardPhone,
+        isPressed && pressed,
+      ]}
     >
       {/* Always the preset art for the goal's slot — the user's dream photo
           stays on the journey map, not the home list. The art bleeds to the
@@ -100,14 +109,17 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         colors={SEAM_SHADE}
         end={{ x: 1, y: 0.5 }}
         start={{ x: 0, y: 0.5 }}
-        style={styles.seamShade}
+        style={[
+          styles.seamShade,
+          { width: ringColumnWidth(ringSize) + 56 },
+        ]}
       />
 
-      <View style={styles.inner}>
-        <View style={styles.iconWrapper}>
+      <View style={[styles.inner, phone && styles.innerPhone]}>
+        <View style={[styles.iconWrapper, phone && styles.iconWrapperPhone]}>
           <Image
             source={goalIcons[goal.iconKey]}
-            style={styles.iconImage}
+            style={phone ? styles.iconImagePhone : styles.iconImage}
             contentFit="contain"
           />
         </View>
@@ -118,14 +130,14 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           </AppText>
         </View>
 
-        <View style={styles.progressColumn}>
+        <View style={[styles.progressColumn, { width: ringSize }]}>
           {/* Always a percentage — a fresh dream reads "0%", in the same
               spot as every other card, so the list stays consistent. */}
           <ProgressRing
             backgroundColor={colors.surfaceDeep}
             color={accentColor}
             labelColor={accentColor}
-            size={RING_SIZE}
+            size={ringSize}
             strokeWidth={2}
             value={goal.progressPercent}
           />
@@ -166,6 +178,10 @@ const styles = StyleSheet.create({
     ...shadows.softDark,
   },
 
+  cardPhone: {
+    minHeight: 112,
+  },
+
   shade: {
     ...absoluteFill,
     zIndex: 1,
@@ -176,7 +192,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    width: RING_COLUMN_WIDTH + 56,
     zIndex: 2,
   },
 
@@ -190,6 +205,10 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
 
+  innerPhone: {
+    paddingVertical: 10,
+  },
+
   iconWrapper: {
     alignItems: "center",
     height: 64,
@@ -198,9 +217,20 @@ const styles = StyleSheet.create({
     width: 64,
   },
 
+  iconWrapperPhone: {
+    height: 48,
+    marginRight: 2,
+    width: 48,
+  },
+
   iconImage: {
     height: 42,
     width: 42,
+  },
+
+  iconImagePhone: {
+    height: 32,
+    width: 32,
   },
 
   titleBlock: {
@@ -211,6 +241,5 @@ const styles = StyleSheet.create({
   progressColumn: {
     alignItems: "center",
     justifyContent: "center",
-    width: RING_SIZE,
   },
 });

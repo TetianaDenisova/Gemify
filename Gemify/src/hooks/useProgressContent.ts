@@ -18,6 +18,7 @@ import {
   type Quest,
   type TimelineMoment,
 } from "@/db";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
 
 const TIMELINE_ICONS: readonly TimelineIconKey[] = [
@@ -340,6 +341,8 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       setLoading(false);
     }
   }, [parsedKey]);
+
+  useRefreshOnSync(refresh);
 
   useFocusEffect(
     useCallback(() => {

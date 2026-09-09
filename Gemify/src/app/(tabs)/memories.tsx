@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
@@ -19,6 +18,7 @@ import {
   deleteTimelineMoment,
   updateTimelineMoment,
 } from "@/db";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useProgressContent } from "@/hooks/useProgressContent";
 import {
   AppButton,
@@ -41,7 +41,6 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   fonts,
-  layout,
   lineHeights,
   radius,
   shadowStyle,
@@ -52,11 +51,14 @@ import { toDateKey, todayKey } from "@/utils/dates";
 import { deleteMemoryPhotos, persistMemoryPhoto } from "@/utils/memoryPhotos";
 
 const TIMELINE_ITEM_WIDTH = 104;
+const TIMELINE_ITEM_WIDTH_PHONE = 88;
 const TIMELINE_CONNECTOR_WIDTH = 26;
+const TIMELINE_CONNECTOR_WIDTH_PHONE = 16;
 /** Vertical offset from a row's top to the centre of its circles (badge slot + half circle). */
 const TIMELINE_CIRCLE_CENTER_Y = 67;
 /** Horizontal distance from an item's edge to the edge of its circle. */
-const TIMELINE_TURN_LEAD = (TIMELINE_ITEM_WIDTH - 64) / 2;
+/** Half the slack either side of an item's 64 pt circle, per tier. */
+const turnLead = (itemWidth: number) => (itemWidth - 64) / 2;
 const TIMELINE_TURN_WIDTH = 36;
 const MAX_MEMORY_PHOTOS = 5;
 
@@ -173,16 +175,18 @@ function PhotoGlyph({ color = colors.primary, size = 13 }: { color?: string; siz
 function TimelineMomentItem({
   moment,
   onPress,
+  phone,
 }: {
   moment: TimelineMoment;
   onPress: (moment: TimelineMoment) => void;
+  phone: boolean;
 }) {
   return (
     <Pressable
       accessibilityLabel={`Open memory ${moment.label}`}
       accessibilityRole="button"
       onPress={() => onPress(moment)}
-      style={styles.timelineItem}
+      style={[styles.timelineItem, phone && styles.timelineItemPhone]}
     >
       <View style={styles.timelineBadgeSlot}>
         {moment.locked ? (
@@ -228,8 +232,7 @@ function TimelineMomentItem({
 }
 
 export default function MemoriesScreen() {
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, height, phone } = useLayoutSize();
 
   const [goalKey, setGoalKey] = useState("");
   const { content: progressContent, dreamId, refresh } =
@@ -441,14 +444,17 @@ export default function MemoriesScreen() {
   // Nothing renders until the track width is known — otherwise the full row
   // stretches the layout on web and the measurement reads the inflated width.
   const { moments } = progressContent;
+  // 104 + 26 only fits twice across a phone's 322 pt track; 88 + 16 fits
+  // three, which halves the number of switchback rows.
+  const itemWidth = phone ? TIMELINE_ITEM_WIDTH_PHONE : TIMELINE_ITEM_WIDTH;
+  const connectorWidth = phone
+    ? TIMELINE_CONNECTOR_WIDTH_PHONE
+    : TIMELINE_CONNECTOR_WIDTH;
   const itemsPerRow =
     timelineWidth > 0
       ? Math.max(
           1,
-          Math.floor(
-            (timelineWidth + TIMELINE_CONNECTOR_WIDTH) /
-              (TIMELINE_ITEM_WIDTH + TIMELINE_CONNECTOR_WIDTH),
-          ),
+          Math.floor((timelineWidth + connectorWidth) / (itemWidth + connectorWidth)),
         )
       : 0;
   // Memoized: per-row onLayout updates (setRowTops) re-render this screen
@@ -463,8 +469,7 @@ export default function MemoriesScreen() {
     return rows;
   }, [moments, itemsPerRow]);
   const fullRowWidth =
-    itemsPerRow * TIMELINE_ITEM_WIDTH +
-    (itemsPerRow - 1) * TIMELINE_CONNECTOR_WIDTH;
+    itemsPerRow * itemWidth + (itemsPerRow - 1) * connectorWidth;
 
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
@@ -525,7 +530,7 @@ export default function MemoriesScreen() {
         <Image
           contentFit="cover"
           source={MEMORIES_BACK}
-          style={styles.heroImage}
+          style={[styles.heroImage, phone && styles.heroImagePhone]}
         />
         <View style={styles.countRow}>
           <Badge
@@ -566,11 +571,17 @@ export default function MemoriesScreen() {
                   {displayMoments.map((moment, index) => (
                     <View key={moment.key} style={styles.timelineItemGroup}>
                       {index > 0 ? (
-                        <View style={styles.timelineConnector} />
+                        <View
+                          style={[
+                            styles.timelineConnector,
+                            phone && styles.timelineConnectorPhone,
+                          ]}
+                        />
                       ) : null}
                       <TimelineMomentItem
                         moment={moment}
                         onPress={(pressed) => setDetailKey(pressed.key)}
+                        phone={phone}
                       />
                     </View>
                   ))}
@@ -601,13 +612,13 @@ export default function MemoriesScreen() {
                           borderBottomRightRadius: radius,
                           borderRightWidth: 2,
                           borderTopRightRadius: radius,
-                          left: fullRowWidth - TIMELINE_TURN_LEAD,
+                          left: fullRowWidth - turnLead(itemWidth),
                         }
                       : {
                           borderBottomLeftRadius: radius,
                           borderLeftWidth: 2,
                           borderTopLeftRadius: radius,
-                          left: TIMELINE_TURN_LEAD - TIMELINE_TURN_WIDTH,
+                          left: turnLead(itemWidth) - TIMELINE_TURN_WIDTH,
                         },
                   ]}
                 />
@@ -627,18 +638,27 @@ export default function MemoriesScreen() {
         </View>
 
         <View style={styles.addFooter}>
-          <View style={styles.addFooterCopy}>
-            <AppText color={colors.textPrimary} variant="controlLabel">
-              Add memories from your journey
-            </AppText>
-            <AppText
-              color={colors.textSecondary}
-              style={styles.addFooterSubtitle}
-              variant="bodySmall"
+          {/* Two lines of pitch between an add button in the header and the
+              one in this same footer. */}
+          {phone ? null : (
+            <View
+              style={[
+                styles.addFooterCopy,
+                phone && styles.addFooterCopyPhone,
+              ]}
             >
-              Save moments that show how this goal is changing your real life.
-            </AppText>
-          </View>
+              <AppText color={colors.textPrimary} variant="controlLabel">
+                Add memories from your journey
+              </AppText>
+              <AppText
+                color={colors.textSecondary}
+                style={styles.addFooterSubtitle}
+                variant="bodySmall"
+              >
+                Save moments that show how this goal is changing your real life.
+              </AppText>
+            </View>
+          )}
           <AppButton
             icon={<PlusIcon size={16} />}
             iconPosition="before"
@@ -858,7 +878,10 @@ export default function MemoriesScreen() {
               <Image
                 contentFit="cover"
                 source={{ uri: detailHeroPhoto }}
-                style={styles.detailPhotoHero}
+                style={[
+                  styles.detailPhotoHero,
+                  phone && { maxHeight: Math.round(height * 0.32) },
+                ]}
               />
             ) : null}
             {detailMoment.photoUris.length > 1 ? (
@@ -888,9 +911,12 @@ export default function MemoriesScreen() {
             ) : null}
             {detailMoment.description ? (
               <View style={styles.detailBody}>
-                <AppText color={colors.textSecondary} variant="eyebrow">
-                  Memory
-                </AppText>
+                {/* The header above already shows the title and date. */}
+                {phone ? null : (
+                  <AppText color={colors.textSecondary} variant="eyebrow">
+                    Memory
+                  </AppText>
+                )}
                 <AppText
                   color={colors.textPrimary}
                   style={styles.detailDescription}
@@ -921,6 +947,9 @@ const styles = StyleSheet.create({
   addFooterCopy: {
     flexShrink: 1,
     minWidth: 220,
+  },
+  addFooterCopyPhone: {
+    minWidth: 0,
   },
   addFooterSubtitle: {
     marginTop: spacing.xs,
@@ -1030,6 +1059,10 @@ const styles = StyleSheet.create({
   heroImage: {
     aspectRatio: 2.6,
     width: "100%",
+  },
+  /** Shallower crop of the same art, so the card still fits one page. */
+  heroImagePhone: {
+    aspectRatio: 3.4,
   },
   formField: {
     marginTop: spacing.lg,
@@ -1165,7 +1198,10 @@ const styles = StyleSheet.create({
     borderStyle: "dotted",
     borderTopWidth: 2,
     marginTop: 67,
-    width: 26,
+    width: TIMELINE_CONNECTOR_WIDTH,
+  },
+  timelineConnectorPhone: {
+    width: TIMELINE_CONNECTOR_WIDTH_PHONE,
   },
   sourceActions: {
     gap: spacing.md,
@@ -1179,7 +1215,10 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     alignItems: "center",
-    width: 104,
+    width: TIMELINE_ITEM_WIDTH,
+  },
+  timelineItemPhone: {
+    width: TIMELINE_ITEM_WIDTH_PHONE,
   },
   timelineItemGroup: {
     flexDirection: "row",

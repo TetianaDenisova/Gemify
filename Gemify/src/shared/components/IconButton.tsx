@@ -7,12 +7,24 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { controls, radius, shadowStyle, spacing } from "@/theme/theme";
+import {
+  controls,
+  controlsPhone,
+  radius,
+  shadowStyle,
+  spacing,
+} from "@/theme/theme";
 
 import { AppText } from "./AppText";
 
 export type IconButtonSize = keyof typeof controls.iconButton;
+
+/** Side of an icon button on the active tier — also used to size header spacers. */
+export function iconButtonSide(size: IconButtonSize, phone: boolean): number {
+  return phone ? controlsPhone.iconButton[size] : controls.iconButton[size];
+}
 
 export type IconButtonProps = {
   accessibilityLabel: string;
@@ -39,9 +51,15 @@ export function IconButton({
   size = "sm",
   style,
 }: IconButtonProps) {
-  const side = controls.iconButton[size];
-  const frame = { borderRadius: radius.md, height: side, width: side };
+  const { phone } = useLayoutSize();
   const hasLabel = Boolean(label);
+  const side = iconButtonSide(size, phone);
+  // A labelled button must be free to grow when Dynamic Type scales its text,
+  // so on the phone tier the square becomes a floor rather than a fixed size.
+  const frame =
+    phone && hasLabel
+      ? { borderRadius: radius.md, minHeight: side, minWidth: side }
+      : { borderRadius: radius.md, height: side, width: side };
 
   return (
     <View
@@ -49,6 +67,7 @@ export function IconButton({
         styles.glow,
         frame,
         hasLabel && styles.withLabel,
+        hasLabel && phone && styles.withLabelPhone,
         disabled && styles.disabled,
         style,
       ]}
@@ -62,7 +81,11 @@ export function IconButton({
         style={({ pressed }) => [
           styles.button,
           frame,
-          hasLabel && [styles.buttonWithLabel, styles.withLabel],
+          hasLabel && [
+            styles.buttonWithLabel,
+            styles.withLabel,
+            phone && styles.withLabelPhone,
+          ],
           pressed && styles.pressed,
         ]}
       >
@@ -117,5 +140,10 @@ const styles = StyleSheet.create({
   withLabel: {
     minWidth: 128,
     width: "auto",
+  },
+  /** Header button pairs have to share 370 pt, so the 128 pt floor goes. */
+  withLabelPhone: {
+    flexShrink: 1,
+    minWidth: 0,
   },
 });

@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -20,8 +19,9 @@ import {
   MilestoneIcon,
   SparkIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { fontSizes, layout, lineHeights, pressed, spacing } from "@/theme/theme";
+import { fontSizes, lineHeights, pressed, spacing } from "@/theme/theme";
 
 const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   meditate: colors.accentViolet,
@@ -206,12 +206,14 @@ function ActionRow({
   last,
   onPress,
   onToggle,
+  phone,
 }: {
   action: DayAction;
   compact: boolean;
   last: boolean;
   onPress?: () => void;
   onToggle: () => void;
+  phone: boolean;
 }) {
   return (
     <View style={[styles.actionRow, compact && styles.actionRowCompact, last && styles.actionRowLast]}>
@@ -223,11 +225,18 @@ function ActionRow({
         style={({ pressed: isPressed }) => [
           styles.actionBody,
           compact && styles.actionBodyCompact,
+          phone && styles.actionBodyPhone,
           isPressed && pressed,
         ]}
       >
-      <View style={[styles.actionIcon, compact && styles.actionIconCompact]}>
-        <ActionIconArt icon={action.icon} size={compact ? 28 : 36} />
+      <View
+        style={[
+          styles.actionIcon,
+          compact && styles.actionIconCompact,
+          phone && styles.actionIconPhone,
+        ]}
+      >
+        <ActionIconArt icon={action.icon} size={phone ? 24 : compact ? 28 : 36} />
       </View>
       <View style={styles.actionCopy}>
         <AppText
@@ -250,18 +259,24 @@ function ActionRow({
                 {action.dreamTitle}
               </AppText>
             </View>
-            <ChevronIcon color={colors.textMuted} direction="right" size={compact ? 11 : 13} />
-            <View style={styles.breadcrumbPart}>
-              <MilestoneIcon size={compact ? 14 : 16} />
-              <AppText
-                color={colors.textSecondary}
-                numberOfLines={1}
-                style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
-                variant="subtitle"
-              >
-                {action.milestoneTitle}
-              </AppText>
-            </View>
+            {/* Same rule as Home: the phone keeps the dream, not the
+                milestone the row already belongs to. */}
+            {phone ? null : (
+              <>
+                <ChevronIcon color={colors.textMuted} direction="right" size={compact ? 11 : 13} />
+                <View style={styles.breadcrumbPart}>
+                  <MilestoneIcon size={compact ? 14 : 16} />
+                  <AppText
+                    color={colors.textSecondary}
+                    numberOfLines={1}
+                    style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
+                    variant="subtitle"
+                  >
+                    {action.milestoneTitle}
+                  </AppText>
+                </View>
+              </>
+            )}
           </View>
         ) : (
           <AppText
@@ -282,7 +297,7 @@ function ActionRow({
         checked={action.done}
         onPress={onToggle}
         shape="circle"
-        size={compact ? 32 : 38}
+        size={phone ? 30 : compact ? 32 : 38}
       />
     </View>
   );
@@ -313,8 +328,7 @@ export function TimeBlockCard({
   showIntro = true,
   style,
 }: TimeBlockCardProps) {
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, phone } = useLayoutSize();
   const done = block.actions.filter((action) => action.done).length;
 
   return (
@@ -367,6 +381,7 @@ export function TimeBlockCard({
                 last
                 onPress={onPressAction ? () => onPressAction(index) : undefined}
                 onToggle={() => onToggleAction(index)}
+                phone={phone}
               />
             </Card>
           ))}
@@ -417,6 +432,7 @@ export function TimeBlockCard({
               last={index === block.actions.length - 1}
               onPress={onPressAction ? () => onPressAction(index) : undefined}
               onToggle={() => onToggleAction(index)}
+              phone={phone}
             />
           ))}
         </View>
@@ -436,6 +452,9 @@ const styles = StyleSheet.create({
   },
   actionBodyCompact: {
     gap: 14,
+  },
+  actionBodyPhone: {
+    gap: 10,
   },
   actionBreadcrumb: {
     alignItems: "center",
@@ -459,6 +478,10 @@ const styles = StyleSheet.create({
   actionIconCompact: {
     height: 32,
     width: 32,
+  },
+  actionIconPhone: {
+    height: 28,
+    width: 28,
   },
   actionList: {
     marginTop: 20,

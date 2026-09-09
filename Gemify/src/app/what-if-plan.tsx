@@ -8,7 +8,6 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
   type StyleProp,
   type TextStyle,
@@ -41,6 +40,7 @@ import {
   SparkIcon,
   type IconProps,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
@@ -67,15 +67,15 @@ type RiskPlan = {
 
 export default function WhatIfPlanScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { phone, width } = useLayoutSize();
   const { dreamId: dreamIdParam } = useLocalSearchParams<{ dreamId?: string }>();
   const [dreamId, setDreamId] = useState<number | null>(null);
   const [plans, setPlans] = useState<readonly RiskPlan[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const compact = width < 380;
-  const verySmall = width < 340;
+  const compact = phone || width < 380;
+  const verySmall = phone || width < 340;
 
   const loadPlans = useCallback(async () => {
     try {
@@ -204,13 +204,21 @@ export default function WhatIfPlanScreen() {
         backgroundImage={BACKGROUND}
         contentStyle={[
           styles.content,
-          { paddingTop: insets.top + (compact ? 70 : 76) },
+          { paddingTop: insets.top + (phone ? 58 : compact ? 70 : 76) },
         ]}
         overlayOpacity={0.3}
       >
-        <View style={[styles.heroCopy, { marginBottom: compact ? 116 : 128 }]}>
+        <View
+          style={[
+            styles.heroCopy,
+            { marginBottom: phone ? 64 : compact ? 116 : 128 },
+          ]}
+        >
           <View style={styles.heroShield}>
-            <ShieldStarIcon color={colors.primaryBright} size={compact ? 42 : 54} />
+            <ShieldStarIcon
+              color={colors.primaryBright}
+              size={phone ? 34 : compact ? 42 : 54}
+            />
           </View>
           <AppText
             align="center"
@@ -220,9 +228,12 @@ export default function WhatIfPlanScreen() {
           >
             What If Plan
           </AppText>
-          <AppText align="center" style={styles.subtitle} variant="helper">
-            When something goes off track,{"\n"}I already know what to do.
-          </AppText>
+          {/* Mood copy under a title that already says it. */}
+          {phone ? null : (
+            <AppText align="center" style={styles.subtitle} variant="helper">
+              When something goes off track,{"\n"}I already know what to do.
+            </AppText>
+          )}
         </View>
 
         {plans.length === 0 ? (
@@ -246,6 +257,7 @@ export default function WhatIfPlanScreen() {
                 editMode={isEditMode}
                 onChange={updatePlan}
                 onRequestDelete={() => setConfirmDeleteId(plan.id)}
+                phone={phone}
                 plan={plan}
                 showRiskImage={!verySmall}
               />
@@ -284,6 +296,7 @@ function AddRiskModal({
   onClose: () => void;
   visible: boolean;
 }) {
+  const { phone } = useLayoutSize();
   const compact = maxWidth < 420;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -396,6 +409,7 @@ function AddRiskModal({
                   current.map((value, i) => (i === index ? text : value)),
                 )
               }
+              phone={phone}
               placeholder="e.g. Do a 5-minute version"
               value={action}
             />
@@ -437,10 +451,12 @@ function ActionField({
   label,
   number,
   onChangeText,
+  phone,
   placeholder,
   value,
 }: {
   compact: boolean;
+  phone: boolean;
   label: string;
   number: string;
   onChangeText: (value: string) => void;
@@ -451,7 +467,13 @@ function ActionField({
     <AppInput
       containerStyle={styles.actionField}
       icon={
-        <View style={[styles.actionNumber, compact && styles.actionNumberCompact]}>
+        <View
+          style={[
+            styles.actionNumber,
+            compact && styles.actionNumberCompact,
+            phone && styles.actionNumberPhone,
+          ]}
+        >
           <AppText
             color={colors.primary}
             style={compact && styles.actionNumberTextCompact}
@@ -514,6 +536,7 @@ function RiskCard({
   editMode,
   onChange,
   onRequestDelete,
+  phone,
   plan,
   showRiskImage,
 }: {
@@ -521,6 +544,7 @@ function RiskCard({
   editMode: boolean;
   onChange: (plan: RiskPlan) => void;
   onRequestDelete: () => void;
+  phone: boolean;
   plan: RiskPlan;
   showRiskImage: boolean;
 }) {
@@ -544,7 +568,7 @@ function RiskCard({
     <Card
       accessibilityLabel={`${plan.title} protection plan`}
       onPress={editMode ? undefined : () => {}}
-      style={[styles.card, compact && styles.cardCompact]}
+      style={[styles.card, compact && styles.cardCompact, phone && styles.cardPhone]}
       variant="strong"
     >
       {editMode ? (
@@ -606,10 +630,13 @@ function RiskCard({
         </View>
       </View>
 
-      <View style={[styles.dividerColumn, compact && styles.dividerColumnCompact]}>
-        <View style={styles.dividerLine} />
-        <SparkIcon color={colors.primary} size={26} />
-      </View>
+      {/* A vertical rule between two stacked halves says nothing. */}
+      {phone ? null : (
+        <View style={[styles.dividerColumn, compact && styles.dividerColumnCompact]}>
+          <View style={styles.dividerLine} />
+          <SparkIcon color={colors.primary} size={26} />
+        </View>
+      )}
 
       <View style={[styles.planSide, compact && styles.planSideCompact]}>
         <View style={styles.planHeadingRow}>
@@ -693,6 +720,10 @@ const styles = StyleSheet.create({
     height: 38,
     width: 38,
   },
+  actionNumberPhone: {
+    height: 34,
+    width: 34,
+  },
   actionNumberTextCompact: {
     fontSize: fontSizes.xxl,
     lineHeight: lineHeights.xxl,
@@ -733,6 +764,9 @@ const styles = StyleSheet.create({
   },
   cardCompact: {
     minHeight: 190,
+  },
+  cardPhone: {
+    minHeight: 168,
   },
   cardList: {
     gap: spacing.md,

@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,6 +31,7 @@ import {
   ScreenHeader,
   SparkIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   fonts,
@@ -91,7 +91,7 @@ function JourneyOverviewModal({
   visionStatement,
 }: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { height, phone } = useLayoutSize();
 
   return (
     <AppModal
@@ -112,14 +112,22 @@ function JourneyOverviewModal({
           <AppText align="center" style={styles.title} variant="title">
             {dreamName}
           </AppText>
-          <View style={styles.ornamentRow}>
-            <View style={styles.ornamentLine} />
-            <SparkIcon size={iconSizes.sm} />
-            <View style={styles.ornamentLine} />
-          </View>
+          {/* Pure ornament above a sheet that is already tight on a phone. */}
+          {phone ? null : (
+            <View style={styles.ornamentRow}>
+              <View style={styles.ornamentLine} />
+              <SparkIcon size={iconSizes.sm} />
+              <View style={styles.ornamentLine} />
+            </View>
+          )}
 
           {photoUri ? (
-            <View style={[styles.photoFrame, { maxHeight: height * 0.32 }]}>
+            <View
+              style={[
+                styles.photoFrame,
+                { maxHeight: height * (phone ? 0.24 : 0.32) },
+              ]}
+            >
               <DreamPhoto
                 style={styles.photo}
                 transform={photoTransform}
@@ -128,14 +136,15 @@ function JourneyOverviewModal({
             </View>
           ) : null}
 
-          <View style={styles.visionCard}>
+          <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
             <AppText style={styles.quoteMark}>{"“"}</AppText>
             <AppText style={styles.visionText} variant="bodySerif">
               {visionStatement}
             </AppText>
           </View>
 
-          <View style={styles.actionsRow}>
+          {/* "Edit Path" and 'Check "What If" Plan' cannot share 370 pt. */}
+          <View style={[styles.actionsRow, phone && styles.actionsRowPhone]}>
             <AppButton
               accessibilityLabel="Edit Path"
               icon={<PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />}
@@ -198,7 +207,7 @@ function DreamEditModal({
   visionStatement,
 }: DreamEditModalProps) {
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { height, phone } = useLayoutSize();
   const nameInputRef = useRef<TextInput>(null);
   const [draftName, setDraftName] = useState(dreamName);
   const [draftVision, setDraftVision] = useState(visionStatement);
@@ -297,15 +306,22 @@ function DreamEditModal({
                 <PencilIcon color={colors.primary} size={iconSizes.sm} />
               </Pressable>
             </View>
-            <View style={styles.ornamentRow}>
-              <View style={styles.ornamentLine} />
-              <SparkIcon size={iconSizes.sm} />
-              <View style={styles.ornamentLine} />
-            </View>
+            {phone ? null : (
+              <View style={styles.ornamentRow}>
+                <View style={styles.ornamentLine} />
+                <SparkIcon size={iconSizes.sm} />
+                <View style={styles.ornamentLine} />
+              </View>
+            )}
 
             {draftPhotoUri ? (
               <>
-                <View style={[styles.photoFrame, { maxHeight: height * 0.28 }]}>
+                <View
+                  style={[
+                    styles.photoFrame,
+                    { maxHeight: height * (phone ? 0.22 : 0.28) },
+                  ]}
+                >
                   <DreamPhotoAdjuster
                     onChange={setDraftTransform}
                     style={StyleSheet.absoluteFill}
@@ -351,14 +367,18 @@ function DreamEditModal({
                     />
                   </Pressable>
                 </View>
-                <AppText
-                  align="center"
-                  color={colors.textMuted}
-                  style={styles.photoHint}
-                  variant="caption"
-                >
-                  Drag the photo to choose its focus, zoom with − / +
-                </AppText>
+                {/* The − / + buttons sit on the frame; dragging is
+                    discoverable without being told. */}
+                {phone ? null : (
+                  <AppText
+                    align="center"
+                    color={colors.textMuted}
+                    style={styles.photoHint}
+                    variant="caption"
+                  >
+                    Drag the photo to choose its focus, zoom with − / +
+                  </AppText>
+                )}
               </>
             ) : (
               <Pressable
@@ -367,7 +387,7 @@ function DreamEditModal({
                 onPress={pickDreamPhoto}
                 style={({ pressed }) => [
                   styles.photoFrame,
-                  { maxHeight: height * 0.28 },
+                  { maxHeight: height * (phone ? 0.22 : 0.28) },
                   pressed && pressedStyle,
                 ]}
               >
@@ -385,7 +405,7 @@ function DreamEditModal({
               </Pressable>
             )}
 
-            <View style={styles.visionCard}>
+            <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
               <AppText style={styles.quoteMark}>{"“"}</AppText>
               <TextInput
                 multiline
@@ -690,6 +710,9 @@ const styles = StyleSheet.create({
     width: 36,
     ...shadows.softDark,
   },
+  visionCardPhone: {
+    padding: spacing.md,
+  },
   visionCard: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -799,6 +822,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     marginTop: spacing.lg,
+  },
+  actionsRowPhone: {
+    flexDirection: "column",
   },
   actionButton: {
     flex: 1,

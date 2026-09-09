@@ -5,6 +5,7 @@ import { Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { initDatabase } from "@/db";
+import { useAutoSync } from "@/hooks/useCloudSync";
 import { colors } from "@/theme/colors";
 
 /**
@@ -13,6 +14,7 @@ import { colors } from "@/theme/colors";
  * flashing the route filename underneath.
  */
 const TRANSPARENT_HEADER_SCREENS = [
+  "cloud-sync",
   "journey-map",
   "what-if-plan",
   "create-goal",
@@ -29,6 +31,9 @@ const transparentHeaderOptions = {
 
 export default function RootLayout() {
   const pathname = usePathname();
+
+  // Syncs on open, every few minutes while the app is up, and on the way out.
+  useAutoSync();
 
   useEffect(() => {
     initDatabase().catch((cause) => {

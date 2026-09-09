@@ -33,11 +33,18 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 /** Inner SVG size for the habit medallion; the frame around it is 12pt larger. */
 const ART_SIZE = 90;
 const ART_SIZE_COMPACT = 62;
+const ART_SIZE_PHONE = 52;
 
-function DayStatus({ status }: { status: HabitCompletion }) {
+function DayStatus({
+  phone,
+  status,
+}: {
+  phone: boolean;
+  status: HabitCompletion;
+}) {
   if (status === "partial") {
     return (
-      <View style={styles.partialDot}>
+      <View style={[styles.partialDot, phone && styles.partialDotPhone]}>
         <View style={styles.partialFill} />
       </View>
     );
@@ -47,6 +54,7 @@ function DayStatus({ status }: { status: HabitCompletion }) {
     <View
       style={[
         styles.dayDot,
+        phone && styles.dayDotPhone,
         status === "done" && styles.dayDotDone,
         status === "missed" && styles.dayDotMissed,
       ]}
@@ -58,12 +66,14 @@ function HabitArt({
   accent,
   compact = false,
   icon,
+  phone = false,
 }: {
   accent: string;
   compact?: boolean;
   icon: Habit["icon"];
+  phone?: boolean;
 }) {
-  const artSize = compact ? ART_SIZE_COMPACT : ART_SIZE;
+  const artSize = phone ? ART_SIZE_PHONE : compact ? ART_SIZE_COMPACT : ART_SIZE;
   // shadowStyle regex-parses the color on web — compute once per accent, not per render.
   const accentFrame = useMemo(
     () => [
@@ -75,7 +85,12 @@ function HabitArt({
 
   return (
     <View
-      style={[styles.habitArt, compact && styles.habitArtCompact, ...accentFrame]}
+      style={[
+        styles.habitArt,
+        compact && styles.habitArtCompact,
+        phone && styles.habitArtPhone,
+        ...accentFrame,
+      ]}
     >
       <Svg height={artSize} viewBox="0 0 90 90" width={artSize}>
         <Circle cx={45} cy={45} fill="#050817" r={42} />
@@ -193,18 +208,25 @@ export function HabitItemHeader({
   compact = false,
   expanded = false,
   habit,
+  phone = false,
   trailing,
 }: {
   compact?: boolean;
   expanded?: boolean;
   habit: Habit;
+  phone?: boolean;
   /** Extra control between the day counter and the chevron (e.g. a menu). */
   trailing?: ReactNode;
 }) {
   return (
     <View style={[styles.habitTop, compact && styles.habitTopCompact]}>
       <View style={[styles.habitIdentity, compact && styles.habitIdentityCompact]}>
-        <HabitArt accent={habit.accent} compact={compact} icon={habit.icon} />
+        <HabitArt
+          accent={habit.accent}
+          compact={compact}
+          icon={habit.icon}
+          phone={phone}
+        />
         <View style={styles.habitInfo}>
           <HabitTitle compact={compact} title={habit.title} />
           <View style={[styles.habitTimeRow, compact && styles.habitTimeRowCompact]}>
@@ -256,6 +278,7 @@ export function HabitProgress({
   compact = false,
   expanded = false,
   onDayPress,
+  phone = false,
   progress,
 }: {
   activeDayIndex?: number;
@@ -263,6 +286,7 @@ export function HabitProgress({
   expanded?: boolean;
   /** When set, day cells become tappable (used to toggle completions). */
   onDayPress?: (dayIndex: number) => void;
+  phone?: boolean;
   progress: readonly HabitCompletion[];
 }) {
   return (
@@ -298,7 +322,7 @@ export function HabitProgress({
             >
               {expanded ? day : day.toUpperCase()}
             </AppText>
-            <DayStatus status={progress[index] ?? "missed"} />
+            <DayStatus phone={phone} status={progress[index] ?? "missed"} />
           </Pressable>
         );
       })}
@@ -312,6 +336,7 @@ export function HabitItemRow({
   expanded = false,
   habit,
   onDayPress,
+  phone = false,
   trailing,
 }: {
   activeDayIndex?: number;
@@ -319,6 +344,7 @@ export function HabitItemRow({
   expanded?: boolean;
   habit: Habit;
   onDayPress?: (dayIndex: number) => void;
+  phone?: boolean;
   trailing?: ReactNode;
 }) {
   return (
@@ -327,6 +353,7 @@ export function HabitItemRow({
         compact={compact}
         expanded={expanded}
         habit={habit}
+        phone={phone}
         trailing={trailing}
       />
       <HabitProgress
@@ -334,6 +361,7 @@ export function HabitItemRow({
         compact={compact}
         expanded={expanded}
         onDayPress={onDayPress}
+        phone={phone}
         progress={habit.progress}
       />
     </View>
@@ -371,6 +399,11 @@ const styles = StyleSheet.create({
   dayCountCompact: {
     fontSize: fontSizes.md,
     lineHeight: lineHeights.md,
+  },
+  dayDotPhone: {
+    borderRadius: 12,
+    height: 24,
+    width: 24,
   },
   dayDot: {
     borderColor: colors.primary,
@@ -410,6 +443,11 @@ const styles = StyleSheet.create({
     borderRadius: (ART_SIZE_COMPACT + 12) / 2,
     height: ART_SIZE_COMPACT + 12,
     width: ART_SIZE_COMPACT + 12,
+  },
+  habitArtPhone: {
+    borderRadius: (ART_SIZE_PHONE + 12) / 2,
+    height: ART_SIZE_PHONE + 12,
+    width: ART_SIZE_PHONE + 12,
   },
   habitDay: {
     alignItems: "baseline",
@@ -472,6 +510,11 @@ const styles = StyleSheet.create({
   },
   habitTopCompact: {
     gap: 8,
+  },
+  partialDotPhone: {
+    borderRadius: 12,
+    height: 24,
+    width: 24,
   },
   partialDot: {
     borderColor: colors.primary,

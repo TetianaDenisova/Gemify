@@ -5,7 +5,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from "react-native";
 import Svg, {
   Circle,
@@ -18,6 +17,7 @@ import Svg, {
 } from "react-native-svg";
 
 import type { FulfillmentPoint } from "@/data/progressData";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useProgressContent } from "@/hooks/useProgressContent";
 import {
   AppText,
@@ -42,19 +42,25 @@ import {
 } from "@/theme/theme";
 
 const CHART_PLOT_HEIGHT = 150;
+/** Shorter plot on the phone tier — the cards below still have to fit. */
+const CHART_PLOT_HEIGHT_PHONE = 120;
 /** Headroom above the line chart for the endpoint percent labels. */
 const LINE_TOP_PAD = 44;
 /** Gap between the lowest dot and the baseline, so dots never touch the axis. */
 const LINE_BOTTOM_INSET = 18;
 const BAR_TOP_PAD = 12;
 const CHART_Y_AXIS_WIDTH = 34;
+const CHART_Y_AXIS_WIDTH_PHONE = 26;
 const CHART_X_LABEL_HEIGHT = 26;
 /** Taller label band for the line chart so labels clear the pink baseline. */
 const LINE_X_LABEL_HEIGHT = 36;
 const CHART_POINT_INSET = 14;
 const CHART_Y_TICKS = [100, 75, 50, 25, 0] as const;
+/** Every other gridline on a phone: density, not removal. */
+const CHART_Y_TICKS_PHONE = [100, 50, 0] as const;
 
 const BAR_MAX_WIDTH = 34;
+const BAR_MAX_WIDTH_PHONE = 24;
 /** Muted navy pill track shown for every day, even when progress is 0%. */
 const BAR_TRACK_FILL = "rgba(133, 149, 199, 0.18)";
 const BAR_AXIS_STROKE = "rgba(246, 232, 200, 0.32)";
@@ -102,14 +108,17 @@ function labelAlignFor(index: number, count: number): "center" | "left" | "right
 
 function FulfillmentChart({
   compact,
+  phone,
   points,
 }: {
   compact: boolean;
+  phone: boolean;
   points: readonly FulfillmentPoint[];
 }) {
   const [chartWidth, setChartWidth] = useState(0);
 
-  const svgHeight = LINE_TOP_PAD + CHART_PLOT_HEIGHT + 8;
+  const plotHeight = phone ? CHART_PLOT_HEIGHT_PHONE : CHART_PLOT_HEIGHT;
+  const svgHeight = LINE_TOP_PAD + plotHeight + 8;
 
   const values = points.map((point) => point.percent);
   const maxValue = Math.max(...values);
@@ -124,7 +133,7 @@ function FulfillmentChart({
   const yFor = (percent: number) =>
     LINE_TOP_PAD +
     (1 - (percent - domainLo) / (domainHi - domainLo)) *
-      (CHART_PLOT_HEIGHT - LINE_BOTTOM_INSET);
+      (plotHeight - LINE_BOTTOM_INSET);
 
   const startX = CHART_POINT_INSET;
   const endX = chartWidth - CHART_POINT_INSET;
@@ -138,7 +147,7 @@ function FulfillmentChart({
   const firstDot = dots[0];
   const lastDot = dots[dots.length - 1];
 
-  const baselineY = LINE_TOP_PAD + CHART_PLOT_HEIGHT;
+  const baselineY = LINE_TOP_PAD + plotHeight;
   const guideY = yFor(maxValue) - 12;
   const linePath = dots.length > 1 ? smoothLinePath(dots) : "";
   const areaPath =
@@ -149,7 +158,11 @@ function FulfillmentChart({
   return (
     <View
       onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-      style={[styles.chartCanvas, styles.lineCanvas]}
+      style={[
+        styles.chartCanvas,
+        styles.lineCanvas,
+        phone && styles.lineCanvasPhone,
+      ]}
     >
       {chartWidth > 0 ? (
         <>
@@ -248,6 +261,7 @@ function FulfillmentChart({
               key={`label-${dot.key}`}
               style={[
                 styles.lineAxisLabel,
+                phone && styles.lineAxisLabelPhone,
                 { left: labelLeftFor(dot.x, index, dots.length) },
               ]}
             >
@@ -262,22 +276,30 @@ function FulfillmentChart({
 
 function QuestBarsChart({
   compact,
+  phone,
   points,
 }: {
   compact: boolean;
+  phone: boolean;
   points: readonly FulfillmentPoint[];
 }) {
   const [chartWidth, setChartWidth] = useState(0);
 
-  const svgHeight = BAR_TOP_PAD + CHART_PLOT_HEIGHT + 8;
+  const plotHeight = phone ? CHART_PLOT_HEIGHT_PHONE : CHART_PLOT_HEIGHT;
+  const axisWidth = phone ? CHART_Y_AXIS_WIDTH_PHONE : CHART_Y_AXIS_WIDTH;
+  const ticks = phone ? CHART_Y_TICKS_PHONE : CHART_Y_TICKS;
+  const svgHeight = BAR_TOP_PAD + plotHeight + 8;
   const yFor = (percent: number) =>
-    BAR_TOP_PAD + (1 - percent / 100) * CHART_PLOT_HEIGHT;
+    BAR_TOP_PAD + (1 - percent / 100) * plotHeight;
 
-  const plotLeft = CHART_Y_AXIS_WIDTH + 6;
+  const plotLeft = axisWidth + 6;
   const slot = points.length > 0 ? (chartWidth - plotLeft) / points.length : 0;
   const barWidth = Math.max(
     14,
-    Math.min(compact ? 26 : BAR_MAX_WIDTH, slot * 0.45),
+    Math.min(
+      phone ? BAR_MAX_WIDTH_PHONE : compact ? 26 : BAR_MAX_WIDTH,
+      slot * 0.45,
+    ),
   );
 
   const bars = points.map((point, index) => ({
@@ -290,7 +312,11 @@ function QuestBarsChart({
   return (
     <View
       onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-      style={[styles.chartCanvas, styles.barsCanvas]}
+      style={[
+        styles.chartCanvas,
+        styles.barsCanvas,
+        phone && styles.barsCanvasPhone,
+      ]}
     >
       {chartWidth > 0 ? (
         <>
@@ -298,28 +324,30 @@ function QuestBarsChart({
             <Line
               stroke={BAR_AXIS_STROKE}
               strokeWidth={1.2}
-              x1={CHART_Y_AXIS_WIDTH}
-              x2={CHART_Y_AXIS_WIDTH}
+              x1={axisWidth}
+              x2={axisWidth}
               y1={yFor(100)}
               y2={yFor(0)}
             />
-            {CHART_Y_TICKS.filter((tick) => tick > 0).map((tick) => (
-              <Line
-                key={tick}
-                stroke={CHART_GRID_STROKE}
-                strokeDasharray="2 7"
-                strokeLinecap="round"
-                strokeWidth={1}
-                x1={CHART_Y_AXIS_WIDTH}
-                x2={chartWidth}
-                y1={yFor(tick)}
-                y2={yFor(tick)}
-              />
-            ))}
+            {ticks
+              .filter((tick) => tick > 0)
+              .map((tick) => (
+                <Line
+                  key={tick}
+                  stroke={CHART_GRID_STROKE}
+                  strokeDasharray="2 7"
+                  strokeLinecap="round"
+                  strokeWidth={1}
+                  x1={axisWidth}
+                  x2={chartWidth}
+                  y1={yFor(tick)}
+                  y2={yFor(tick)}
+                />
+              ))}
             <Line
               stroke={BAR_AXIS_STROKE}
               strokeWidth={1.2}
-              x1={CHART_Y_AXIS_WIDTH}
+              x1={axisWidth}
               x2={chartWidth}
               y1={yFor(0)}
               y2={yFor(0)}
@@ -327,7 +355,7 @@ function QuestBarsChart({
             {bars.map((bar) => (
               <Rect
                 fill={BAR_TRACK_FILL}
-                height={CHART_PLOT_HEIGHT}
+                height={plotHeight}
                 key={`track-${bar.key}`}
                 rx={barWidth / 2}
                 width={barWidth}
@@ -371,11 +399,15 @@ function QuestBarsChart({
                 </AppText>
               );
             })}
-          {CHART_Y_TICKS.map((tick) => (
+          {ticks.map((tick) => (
             <AppText
               color={colors.textMuted}
               key={`tick-${tick}`}
-              style={[styles.chartTickLabel, { top: yFor(tick) - 7 }]}
+              style={[
+                styles.chartTickLabel,
+                phone && styles.chartTickLabelPhone,
+                { top: yFor(tick) - 7 },
+              ]}
               variant="caption"
             >
               {tick}%
@@ -403,8 +435,7 @@ function QuestBarsChart({
 }
 
 export default function ProgressScreen() {
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, phone, width } = useLayoutSize();
 
   const [goalKey, setGoalKey] = useState("");
   const { content: progressContent } = useProgressContent(goalKey);
@@ -472,10 +503,14 @@ export default function ProgressScreen() {
           : null}
       </Card>
 
-      <View style={styles.overviewRow}>
-        <AppText color={colors.accentViolet} variant="bodySerif">
-          Progress overview
-        </AppText>
+      <View style={[styles.overviewRow, phone && styles.overviewRowPhone]}>
+        {/* Each chart card below carries its own title; dropping this gives
+            the range picker a full-width row of its own. */}
+        {phone ? null : (
+          <AppText color={colors.accentViolet} variant="bodySerif">
+            Progress overview
+          </AppText>
+        )}
         <View>
           <Pressable
             accessibilityLabel="Choose range"
@@ -484,6 +519,7 @@ export default function ProgressScreen() {
             style={({ pressed: isPressed }) => [
               styles.rangeTrigger,
               compact && { width: Math.min(228, width * 0.45) },
+          phone && { width: Math.min(180, width * 0.5) },
               isPressed && pressed,
             ]}
           >
@@ -529,7 +565,11 @@ export default function ProgressScreen() {
             <Image
               contentFit="contain"
               source={NO_PROGRESS_ART}
-              style={[styles.emptyArt, compact && styles.emptyArtCompact]}
+              style={[
+                styles.emptyArt,
+                compact && styles.emptyArtCompact,
+                phone && styles.emptyArtPhone,
+              ]}
             />
             <AppText
               align="center"
@@ -561,9 +601,12 @@ export default function ProgressScreen() {
                   <AppText color={colors.accentPink} variant="labelStrong">
                     {`${lineRange.highlight.delta > 0 ? "+" : ""}${lineRange.highlight.delta}%`}
                   </AppText>
-                  <AppText color={colors.textSecondary} variant="caption">
-                    {lineRange.highlight.caption}
-                  </AppText>
+                  {/* The eyebrow and the delta beside it carry the fact. */}
+                  {phone ? null : (
+                    <AppText color={colors.textSecondary} variant="caption">
+                      {lineRange.highlight.caption}
+                    </AppText>
+                  )}
                 </View>
                 <View style={styles.highlightTasks}>
                   <View style={styles.checkBubble}>
@@ -579,7 +622,11 @@ export default function ProgressScreen() {
                 </View>
               </View>
             ) : null}
-            <FulfillmentChart compact={compact} points={lineRange.points} />
+            <FulfillmentChart
+              compact={compact}
+              phone={phone}
+              points={lineRange.points}
+            />
             <View style={styles.overallHeader}>
               <AppText variant="eyebrow">{progressContent.overallLabel}</AppText>
               <AppText style={styles.overallPercent} variant="title">{Math.round(currentPercent)}%</AppText>
@@ -597,15 +644,27 @@ export default function ProgressScreen() {
           {barsTab && barsRange ? (
             <Card style={styles.sectionCard} variant="glass">
               <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
-              <View style={[styles.chartRow, compact && styles.chartRowCompact]}>
-                <QuestBarsChart compact={compact} points={barsRange.points} />
+              <View
+                style={[
+                  styles.chartRow,
+                  compact && styles.chartRowCompact,
+                  phone && styles.chartRowPhone,
+                ]}
+              >
+                <QuestBarsChart
+                  compact={compact}
+                  phone={phone}
+                  points={barsRange.points}
+                />
                 {barsRange.summary ? (
                   <>
-                    <View style={styles.panelDivider} />
+                    {/* A vertical rule between stacked blocks means nothing. */}
+                    {phone ? null : <View style={styles.panelDivider} />}
                     <View
                       style={[
                         styles.summaryPanel,
                         compact && styles.summaryPanelCompact,
+                        phone && styles.summaryPanelPhone,
                       ]}
                     >
                       <AppText align="center" variant="eyebrow">
@@ -616,6 +675,7 @@ export default function ProgressScreen() {
                         style={[
                           styles.summaryValue,
                           compact && styles.summaryValueCompact,
+                          phone && styles.summaryValuePhone,
                         ]}
                         variant="stat"
                       >
@@ -655,6 +715,9 @@ const styles = StyleSheet.create({
   },
   barsCanvas: {
     height: BAR_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
+  },
+  barsCanvasPhone: {
+    height: BAR_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + CHART_X_LABEL_HEIGHT,
   },
   barPercentLabel: {
     fontSize: fontSizes.sm,
@@ -697,6 +760,9 @@ const styles = StyleSheet.create({
     textAlign: "right",
     width: CHART_Y_AXIS_WIDTH - 8,
   },
+  chartTickLabelPhone: {
+    width: CHART_Y_AXIS_WIDTH_PHONE - 6,
+  },
   chartRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -705,6 +771,10 @@ const styles = StyleSheet.create({
   chartRowCompact: {
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  /** 370 pt minus a 96 pt summary panel leaves the bars ~250 pt — stack. */
+  chartRowPhone: {
+    flexDirection: "column",
   },
   checkBubble: {
     alignItems: "center",
@@ -728,6 +798,10 @@ const styles = StyleSheet.create({
   },
   emptyArtCompact: {
     width: "88%",
+  },
+  emptyArtPhone: {
+    maxWidth: 220,
+    width: "70%",
   },
   emptyCaption: {
     marginTop: spacing.sm,
@@ -800,12 +874,18 @@ const styles = StyleSheet.create({
     top: LINE_TOP_PAD + CHART_PLOT_HEIGHT + 12,
     width: 56,
   },
+  lineAxisLabelPhone: {
+    top: LINE_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + 12,
+  },
   lineCanvas: {
     flexBasis: "auto",
     flexGrow: 0,
     flexShrink: 0,
     height: LINE_TOP_PAD + CHART_PLOT_HEIGHT + LINE_X_LABEL_HEIGHT,
     marginTop: spacing.md,
+  },
+  lineCanvasPhone: {
+    height: LINE_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + LINE_X_LABEL_HEIGHT,
   },
   overallFill: {
     borderRadius: radius.round,
@@ -836,6 +916,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: "space-between",
     zIndex: 20,
+  },
+  overviewRowPhone: {
+    justifyContent: "flex-end",
   },
   panelDivider: {
     alignSelf: "stretch",
@@ -904,8 +987,19 @@ const styles = StyleSheet.create({
   summaryPanelCompact: {
     minWidth: 96,
   },
+  /** Stacked under the bars, the panel spans the card instead of a column. */
+  summaryPanelPhone: {
+    maxWidth: undefined,
+    minWidth: 0,
+    paddingTop: spacing.md,
+    width: "100%",
+  },
   summaryValue: {
     marginTop: spacing.xs,
+  },
+  summaryValuePhone: {
+    fontSize: fontSizes.cardTitle,
+    lineHeight: lineHeights.cardTitle,
   },
   summaryValueCompact: {
     fontSize: fontSizes.screenTitle,

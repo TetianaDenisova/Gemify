@@ -38,7 +38,15 @@ async function openAndMigrate(): Promise<SQLiteDatabase> {
   const db = await openDatabaseAsync(DATABASE_NAME);
   await db.execAsync("PRAGMA journal_mode = WAL;");
   await db.execAsync("PRAGMA foreign_keys = ON;");
+  // Cloud sync leans on triggers to stamp rows; recursive triggers make ON
+  // DELETE CASCADE leave tombstones for the children it removes too.
+  await db.execAsync("PRAGMA recursive_triggers = ON;");
   await migrate(db);
+  // A sync interrupted mid-apply (app killed, transaction rolled back) can
+  // never leave the marker behind, but clearing it on open makes that
+  // impossible rather than merely unlikely — with it set, every sync trigger
+  // stays silent and local edits would stop being tracked.
+  await db.execAsync("DELETE FROM sync_state WHERE key = 'applying';");
   return db;
 }
 

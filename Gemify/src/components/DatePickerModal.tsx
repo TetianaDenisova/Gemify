@@ -9,6 +9,7 @@ import {
   ChevronIcon,
   CloseIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   fontSizes,
@@ -94,6 +95,7 @@ export function DatePickerModal({
   today,
   visible,
 }: DatePickerModalProps) {
+  const { phone } = useLayoutSize();
   const [pendingDate, setPendingDate] = useState(initialDate);
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
@@ -206,6 +208,7 @@ export function DatePickerModal({
                 onPress={() => setPendingDate(day)}
                 style={({ pressed: isPressed }) => [
                   styles.dayCell,
+                  phone && styles.dayCellPhone,
                   isToday && !selected && styles.dayCellToday,
                   selected && styles.dayCellSelected,
                   isPressed && pressed,
@@ -227,12 +230,15 @@ export function DatePickerModal({
         </View>
       ))}
 
-      <View style={styles.legendRow}>
-        <View style={styles.legendDot} />
-        <AppText style={styles.legendLabel} variant="bodySmall">
-          Today
-        </AppText>
-      </View>
+      {/* A legend for one gold dot on the current date. */}
+      {phone ? null : (
+        <View style={styles.legendRow}>
+          <View style={styles.legendDot} />
+          <AppText style={styles.legendLabel} variant="bodySmall">
+            Today
+          </AppText>
+        </View>
+      )}
 
       <AppButton
         accessibilityLabel="Select date"
@@ -268,6 +274,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     justifyContent: "center",
+  },
+  dayCellPhone: {
+    height: 40,
   },
   dayCellSelected: {
     backgroundColor: colors.accentVioletStrong,

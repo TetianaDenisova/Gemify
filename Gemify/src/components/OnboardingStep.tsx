@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { useWindowDimensions, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import {
   AppButton,
   AppText,
@@ -39,8 +40,9 @@ export function OnboardingStep({
   title,
 }: OnboardingStepProps) {
   const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
-  const compactLayout = height < layout.shortScreenBreakpoint || width > height;
+  // `short` already folds in the phone tier; the landscape term stays as it was.
+  const { height, phone, short, width } = useLayoutSize();
+  const compactLayout = short || width > height;
   const sectionGap = compactLayout ? spacing.md : spacing.xl;
 
   return (
@@ -52,7 +54,9 @@ export function OnboardingStep({
           styles.content,
           {
             paddingBottom: compactLayout ? spacing.md : spacing.lg,
-            paddingTop: insets.top + layout.headerHeight,
+            paddingTop:
+              insets.top +
+              (phone ? layout.headerHeightPhone : layout.headerHeight),
           },
         ]}
         keyboardAvoiding
@@ -73,7 +77,11 @@ export function OnboardingStep({
             {title}
           </AppText>
 
-          <AppText align="center" style={styles.subtitle} variant="subtitle">
+          <AppText
+            align="center"
+            style={[styles.subtitle, phone && styles.subtitlePhone]}
+            variant="subtitle"
+          >
             {subtitle}
           </AppText>
         </View>
@@ -122,6 +130,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: spacing.lg,
+  },
+  subtitlePhone: {
+    marginTop: spacing.sm,
   },
   titleCompact: {
     fontSize: fontSizes.cardTitle,

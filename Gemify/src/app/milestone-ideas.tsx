@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
@@ -29,11 +28,12 @@ import {
   ScreenScaffold,
   SparkIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   controls,
+  controlsPhone,
   fontSizes,
-  layout,
   lineHeights,
   pressed,
   spacing,
@@ -118,12 +118,15 @@ function PillButton({
   onPress?: () => void;
   width?: number;
 }) {
+  const { phone } = useLayoutSize();
+
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed: isPressed }) => [
         styles.pillButton,
+        phone && styles.pillButtonPhone,
         { borderColor: color, width },
         isPressed && pressed,
       ]}
@@ -181,8 +184,7 @@ function IdeaRow({
 }
 
 export default function MilestoneIdeasScreen() {
-  const { width } = useWindowDimensions();
-  const isNarrow = width < layout.compactBreakpoint;
+  const { compact: isNarrow } = useLayoutSize();
   const { milestoneId: milestoneIdParam } = useLocalSearchParams<{
     milestoneId?: string;
   }>();
@@ -406,6 +408,11 @@ const styles = StyleSheet.create({
     height: controls.button.pill.height,
     justifyContent: "center",
     paddingHorizontal: controls.button.pill.paddingHorizontal,
+  },
+  /** A floor instead of a fixed height, so a scaled label grows the pill. */
+  pillButtonPhone: {
+    height: undefined,
+    minHeight: controlsPhone.button.pill.minHeight,
   },
   promptActions: {
     flexDirection: "row",

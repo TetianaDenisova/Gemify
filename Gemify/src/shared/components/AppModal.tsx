@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { radius, spacing } from "@/theme/theme";
 
@@ -43,6 +44,7 @@ export function AppModal({
   variant = "center",
   visible,
 }: AppModalProps) {
+  const { phone } = useLayoutSize();
   const isSheet = variant === "sheet";
 
   return (
@@ -63,7 +65,12 @@ export function AppModal({
         />
         {isSheet ? (
           <View
-            style={[styles.sheet, maxWidth != null && { maxWidth }, panelStyle]}
+            style={[
+              styles.sheet,
+              phone && styles.sheetPhone,
+              maxWidth != null && { maxWidth },
+              panelStyle,
+            ]}
           >
             {showHandle ? <View style={styles.handle} /> : null}
             {children}
@@ -74,7 +81,15 @@ export function AppModal({
             showsVerticalScrollIndicator={false}
             style={[styles.centerScrollView, maxWidth != null && { maxWidth }]}
           >
-            <View style={[styles.centerPanel, panelStyle]}>{children}</View>
+            <View
+              style={[
+                styles.centerPanel,
+                phone && styles.centerPanelPhone,
+                panelStyle,
+              ]}
+            >
+              {children}
+            </View>
           </ScrollView>
         )}
       </View>
@@ -90,6 +105,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.lg,
     width: "100%",
+  },
+  centerPanelPhone: {
+    padding: spacing.md,
   },
   centerScroll: {
     flexGrow: 1,
@@ -130,5 +148,9 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     padding: spacing.lg,
     width: "100%",
+  },
+  /** A sheet on a 402 pt screen cannot afford 24 pt of padding a side. */
+  sheetPhone: {
+    padding: spacing.md,
   },
 });

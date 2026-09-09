@@ -428,6 +428,57 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Cloud-sync groundwork (Supabase). Every synced table gains three
+    // columns — `uid` (the row's identity across devices), `updated_at` (the
+    // last-write-wins clock) and `sync_dirty` (has local edits still to push)
+    // — plus a tombstone row on delete. Triggers maintain all of it, so the
+    // repositories keep writing plain SQL and know nothing about sync.
+    //
+    // Rows whose identity is really a natural key (a habit's completion for a
+    // date, a dream/feeling pair, a time block) derive their uid from that
+    // key, so two devices that create "the same" row independently land on
+    // one row instead of tripping a UNIQUE constraint.
+    //
+    // SYNC_V17_TABLES is a frozen copy, like the seeds: a table added later
+    // needs its own migration, and this one must keep running forever.
+    toVersion: 17,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS sync_state (
+          key   TEXT PRIMARY KEY,
+          value TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS sync_tombstones (
+          table_name TEXT NOT NULL,
+          uid        TEXT NOT NULL,
+          deleted_at TEXT NOT NULL,
+          PRIMARY KEY (table_name, uid)
+        );
+
+        ALTER TABLE dreams ADD COLUMN photo_remote_key TEXT;
+        ALTER TABLE milestones ADD COLUMN photo_remote_key TEXT;
+        ALTER TABLE timeline_moment_photos ADD COLUMN photo_remote_key TEXT;
+      `);
+
+      for (const table of SYNC_V17_TABLES) {
+        await db.execAsync(`
+          ALTER TABLE ${table.name} ADD COLUMN uid TEXT;
+          ALTER TABLE ${table.name} ADD COLUMN updated_at TEXT;
+          ALTER TABLE ${table.name} ADD COLUMN sync_dirty INTEGER NOT NULL DEFAULT 1;
+
+          UPDATE ${table.name}
+            SET uid = ${table.uid(table.name)},
+                updated_at = ${SYNC_V17_NOW};
+
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_${table.name}_uid
+            ON ${table.name} (uid);
+        `);
+        await db.execAsync(syncTriggersV17(table));
+      }
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */
@@ -456,3 +507,119 @@ async function seedReferenceData(db: SQLiteDatabase): Promise<void> {
 }
 
 export const LATEST_SCHEMA_VERSION = migrations[migrations.length - 1].toVersion;
+
+// ---------------------------------------------------------------------------
+// Cloud-sync schema (migration 17)
+// ---------------------------------------------------------------------------
+
+type SyncTableV17 = {
+  name: string;
+  /**
+   * SQL expression producing the row's uid. `ref` is how the row is addressed
+   * in the surrounding statement — the table name in the backfill UPDATE,
+   * "NEW" inside a trigger.
+   */
+  uid: (ref: string) => string;
+};
+
+/** ISO 8601 UTC, matching the format the rest of the schema stores. */
+const SYNC_V17_NOW = "STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')";
+
+/** Opaque identity for rows that are genuinely new wherever they are made. */
+const SYNC_V17_RANDOM_UID = "lower(hex(randomblob(16)))";
+
+/**
+ * Synced tables, parents before children — the order the backfill (and later
+ * the sync engine) needs so a child's derived uid can read its parent's.
+ * Frozen: adding a table means adding a migration, not editing this list.
+ */
+const SYNC_V17_TABLES: readonly SyncTableV17[] = [
+  { name: "dreams", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "feeling_states", uid: (ref) => `lower(${ref}.label)` },
+  {
+    name: "dream_feeling_states",
+    uid: (ref) =>
+      `(SELECT uid FROM dreams WHERE dreams.id = ${ref}.dream_id) || '/' || ` +
+      `(SELECT uid FROM feeling_states WHERE feeling_states.id = ${ref}.state_id)`,
+  },
+  { name: "milestones", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "quests", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "ideas", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "habits", uid: () => SYNC_V17_RANDOM_UID },
+  {
+    name: "habit_schedule_days",
+    uid: (ref) =>
+      `(SELECT uid FROM habits WHERE habits.id = ${ref}.habit_id) ` +
+      `|| '/' || ${ref}.weekday`,
+  },
+  { name: "habit_detail_entries", uid: () => SYNC_V17_RANDOM_UID },
+  {
+    name: "habit_completions",
+    uid: (ref) =>
+      `(SELECT uid FROM habits WHERE habits.id = ${ref}.habit_id) ` +
+      `|| '/' || ${ref}.date`,
+  },
+  {
+    name: "habit_detail_checks",
+    uid: (ref) =>
+      `(SELECT uid FROM habits WHERE habits.id = ${ref}.habit_id) ` +
+      `|| '/' || ${ref}.section || '/' || ${ref}.date`,
+  },
+  { name: "time_blocks", uid: (ref) => `${ref}.key` },
+  { name: "time_block_actions", uid: () => SYNC_V17_RANDOM_UID },
+  {
+    name: "action_completions",
+    uid: (ref) =>
+      `(SELECT uid FROM time_block_actions ` +
+      `WHERE time_block_actions.id = ${ref}.action_id) || '/' || ${ref}.date`,
+  },
+  { name: "risks", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "risk_actions", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "timeline_moments", uid: () => SYNC_V17_RANDOM_UID },
+  { name: "timeline_moment_photos", uid: () => SYNC_V17_RANDOM_UID },
+];
+
+/**
+ * The three triggers that keep a table syncable: stamp new rows with a uid,
+ * move `updated_at` forward (and raise `sync_dirty`) on every edit, and leave
+ * a tombstone behind on delete so the deletion can travel to other devices.
+ *
+ * All three stand down while `sync_state` holds the "applying" marker — that
+ * is the sync engine writing rows it just pulled, which already carry the
+ * authoring device's uid and timestamp and must not look like local edits.
+ */
+function syncTriggersV17(table: SyncTableV17): string {
+  const name = table.name;
+  const idle = "NOT EXISTS (SELECT 1 FROM sync_state WHERE key = 'applying')";
+
+  return `
+    CREATE TRIGGER IF NOT EXISTS trg_${name}_sync_insert
+    AFTER INSERT ON ${name}
+    WHEN NEW.uid IS NULL AND ${idle}
+    BEGIN
+      UPDATE ${name}
+        SET uid = ${table.uid("NEW")}, updated_at = ${SYNC_V17_NOW}
+        WHERE rowid = NEW.rowid;
+      DELETE FROM sync_tombstones
+        WHERE table_name = '${name}'
+          AND uid = (SELECT uid FROM ${name} WHERE rowid = NEW.rowid);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_${name}_sync_update
+    AFTER UPDATE ON ${name}
+    WHEN NEW.updated_at IS OLD.updated_at AND ${idle}
+    BEGIN
+      UPDATE ${name}
+        SET updated_at = ${SYNC_V17_NOW}, sync_dirty = 1
+        WHERE rowid = NEW.rowid;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS trg_${name}_sync_delete
+    AFTER DELETE ON ${name}
+    WHEN OLD.uid IS NOT NULL AND ${idle}
+    BEGIN
+      INSERT OR REPLACE INTO sync_tombstones (table_name, uid, deleted_at)
+        VALUES ('${name}', OLD.uid, ${SYNC_V17_NOW});
+    END;
+  `;
+}

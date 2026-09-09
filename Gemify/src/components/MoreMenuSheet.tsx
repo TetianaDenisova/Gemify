@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -19,15 +20,17 @@ type ResultNotice = {
 };
 
 /**
- * The ⋮ overflow menu: a bottom sheet with data backup actions. Export shares
- * a single JSON backup file (photos included); import replaces all current
- * data with a previously exported file, behind a confirmation step.
+ * The ⋮ overflow menu: a bottom sheet with the data actions. Cloud sync keeps
+ * this device and the user's other one on the same journey; export shares a
+ * single JSON backup file (photos included); import replaces all current data
+ * with a previously exported file, behind a confirmation step.
  */
 export function MoreMenuSheet({
   onClose,
   onImported,
   visible,
 }: MoreMenuSheetProps) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [notice, setNotice] = useState<ResultNotice | null>(null);
@@ -79,6 +82,13 @@ export function MoreMenuSheet({
     <>
       <AppModal onClose={onClose} variant="sheet" visible={visible}>
         <View style={styles.menu}>
+          <ListItem
+            onPress={() => {
+              onClose();
+              router.push("/cloud-sync");
+            }}
+            title="Cloud sync"
+          />
           <ListItem onPress={handleExport} title="Export data" />
           <ListItem
             last

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import {
   AppButton,
   AppText,
@@ -15,7 +16,7 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { pressed, radius, shadowStyle, spacing } from "@/theme/theme";
+import { layout, pressed, radius, shadowStyle, spacing } from "@/theme/theme";
 
 /** Same night-sky art as the describe-dream step, for a continuous flow. */
 const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
@@ -57,6 +58,7 @@ function CameraGlyph({ color = colors.primary, size = 22 }: { color?: string; si
 
 export default function SeeDreamScreen() {
   const router = useRouter();
+  const { phone } = useLayoutSize();
   const { name, description } = useLocalSearchParams<{
     name?: string;
     description?: string;
@@ -107,7 +109,7 @@ export default function SeeDreamScreen() {
       <ScreenHeader asStackHeader />
       <ScreenScaffold
         backgroundImage={ENTERING_BACKGROUND}
-        contentStyle={styles.content}
+        contentStyle={[styles.content, phone && styles.contentPhone]}
         overlayOpacity={0.45}
         topInset
       >
@@ -124,6 +126,7 @@ export default function SeeDreamScreen() {
           onPress={() => pickPhoto("library")}
           style={({ pressed: isPressed }) => [
             styles.photoFrame,
+            phone && styles.photoFramePhone,
             isPressed && pressed,
           ]}
         >
@@ -149,7 +152,7 @@ export default function SeeDreamScreen() {
             iconPosition="before"
             label="Choose from gallery"
             onPress={() => pickPhoto("library")}
-            style={styles.sourceButton}
+            style={[styles.sourceButton, phone && styles.sourceButtonPhone]}
             variant="secondary"
           />
           {Platform.OS !== "web" ? (
@@ -158,27 +161,35 @@ export default function SeeDreamScreen() {
               iconPosition="before"
               label="Take a photo"
               onPress={() => pickPhoto("camera")}
-              style={styles.sourceButton}
+              style={[
+                styles.sourceButton,
+                phone && styles.sourceButtonPhone,
+              ]}
               variant="secondary"
             />
           ) : null}
         </View>
 
-        <AppButton
-          label="✦  Create with AI  ✦"
-          onPress={() => setAiHint(true)}
-          variant="ghost"
-        />
-        {aiHint ? (
-          <AppText align="center" color={colors.textMuted} variant="caption">
-            AI images are coming soon.
-          </AppText>
-        ) : null}
+        {/* A full button row for a feature that does not exist yet. */}
+        {phone ? null : (
+          <>
+            <AppButton
+              label="✦  Create with AI  ✦"
+              onPress={() => setAiHint(true)}
+              variant="ghost"
+            />
+            {aiHint ? (
+              <AppText align="center" color={colors.textMuted} variant="caption">
+                AI images are coming soon.
+              </AppText>
+            ) : null}
 
-        <HintRow
-          style={styles.hint}
-          text="Choose an image that makes your future feel real."
-        />
+            <HintRow
+              style={styles.hint}
+              text="Choose an image that makes your future feel real."
+            />
+          </>
+        )}
 
         <AppButton
           label="Skip for now"
@@ -203,7 +214,11 @@ export default function SeeDreamScreen() {
 const styles = StyleSheet.create({
   content: {
     alignItems: "center",
-    paddingTop: 68,
+    paddingTop: layout.headerHeight,
+  },
+  /** Tracks the shorter phone header so the title keeps the same gap. */
+  contentPhone: {
+    paddingTop: layout.headerHeightPhone,
   },
   continueButton: {
     alignSelf: "stretch",
@@ -231,6 +246,11 @@ const styles = StyleSheet.create({
     ...shadowStyle({ color: colors.primary, elevation: 10, opacity: 0.35, radius: 22 }),
     width: "86%",
   },
+  /** 346 x 443 pt at 402 pt wide leaves no room for the buttons below. */
+  photoFramePhone: {
+    aspectRatio: 0.95,
+    width: "78%",
+  },
   photoPlaceholder: {
     alignItems: "center",
     flex: 1,
@@ -240,6 +260,10 @@ const styles = StyleSheet.create({
   sourceButton: {
     flex: 1,
     minWidth: 220,
+  },
+  /** Two-up at 370 pt: ~177 pt each, so the 220 pt floor has to go. */
+  sourceButtonPhone: {
+    minWidth: 0,
   },
   sourceRow: {
     alignSelf: "stretch",

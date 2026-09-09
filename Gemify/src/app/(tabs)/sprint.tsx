@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
 } from "react-native";
 import {
   Gesture,
@@ -61,6 +60,7 @@ import {
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { iconSizes, pressed, radius, spacing } from "@/theme/theme";
 import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
@@ -90,12 +90,14 @@ function DayCell({
   hoveredDay,
   index,
   onPress,
+  phone,
 }: {
   cellRef: (cell: View | null) => void;
   day: WeekDay;
   hoveredDay: SharedValue<number>;
   index: number;
   onPress: () => void;
+  phone: boolean;
 }) {
   const hasQuests = day.count > 0;
   const dotColor = day.selected
@@ -115,6 +117,7 @@ function DayCell({
       ref={cellRef}
       style={({ pressed: isPressed }) => [
         styles.dayCell,
+        phone && styles.dayCellPhone,
         day.selected && styles.dayCellSelected,
         isPressed && pressed,
       ]}
@@ -129,7 +132,7 @@ function DayCell({
       <AppText
         color={day.selected ? colors.primary : colors.textPrimary}
         style={styles.dayNumber}
-        variant="titleSm"
+        variant={phone ? "pill" : "titleSm"}
       >
         {day.date}
       </AppText>
@@ -173,7 +176,13 @@ function BreadcrumbPart({
   );
 }
 
-function QuestBreadcrumb({ quest }: { quest: QuestWithBreadcrumb }) {
+function QuestBreadcrumb({
+  phone,
+  quest,
+}: {
+  phone: boolean;
+  quest: QuestWithBreadcrumb;
+}) {
   return (
     <View style={styles.breadcrumb}>
       <BreadcrumbPart
@@ -181,12 +190,17 @@ function QuestBreadcrumb({ quest }: { quest: QuestWithBreadcrumb }) {
         icon={<DreamIcon size={16} />}
         label={quest.dreamTitle}
       />
-      <ChevronIcon color={colors.textMuted} direction="right" size={13} />
-      <BreadcrumbPart
-        color={colors.textSecondary}
-        icon={<MilestoneIcon size={16} />}
-        label={quest.milestoneTitle}
-      />
+      {/* Same rule as Home and My Day: the dream is the context that helps. */}
+      {phone ? null : (
+        <>
+          <ChevronIcon color={colors.textMuted} direction="right" size={13} />
+          <BreadcrumbPart
+            color={colors.textSecondary}
+            icon={<MilestoneIcon size={16} />}
+            label={quest.milestoneTitle}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -204,6 +218,7 @@ function QuestItemCard({
   dragging,
   onOpenMenu,
   onToggleDone,
+  phone,
   quest,
   showTime = false,
 }: {
@@ -211,6 +226,7 @@ function QuestItemCard({
   dragging: boolean;
   onOpenMenu: () => void;
   onToggleDone: () => void;
+  phone: boolean;
   quest: QuestWithBreadcrumb;
   showTime?: boolean;
 }) {
@@ -228,11 +244,14 @@ function QuestItemCard({
             ]}
           >
             <View style={styles.questIcon}>
-              <ActionIconArt icon={questIconForId(quest.id)} size={36} />
+              <ActionIconArt
+                icon={questIconForId(quest.id)}
+                size={phone ? 30 : 36}
+              />
             </View>
             <View style={styles.questCardCopy}>
               <AppText numberOfLines={2} variant="pill">{quest.title}</AppText>
-              <QuestBreadcrumb quest={quest} />
+              <QuestBreadcrumb phone={phone} quest={quest} />
             </View>
           </Pressable>
           {showTime ? (
@@ -248,7 +267,7 @@ function QuestItemCard({
             checked={quest.isDone}
             onPress={onToggleDone}
             shape="circle"
-            size={38}
+            size={phone ? 32 : 38}
           />
         </View>
       </Card>
@@ -260,11 +279,13 @@ function QuestItemCard({
 function DragGhost({
   dragX,
   dragY,
+  phone,
   quest,
   width,
 }: {
   dragX: SharedValue<number>;
   dragY: SharedValue<number>;
+  phone: boolean;
   quest: QuestWithBreadcrumb;
   width: number;
 }) {
@@ -279,7 +300,7 @@ function DragGhost({
     <Animated.View style={[styles.dragGhost, { width }, followStyle]}>
       <Card style={styles.dragGhostCard} variant="strong">
         <AppText numberOfLines={2} variant="button">{quest.title}</AppText>
-        <QuestBreadcrumb quest={quest} />
+        <QuestBreadcrumb phone={phone} quest={quest} />
       </Card>
     </Animated.View>
   );
@@ -309,11 +330,14 @@ export default function SprintScreen() {
   const [pickerQuests, setPickerQuests] = useState<QuestWithBreadcrumb[]>([]);
   const [addTarget, setAddTarget] = useState<QuestWithBreadcrumb | null>(null);
 
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { height: windowHeight, phone, width: windowWidth } = useLayoutSize();
   const ghostWidth = Math.min(windowWidth - spacing.lg * 2, 360);
   // The copy and Add quest button overlay the artwork; the week strip and day
   // heading sit above it, so it takes a bit less height than on My Day.
-  const emptyImageHeight = Math.min(480, Math.max(280, Math.round(windowHeight * 0.42)));
+  // 874 * 0.42 = 367 pt of artwork under a week strip on a 402 pt screen.
+  const emptyImageHeight = phone
+    ? Math.min(320, Math.max(200, Math.round(windowHeight * 0.28)))
+    : Math.min(480, Math.max(280, Math.round(windowHeight * 0.42)));
 
   // Drag plumbing shared by every quest card: finger position, week-strip
   // cell rects (measured at lift), and the currently hovered day cell.
@@ -673,7 +697,7 @@ export default function SprintScreen() {
           style={styles.header}
         />
 
-        <View style={styles.weekStrip}>
+        <View style={[styles.weekStrip, phone && styles.weekStripPhone]}>
           {weekDayCells.map((day, index) => (
             <DayCell
               cellRef={(cell) => {
@@ -684,6 +708,7 @@ export default function SprintScreen() {
               index={index}
               key={day.dateKey}
               onPress={() => setSelectedDate(day.dateKey)}
+              phone={phone}
             />
           ))}
         </View>
@@ -715,6 +740,7 @@ export default function SprintScreen() {
                 key={quest.id}
                 onOpenMenu={() => setMenuQuest(quest)}
                 onToggleDone={() => handleToggleDone(quest)}
+                phone={phone}
                 quest={quest}
                 showTime
               />
@@ -725,7 +751,7 @@ export default function SprintScreen() {
                 iconPosition="before"
                 label="Add quest"
                 onPress={openQuestPicker}
-                style={styles.addMoreButton}
+                style={[styles.addMoreButton, phone && styles.buttonPhone]}
                 variant="secondary"
               />
             )}
@@ -761,7 +787,10 @@ export default function SprintScreen() {
                   iconPosition="before"
                   label="Add quest"
                   onPress={openQuestPicker}
-                  style={styles.emptyDayButton}
+                  style={[
+                    styles.emptyDayButton,
+                    phone && styles.buttonPhone,
+                  ]}
                   variant="secondary"
                 />
               )}
@@ -874,6 +903,7 @@ export default function SprintScreen() {
         <DragGhost
           dragX={dragX}
           dragY={dragY}
+          phone={phone}
           quest={draggingQuest}
           width={ghostWidth}
         />
@@ -888,6 +918,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: spacing.xs,
     minWidth: 220,
+  },
+  /** 220 pt does not fit beside anything on a 370 pt row. */
+  buttonPhone: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   breadcrumb: {
     alignItems: "center",
@@ -915,6 +950,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingBottom: spacing.sm,
     paddingTop: spacing.sm + spacing.xs,
+  },
+  dayCellPhone: {
+    paddingBottom: spacing.xs,
+    paddingTop: spacing.xs,
   },
   dayCellSelected: {
     borderColor: colors.borderStrong,
@@ -1041,5 +1080,9 @@ const styles = StyleSheet.create({
   weekStrip: {
     flexDirection: "row",
     gap: spacing.sm,
+  },
+  /** Seven cells share 370 pt — the gaps have to give first. */
+  weekStripPhone: {
+    gap: spacing.xs,
   },
 });

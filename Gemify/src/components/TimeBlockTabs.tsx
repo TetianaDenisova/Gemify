@@ -4,16 +4,16 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import type { BlockIcon, TimeBlock } from "@/dto/timeBlocks";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { AppText, ChevronIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fontSizes, layout, lineHeights, pressed, radius } from "@/theme/theme";
+import { fontSizes, lineHeights, pressed, radius } from "@/theme/theme";
 
 export function BlockIconArt({ color, icon, size = 22 }: { color: string; icon: BlockIcon; size?: number }) {
   const stroke = { fill: "none" as const, stroke: color, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -66,11 +66,13 @@ function TimeTab({
   block,
   compact,
   onPress,
+  phone,
 }: {
   active: boolean;
   block: TimeBlock;
   compact: boolean;
   onPress: () => void;
+  phone: boolean;
 }) {
   const questCount = block.actions.length;
 
@@ -82,6 +84,7 @@ function TimeTab({
       style={({ pressed: isPressed }) => [
         styles.timeTab,
         compact && styles.timeTabCompact,
+        phone && styles.timeTabPhone,
         active && styles.timeTabActive,
         isPressed && pressed,
       ]}
@@ -129,8 +132,7 @@ type TimeBlockTabsProps = {
 };
 
 export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockTabsProps) {
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
+  const { compact, phone } = useLayoutSize();
 
   const scrollRef = useRef<ScrollView>(null);
   const tabLayoutsRef = useRef<Record<string, { width: number; x: number }>>({});
@@ -159,26 +161,34 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
 
   return (
     <View style={[styles.tabsRow, style]}>
-      <Pressable
-        accessibilityLabel="Previous time block"
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={() => shiftActive(-1)}
-        style={({ pressed: isPressed }) => [
-          styles.tabsArrow,
-          compact && styles.tabsArrowCompact,
-          isPressed && pressed,
-        ]}
-      >
-        <ChevronIcon
-          color={colors.textSecondary}
-          direction="left"
-          size={compact ? 20 : 24}
-          strokeWidth={1.9}
-        />
-      </Pressable>
+      {/* 34 pt each = 68 pt of a 370 pt row for a convenience the strip
+          already covers: it scrolls and auto-centers the active tab. */}
+      {phone ? null : (
+        <Pressable
+          accessibilityLabel="Previous time block"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => shiftActive(-1)}
+          style={({ pressed: isPressed }) => [
+            styles.tabsArrow,
+            compact && styles.tabsArrowCompact,
+            isPressed && pressed,
+          ]}
+        >
+          <ChevronIcon
+            color={colors.textSecondary}
+            direction="left"
+            size={compact ? 20 : 24}
+            strokeWidth={1.9}
+          />
+        </Pressable>
+      )}
       <ScrollView
-        contentContainerStyle={[styles.tabsContent, compact && styles.tabsContentCompact]}
+        contentContainerStyle={[
+          styles.tabsContent,
+          compact && styles.tabsContentCompact,
+          phone && styles.tabsContentPhone,
+        ]}
         horizontal
         onLayout={(event) => {
           viewportWidthRef.current = event.nativeEvent.layout.width;
@@ -205,29 +215,32 @@ export function TimeBlockTabs({ activeKey, blocks, onSelect, style }: TimeBlockT
               block={block}
               compact={compact}
               onPress={() => onSelect(block.key)}
+              phone={phone}
             />
             {index < blocks.length - 1 ? <View style={styles.timeTabDivider} /> : null}
           </View>
         ))}
       </ScrollView>
-      <Pressable
-        accessibilityLabel="Next time block"
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={() => shiftActive(1)}
-        style={({ pressed: isPressed }) => [
-          styles.tabsArrow,
-          compact && styles.tabsArrowCompact,
-          isPressed && pressed,
-        ]}
-      >
-        <ChevronIcon
-          color={colors.textSecondary}
-          direction="right"
-          size={compact ? 20 : 24}
-          strokeWidth={1.9}
-        />
-      </Pressable>
+      {phone ? null : (
+        <Pressable
+          accessibilityLabel="Next time block"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => shiftActive(1)}
+          style={({ pressed: isPressed }) => [
+            styles.tabsArrow,
+            compact && styles.tabsArrowCompact,
+            isPressed && pressed,
+          ]}
+        >
+          <ChevronIcon
+            color={colors.textSecondary}
+            direction="right"
+            size={compact ? 20 : 24}
+            strokeWidth={1.9}
+          />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -278,6 +291,10 @@ const styles = StyleSheet.create({
     minHeight: 72,
     paddingVertical: 8,
   },
+  tabsContentPhone: {
+    minHeight: 58,
+    paddingVertical: 6,
+  },
   tabsRow: {
     alignItems: "center",
     backgroundColor: colors.surfaceDeep,
@@ -313,6 +330,10 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingHorizontal: 6,
     width: 108,
+  },
+  timeTabPhone: {
+    minHeight: 46,
+    width: 92,
   },
   timeTabDivider: {
     backgroundColor: colors.borderSoft,

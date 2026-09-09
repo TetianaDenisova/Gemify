@@ -179,6 +179,7 @@ export function HabitDetailSectionView({
   checked = false,
   compact,
   onToggleRow,
+  phone = false,
   section,
 }: {
   /** Whether this section's checkboxes show as ticked for today. */
@@ -186,12 +187,13 @@ export function HabitDetailSectionView({
   compact: boolean;
   /** Called when a checkable row is ticked/unticked. */
   onToggleRow?: () => void;
+  phone?: boolean;
   section: BoardDetailSection;
 }) {
   return (
     <View style={[styles.detailSection, compact && styles.detailSectionCompact]}>
       <View style={[styles.detailIconFrame, compact && styles.detailIconFrameCompact]}>
-        <DetailIcon icon={section.icon} size={compact ? 44 : 58} />
+        <DetailIcon icon={section.icon} size={phone ? 36 : compact ? 44 : 58} />
       </View>
       <View style={styles.detailCopy}>
         <AppText
@@ -242,6 +244,7 @@ export function HabitBoardRow({
   onDayPress,
   onDetailToggle,
   onPress,
+  phone = false,
   trailing,
 }: {
   activeDayIndex: number;
@@ -256,6 +259,7 @@ export function HabitBoardRow({
   /** Fired when a checkable section's checkbox is toggled. */
   onDetailToggle?: (section: DbHabitDetailSection) => void;
   onPress: () => void;
+  phone?: boolean;
   trailing?: ReactNode;
 }) {
   return (
@@ -274,6 +278,7 @@ export function HabitBoardRow({
         expanded={expanded}
         habit={habit}
         onDayPress={onDayPress}
+        phone={phone}
         trailing={trailing}
       />
       {expanded ? (
@@ -284,6 +289,7 @@ export function HabitBoardRow({
               compact={compact}
               key={section.key}
               onToggleRow={() => onDetailToggle?.(section.key)}
+              phone={phone}
               section={section}
             />
           ))}

@@ -18,6 +18,7 @@ import {
   type HabitDetailSection,
   type TimeBlockRecord,
 } from "@/db";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 
 export type HabitWeekView = {
@@ -115,6 +116,8 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
       if (mounted.current) setLoading(false);
     }
   }, [dreamId, weekDates]);
+
+  useRefreshOnSync(refresh);
 
   useFocusEffect(
     useCallback(() => {

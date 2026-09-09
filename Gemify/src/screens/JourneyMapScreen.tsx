@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
   type StyleProp,
   type TextStyle,
@@ -76,6 +75,7 @@ import {
   PlusIcon,
   ProgressBar,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   deleteMemoryPhotos,
@@ -86,7 +86,6 @@ import {
   gradients,
   iconSizes,
   inputFocusReset,
-  layout,
   lineHeights,
   pressed as pressedStyle,
   radius,
@@ -483,7 +482,7 @@ function MilestoneModal({
   stepCount,
 }: MilestoneModalProps) {
   const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
+  const { height, phone, short, width } = useLayoutSize();
   const [draft, setDraft] = useState<MilestoneFormValues>(EMPTY_MILESTONE_FORM);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lastState, setLastState] = useState<MilestoneModalState | null>(null);
@@ -557,10 +556,12 @@ function MilestoneModal({
   // Adding inserts a new step, so the path is one longer than it is now.
   const stepTotal = state?.mode === "add" ? stepCount + 1 : stepCount;
   const isCompact = width < 520;
-  const isShort = height < layout.shortScreenBreakpoint;
+  const isShort = short;
+  // The sheet is the whole task on a phone, so it may take more of the
+  // screen than the tablet-compact branch allows.
   const sheetMaxHeight = Math.min(
     height - Math.max(insets.top, 10),
-    height * (isCompact ? 0.72 : 0.82),
+    height * (phone ? 0.8 : isCompact ? 0.72 : 0.82),
   );
   const sheetBottomPadding = Math.max(insets.bottom + 14, isCompact ? 18 : 22);
 
@@ -706,7 +707,12 @@ function MilestoneModal({
               >
                 {mode === "view" ? (
                   milestone?.photoUri ? (
-                    <View style={styles.stepPhotoFrame}>
+                    <View
+                      style={[
+                        styles.stepPhotoFrame,
+                        phone && { maxHeight: Math.round(height * 0.24) },
+                      ]}
+                    >
                       <DreamPhoto
                         style={styles.stepPhoto}
                         transform={{
@@ -720,7 +726,12 @@ function MilestoneModal({
                   ) : null
                 ) : draft.photoUri ? (
                   <>
-                    <View style={styles.stepPhotoFrame}>
+                    <View
+                      style={[
+                        styles.stepPhotoFrame,
+                        phone && { maxHeight: Math.round(height * 0.24) },
+                      ]}
+                    >
                       <DreamPhotoAdjuster
                         onChange={setDraftTransform}
                         style={StyleSheet.absoluteFill}

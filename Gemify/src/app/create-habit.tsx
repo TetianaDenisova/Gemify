@@ -43,6 +43,7 @@ import {
   StepIcon,
   type StepIconName,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
   gradients,
@@ -196,20 +197,24 @@ function DropdownField({
 
 function StepIconMedallion({
   name,
-  size = 70,
+  size,
 }: {
   name: StepIconName;
   size?: number;
 }) {
+  const { phone } = useLayoutSize();
+  // A decorative rail down the left of every field — half the cost on a phone.
+  const side = size ?? (phone ? 48 : 70);
+
   return (
-    <View style={[styles.stepIcon, { height: size, width: size }]}>
+    <View style={[styles.stepIcon, { height: side, width: side }]}>
       <View
         style={[
           styles.stepIconRing,
-          { height: size - 6, pointerEvents: "none", width: size - 6 },
+          { height: side - 6, pointerEvents: "none", width: side - 6 },
         ]}
       />
-      <StepIcon name={name} size={Math.round(size * 0.44)} />
+      <StepIcon name={name} size={Math.round(side * 0.44)} />
     </View>
   );
 }
@@ -236,6 +241,9 @@ const EMPTY_FORM: FormValues = {
 };
 
 export default function CreateHabitScreen() {
+  // Every field carries a numbered label; the sentence under it is the one
+  // thing a 402 pt screen can drop six times over.
+  const { phone } = useLayoutSize();
   const router = useRouter();
   const { dreamId: dreamIdParam, habitId: habitIdParam } =
     useLocalSearchParams<{ dreamId?: string; habitId?: string }>();
@@ -501,7 +509,7 @@ export default function CreateHabitScreen() {
 
   function renderTextStep(step: FormStep) {
     return (
-      <View key={step.title} style={styles.formRow}>
+      <View key={step.title} style={[styles.formRow, phone && styles.formRowPhone]}>
         <StepIconMedallion name={step.icon} />
         <View style={styles.formMain}>
           <AppInput
@@ -513,7 +521,7 @@ export default function CreateHabitScreen() {
             selectionColor={colors.primary}
             value={values[step.input]}
           />
-          {step.helper ? (
+          {step.helper && !phone ? (
             <AppText color={colors.textMuted} style={styles.helperText}>
               {step.helper}
             </AppText>
@@ -545,7 +553,7 @@ export default function CreateHabitScreen() {
         {renderTextStep(textSteps[0])}
         {renderTextStep(textSteps[1])}
 
-        <View style={styles.formRow}>
+        <View style={[styles.formRow, phone && styles.formRowPhone]}>
           <StepIconMedallion name="leaf" />
           <View style={styles.formMain}>
             <AppText
@@ -567,15 +575,19 @@ export default function CreateHabitScreen() {
                 selectedDreamId === null ? null : String(selectedDreamId)
               }
             />
-            <AppText color={colors.textMuted} style={styles.helperText}>
-              {dreams.length > 0
-                ? "This habit will support the dream you pick."
-                : "Create a dream first — habits live inside one."}
-            </AppText>
+            {/* The "no dreams yet" branch reports state rather than
+                explaining, so it survives on every tier. */}
+            {phone && dreams.length > 0 ? null : (
+              <AppText color={colors.textMuted} style={styles.helperText}>
+                {dreams.length > 0
+                  ? "This habit will support the dream you pick."
+                  : "Create a dream first — habits live inside one."}
+              </AppText>
+            )}
           </View>
         </View>
 
-        <View style={styles.formRow}>
+        <View style={[styles.formRow, phone && styles.formRowPhone]}>
           <StepIconMedallion name="calendar" />
           <View style={styles.formMain}>
             <AppText
@@ -592,17 +604,19 @@ export default function CreateHabitScreen() {
                   label={day}
                   onPress={() => toggleDay(day)}
                   selected={selectedDays.has(day)}
-                  style={styles.dayChip}
+                  style={[styles.dayChip, phone && styles.dayChipPhone]}
                 />
               ))}
             </View>
-            <AppText color={colors.textMuted} style={styles.helperText}>
-              Select the days you want to practice this habit.
-            </AppText>
+            {phone ? null : (
+              <AppText color={colors.textMuted} style={styles.helperText}>
+                Select the days you want to practice this habit.
+              </AppText>
+            )}
           </View>
         </View>
 
-        <View style={styles.formRow}>
+        <View style={[styles.formRow, phone && styles.formRowPhone]}>
           <StepIconMedallion name="clock" />
           <View style={styles.formMain}>
             <AppText
@@ -631,14 +645,16 @@ export default function CreateHabitScreen() {
               placeholder="Choose a time of day"
               selectedKey={selectedTime}
             />
-            <AppText color={colors.textMuted} style={styles.helperText}>
-              Your My Day time blocks — the habit will live in the one you
-              pick.
-            </AppText>
+            {phone ? null : (
+              <AppText color={colors.textMuted} style={styles.helperText}>
+                Your My Day time blocks — the habit will live in the one you
+                pick.
+              </AppText>
+            )}
           </View>
         </View>
 
-        <View style={styles.formRow}>
+        <View style={[styles.formRow, phone && styles.formRowPhone]}>
           <StepIconMedallion name="sprout" />
           <View style={styles.formMain}>
             <AppText
@@ -728,10 +744,12 @@ export default function CreateHabitScreen() {
                 Add another step
               </AppText>
             </Pressable>
-            <AppText color={colors.textMuted} style={styles.helperText}>
-              Small steps that make starting effortless. “Add as task” turns a
-              step into a milestone quest instead of saving it here.
-            </AppText>
+            {phone ? null : (
+              <AppText color={colors.textMuted} style={styles.helperText}>
+                Small steps that make starting effortless. “Add as task” turns a
+                step into a milestone quest instead of saving it here.
+              </AppText>
+            )}
           </View>
         </View>
 
@@ -886,6 +904,11 @@ const styles = StyleSheet.create({
   dayChip: {
     minWidth: 80,
   },
+  /** Seven chips over two rows at 370 pt — the padding gives way first. */
+  dayChipPhone: {
+    minWidth: 64,
+    paddingHorizontal: spacing.xs,
+  },
   dayGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -914,6 +937,9 @@ const styles = StyleSheet.create({
   formMain: {
     flex: 1,
     minWidth: 0,
+  },
+  formRowPhone: {
+    gap: spacing.md,
   },
   formRow: {
     borderBottomColor: colors.borderSoft,

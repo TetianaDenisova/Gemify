@@ -1,9 +1,10 @@
 import { Image } from "expo-image";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { AppText, SparkIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { layout, radius, spacing } from "@/theme/theme";
+import { radius, spacing } from "@/theme/theme";
 
 // Floating-island night art cropped from the dream backgrounds set; its edges
 // fade to the same near-black navy as the card backing, so it bleeds off the
@@ -33,9 +34,8 @@ export function DayCompleteCard({
   gainedPercent,
   subtitle,
 }: DayCompleteCardProps) {
-  const { width } = useWindowDimensions();
-  const compact = width < layout.compactBreakpoint;
-  const artHeight = compact ? 134 : 176;
+  const { compact, phone } = useLayoutSize();
+  const artHeight = phone ? 108 : compact ? 134 : 176;
 
   return (
     <View style={styles.card}>
@@ -62,13 +62,17 @@ export function DayCompleteCard({
           </AppText>{" "}
           closer to your dream today
         </AppText>
-        <AppText
-          color={colors.textSecondary}
-          style={styles.subtitle}
-          variant="bodySmall"
-        >
-          {subtitle}
-        </AppText>
+        {/* The headline and the gold +N% already say it — on a phone the
+            sentence is the first thing that can go. */}
+        {phone ? null : (
+          <AppText
+            color={colors.textSecondary}
+            style={styles.subtitle}
+            variant="bodySmall"
+          >
+            {subtitle}
+          </AppText>
+        )}
       </View>
     </View>
   );

@@ -8,6 +8,7 @@ import {
   setQuestDone,
   type QuestWithBreadcrumb,
 } from "@/db";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 
 /**
  * A day's schedule: the routine time-block frames (labels, times, identity)
@@ -146,6 +147,8 @@ export function useDayQuestBlocks(date: string): UseDayQuestBlocksResult {
       if (mounted.current) setLoading(false);
     }
   }, [date]);
+
+  useRefreshOnSync(refresh);
 
   useFocusEffect(
     useCallback(() => {

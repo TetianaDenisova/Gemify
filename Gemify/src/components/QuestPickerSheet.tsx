@@ -12,6 +12,7 @@ import {
   PlusIcon,
   SparkIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { iconSizes, pressed, radius, shadowStyle, spacing } from "@/theme/theme";
 
@@ -68,6 +69,7 @@ export function QuestPickerSheet({
   time,
   visible,
 }: QuestPickerSheetProps) {
+  const { phone } = useLayoutSize();
   const [collapsedDreams, setCollapsedDreams] = useState<Set<string>>(
     () => new Set(),
   );
@@ -113,14 +115,17 @@ export function QuestPickerSheet({
           <SparkIcon color={colors.primary} size={iconSizes.sm} />
         </View>
       ) : null}
-      <AppText
-        align="center"
-        color={colors.textSecondary}
-        style={styles.pickerSubtitle}
-        variant="bodySmall"
-      >
-        {subtitle}
-      </AppText>
+      {/* The title already reads "Add to <target>". */}
+      {phone ? null : (
+        <AppText
+          align="center"
+          color={colors.textSecondary}
+          style={styles.pickerSubtitle}
+          variant="bodySmall"
+        >
+          {subtitle}
+        </AppText>
+      )}
 
       {groups.length > 0 ? (
         <ScrollView style={styles.pickerList}>
@@ -138,7 +143,7 @@ export function QuestPickerSheet({
                   ]}
                 >
                   <View style={styles.pickerGroupIcon}>
-                    <DreamIcon color={colors.primary} size={26} />
+                    <DreamIcon color={colors.primary} size={phone ? 20 : 26} />
                   </View>
                   <AppText
                     color={colors.primary}
@@ -179,7 +184,7 @@ export function QuestPickerSheet({
                             <AppText
                               numberOfLines={2}
                               style={styles.pickerQuestTitle}
-                              variant="pill"
+                              variant={phone ? "controlLabel" : "pill"}
                             >
                               {quest.title}
                             </AppText>

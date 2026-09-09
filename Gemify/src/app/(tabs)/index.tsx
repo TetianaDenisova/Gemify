@@ -9,6 +9,8 @@ import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
+import { useCloudSync } from "@/hooks/useCloudSync";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
@@ -21,12 +23,14 @@ import {
   Checkbox,
   ChevronIcon,
   DreamIcon,
+  IconButton,
   MilestoneIcon,
   PlusIcon,
   RepeatIcon,
   ScreenScaffold,
   SectionHeader,
   SparkIcon,
+  SyncIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { radius, shadowStyle, spacing } from "@/theme/theme";
@@ -139,12 +143,14 @@ function toGoal(dream: DreamSummary): Goal {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { phone } = useLayoutSize();
   const today = todayKey();
   const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
   const { blocks, completedQuests, toggleQuest, totalQuests } =
     useDayQuestBlocks(today);
 
   const { habits: habitViews, setCompletion } = useHabitWeek();
+  const cloudSync = useCloudSync();
 
   // Quests scheduled before today that never got done roll back into the
   // weekly backlog, so yesterday's leftovers wait under "Unscheduled this
@@ -303,7 +309,20 @@ export default function HomeScreen() {
 
   return (
     <ScreenScaffold tabClearance topInset>
-      <HomeHeader greeting={greetingForNow(new Date())} />
+      <HomeHeader
+        action={
+          // Only an invitation to connect: once the device is signed in the
+          // syncing is automatic, and Cloud sync stays in the ⋮ menu.
+          cloudSync.ready && !cloudSync.signedIn ? (
+            <IconButton
+              accessibilityLabel="Set up cloud sync"
+              icon={<SyncIcon />}
+              onPress={() => router.push("/cloud-sync")}
+            />
+          ) : undefined
+        }
+        greeting={greetingForNow(new Date())}
+      />
 
       <SectionHeader
         action={{
@@ -379,9 +398,9 @@ export default function HomeScreen() {
               >
                 <View style={styles.focusMedallion}>
                   {"questId" in action ? (
-                    <SparkIcon color={colors.primary} size={22} />
+                    <SparkIcon color={colors.primary} size={phone ? 18 : 22} />
                   ) : (
-                    <RepeatIcon color={colors.primary} size={22} />
+                    <RepeatIcon color={colors.primary} size={phone ? 18 : 22} />
                   )}
                 </View>
                 <View style={styles.focusCopy}>
@@ -412,19 +431,25 @@ export default function HomeScreen() {
                       >
                         {action.dreamTitle}
                       </AppText>
-                      <ChevronIcon
-                        color={colors.textMuted}
-                        direction="right"
-                        size={13}
-                      />
-                      <AppText
-                        color={colors.primarySoft}
-                        numberOfLines={1}
-                        style={styles.laterCrumbLabel}
-                        variant="subtitle"
-                      >
-                        {action.milestoneTitle}
-                      </AppText>
+                      {/* The milestone is the subject of the screen this row
+                          opens into, so a phone keeps only the dream. */}
+                      {phone ? null : (
+                        <>
+                          <ChevronIcon
+                            color={colors.textMuted}
+                            direction="right"
+                            size={13}
+                          />
+                          <AppText
+                            color={colors.primarySoft}
+                            numberOfLines={1}
+                            style={styles.laterCrumbLabel}
+                            variant="subtitle"
+                          >
+                            {action.milestoneTitle}
+                          </AppText>
+                        </>
+                      )}
                     </View>
                   ) : action.subtitle ? (
                     <View style={styles.focusBreadcrumb}>
@@ -441,12 +466,18 @@ export default function HomeScreen() {
                   ) : null}
                 </View>
                 {"questId" in action ? (
-                  <AppText color={colors.primary} variant="cardTitle">
+                  <AppText
+                    color={colors.primary}
+                    variant={phone ? "pill" : "cardTitle"}
+                  >
                     +{Math.max(1, Math.round(action.progressPercent))}%
                   </AppText>
                 ) : (
                   // Completing a habit adds one day to its streak.
-                  <AppText color={colors.primary} variant="cardTitle">
+                  <AppText
+                    color={colors.primary}
+                    variant={phone ? "pill" : "cardTitle"}
+                  >
                     +1 day
                   </AppText>
                 )}
@@ -469,7 +500,7 @@ export default function HomeScreen() {
                     }
                   }}
                   shape="circle"
-                  size={40}
+                  size={phone ? 34 : 40}
                 />
               </View>
             ))}
@@ -481,11 +512,13 @@ export default function HomeScreen() {
         <>
           {hasFocus || showCelebration ? (
             <>
-              <View style={styles.laterDivider}>
-                <View style={styles.laterDividerLine} />
-                <SparkIcon color={colors.accentViolet} size={14} />
-                <View style={styles.laterDividerLine} />
-              </View>
+              {phone ? null : (
+                <View style={styles.laterDivider}>
+                  <View style={styles.laterDividerLine} />
+                  <SparkIcon color={colors.accentViolet} size={14} />
+                  <View style={styles.laterDividerLine} />
+                </View>
+              )}
               <SectionHeader
                 style={styles.sectionHeader}
                 title="LATER TODAY"
@@ -502,7 +535,7 @@ export default function HomeScreen() {
                 <BlockIconArt
                   color={LATER_COLORS.icon}
                   icon={block.icon}
-                  size={26}
+                  size={phone ? 22 : 26}
                 />
               </View>
               <View style={styles.laterCopy}>
@@ -559,7 +592,7 @@ export default function HomeScreen() {
                           ? action.dreamTitle
                           : action.subtitle}
                       </AppText>
-                      {"questId" in action ? (
+                      {"questId" in action && !phone ? (
                         <>
                           <ChevronIcon
                             color={LATER_COLORS.crumb}
@@ -584,11 +617,15 @@ export default function HomeScreen() {
                   </View>
                 ))}
               </View>
-              <View style={styles.upcomingPill}>
-                <AppText color={LATER_COLORS.pillText} variant="labelStrong">
-                  {block.upcoming ? "Upcoming" : "Waiting"}
-                </AppText>
-              </View>
+              {/* A status word for a row whose time is printed above it —
+                  ~90 pt of a 370 pt row buys nothing on a phone. */}
+              {phone ? null : (
+                <View style={styles.upcomingPill}>
+                  <AppText color={LATER_COLORS.pillText} variant="labelStrong">
+                    {block.upcoming ? "Upcoming" : "Waiting"}
+                  </AppText>
+                </View>
+              )}
             </View>
           ))}
         </>
