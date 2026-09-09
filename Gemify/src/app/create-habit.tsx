@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
@@ -30,11 +30,13 @@ import {
   ConfirmDialog,
   AppText,
   Card,
+  CheckIcon,
   ChevronIcon,
   Chip,
   CloseIcon,
   ListItem,
   MilestoneIcon,
+  PlusIcon,
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
@@ -42,7 +44,15 @@ import {
   type StepIconName,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { gradients, radius, shadowStyle, spacing } from "@/theme/theme";
+import {
+  gradients,
+  inputFocusReset,
+  pressed,
+  radius,
+  shadowStyle,
+  spacing,
+  typography,
+} from "@/theme/theme";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -56,7 +66,7 @@ type Day = (typeof DAYS)[number];
 type FormStep = {
   helper?: string;
   icon: StepIconName;
-  input: "habitName" | "cue" | "easyStart" | "badDay" | "backupPlan";
+  input: "habitName" | "cue" | "badDay" | "backupPlan";
   multiline?: boolean;
   placeholder: string;
   title: string;
@@ -77,13 +87,6 @@ const textSteps: readonly FormStep[] = [
     title: "2. When to do it",
   },
   {
-    helper: "A short cue to remind you when to do this habit.",
-    icon: "sprout",
-    input: "easyStart",
-    placeholder: "Put vegetables on the lunch plate before I start eating.",
-    title: "6. Make it easy to start",
-  },
-  {
     icon: "shield",
     input: "badDay",
     placeholder: "Eat just 1 vegetable serving.",
@@ -97,6 +100,18 @@ const textSteps: readonly FormStep[] = [
     title: "8. Obstacles & backup plan",
   },
 ];
+
+/**
+ * One "Make it easy to start" row. A step sent to a milestone as a task is
+ * consumed — it shows as "Added", locks, and is NOT saved with the habit.
+ */
+type EasyStep = {
+  /** Title of the milestone the step became a task in; null = plain step. */
+  addedTo: string | null;
+  text: string;
+};
+
+const EMPTY_EASY_STEP: EasyStep = { addedTo: null, text: "" };
 
 function HeaderOrnament() {
   return (
@@ -179,11 +194,22 @@ function DropdownField({
   );
 }
 
-function StepIconMedallion({ name }: { name: StepIconName }) {
+function StepIconMedallion({
+  name,
+  size = 70,
+}: {
+  name: StepIconName;
+  size?: number;
+}) {
   return (
-    <View style={styles.stepIcon}>
-      <View style={[styles.stepIconRing, { pointerEvents: "none" }]} />
-      <StepIcon name={name} />
+    <View style={[styles.stepIcon, { height: size, width: size }]}>
+      <View
+        style={[
+          styles.stepIconRing,
+          { height: size - 6, pointerEvents: "none", width: size - 6 },
+        ]}
+      />
+      <StepIcon name={name} size={Math.round(size * 0.44)} />
     </View>
   );
 }
@@ -192,22 +218,20 @@ type FormValues = {
   backupPlan: string;
   badDay: string;
   cue: string;
-  easyStart: string;
   habitName: string;
 };
 
-const SECTION_BY_INPUT: Partial<Record<FormStep["input"], HabitDetailSection>> =
-  {
-    easyStart: "easy_start",
-    badDay: "easy_version",
-    backupPlan: "backup_plan",
-  };
+type DetailInput = "badDay" | "backupPlan";
+
+const SECTION_BY_INPUT: Record<DetailInput, HabitDetailSection> = {
+  badDay: "easy_version",
+  backupPlan: "backup_plan",
+};
 
 const EMPTY_FORM: FormValues = {
   backupPlan: "",
   badDay: "",
   cue: "",
-  easyStart: "",
   habitName: "",
 };
 
@@ -230,6 +254,7 @@ export default function CreateHabitScreen() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   });
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
+  const [easySteps, setEasySteps] = useState<EasyStep[]>([EMPTY_EASY_STEP]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -237,8 +262,8 @@ export default function CreateHabitScreen() {
   const [taskMilestones, setTaskMilestones] = useState<Milestone[] | null>(
     null,
   );
-  /** Title of the milestone the starter task landed in (confirmation line). */
-  const [taskAddedTo, setTaskAddedTo] = useState<string | null>(null);
+  /** Index of the easy step awaiting its milestone pick. */
+  const [taskStepIndex, setTaskStepIndex] = useState<number | null>(null);
 
   // The dream list (a habit must attach to one) and the routine time blocks —
   // the same blocks My Day is built from.
@@ -290,10 +315,15 @@ export default function CreateHabitScreen() {
         setValues({
           habitName: habit.title,
           cue: habit.cue ?? "",
-          easyStart: bySection.get("easy_start") ?? "",
           badDay: bySection.get("easy_version") ?? "",
           backupPlan: bySection.get("backup_plan") ?? "",
         });
+        const storedEasySteps = details
+          .filter((entry) => entry.section === "easy_start")
+          .map((entry) => ({ addedTo: null, text: entry.content }));
+        setEasySteps(
+          storedEasySteps.length > 0 ? storedEasySteps : [EMPTY_EASY_STEP],
+        );
         setSelectedDays(new Set(scheduleDays.map((weekday) => DAYS[weekday])));
         setSelectedDreamId(habit.dreamId);
         setSelectedTime(habit.timeOfDay);
@@ -307,11 +337,20 @@ export default function CreateHabitScreen() {
     };
   }, [editHabitId, isEditMode]);
 
-  const details = (): { content: string; section: HabitDetailSection }[] =>
-    (Object.keys(SECTION_BY_INPUT) as FormStep["input"][]).map((input) => ({
-      content: values[input as keyof FormValues],
-      section: SECTION_BY_INPUT[input] as HabitDetailSection,
-    }));
+  const details = (): { content: string; section: HabitDetailSection }[] => [
+    // Steps already sent to a milestone as tasks are consumed — they live as
+    // quests now and are NOT kept on the habit.
+    ...easySteps
+      .filter((step) => step.addedTo === null && step.text.trim().length > 0)
+      .map((step) => ({
+        content: step.text,
+        section: "easy_start" as HabitDetailSection,
+      })),
+    ...(Object.keys(SECTION_BY_INPUT) as DetailInput[]).map((input) => ({
+      content: values[input],
+      section: SECTION_BY_INPUT[input],
+    })),
+  ];
 
   async function handleSave() {
     if (saving) return;
@@ -390,9 +429,21 @@ export default function CreateHabitScreen() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
-  // "Add as task": the starter text becomes a quest in one of the dream's
+  function updateEasyStep(index: number, text: string) {
+    setEasySteps((current) =>
+      current.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, text } : step,
+      ),
+    );
+  }
+
+  function addEasyStep() {
+    setEasySteps((current) => [...current, EMPTY_EASY_STEP]);
+  }
+
+  // "Add as task": the step's text becomes a quest in one of the dream's
   // milestones (habits attach to a dream, so the milestone is picked here).
-  async function handleAddAsTask() {
+  async function handleAddAsTask(index: number) {
     if (selectedDreamId === null) {
       setFormError("Pick a dream first — the task lives in its milestone.");
       return;
@@ -406,6 +457,7 @@ export default function CreateHabitScreen() {
         return;
       }
       setFormError(null);
+      setTaskStepIndex(index);
       setTaskMilestones(milestones);
     } catch (cause) {
       console.error("Failed to load the milestones", cause);
@@ -413,10 +465,20 @@ export default function CreateHabitScreen() {
   }
 
   async function handleTaskMilestonePicked(milestone: Milestone) {
+    const index = taskStepIndex;
     setTaskMilestones(null);
+    setTaskStepIndex(null);
+    const step = index !== null ? easySteps[index] : undefined;
+    if (!step || !step.text.trim()) return;
     try {
-      await createQuest(milestone.id, values.easyStart.trim());
-      setTaskAddedTo(milestone.title);
+      await createQuest(milestone.id, step.text.trim());
+      // The step is a quest now: mark and lock it — it won't be saved with
+      // the habit.
+      setEasySteps((current) =>
+        current.map((entry, entryIndex) =>
+          entryIndex === index ? { ...entry, addedTo: milestone.title } : entry,
+        ),
+      );
     } catch (cause) {
       console.error("Failed to add the starter task", cause);
       setFormError("Something went wrong while adding the task.");
@@ -438,7 +500,6 @@ export default function CreateHabitScreen() {
   }
 
   function renderTextStep(step: FormStep) {
-    const isEasyStart = step.input === "easyStart";
     return (
       <View key={step.title} style={styles.formRow}>
         <StepIconMedallion name={step.icon} />
@@ -447,12 +508,7 @@ export default function CreateHabitScreen() {
             accessibilityLabel={step.title}
             label={step.title}
             multiline={step.multiline}
-            onChangeText={(value) => {
-              updateValue(step.input, value);
-              // The starter text changed — the earlier task no longer
-              // reflects it, so drop the confirmation.
-              if (isEasyStart) setTaskAddedTo(null);
-            }}
+            onChangeText={(value) => updateValue(step.input, value)}
             placeholder={step.placeholder}
             selectionColor={colors.primary}
             value={values[step.input]}
@@ -461,24 +517,6 @@ export default function CreateHabitScreen() {
             <AppText color={colors.textMuted} style={styles.helperText}>
               {step.helper}
             </AppText>
-          ) : null}
-          {isEasyStart && values.easyStart.trim().length > 0 ? (
-            taskAddedTo ? (
-              <AppText
-                color={colors.primary}
-                style={styles.helperText}
-                variant="bodySmall"
-              >
-                ✓ Added as a task to “{taskAddedTo}”
-              </AppText>
-            ) : (
-              <AppButton
-                label="Add as task"
-                onPress={handleAddAsTask}
-                style={styles.addTaskButton}
-                variant="secondary"
-              />
-            )
           ) : null}
         </View>
       </View>
@@ -600,6 +638,103 @@ export default function CreateHabitScreen() {
           </View>
         </View>
 
+        <View style={styles.formRow}>
+          <StepIconMedallion name="sprout" />
+          <View style={styles.formMain}>
+            <AppText
+              color={colors.primary}
+              style={styles.stepLabel}
+              variant="subtitle"
+            >
+              6. Make it easy to start
+            </AppText>
+            {easySteps.map((step, index) => {
+              const isAdded = step.addedTo !== null;
+              const canAdd = step.text.trim().length > 0;
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.easyStepField,
+                    index > 0 && styles.easyStepFieldSpacing,
+                  ]}
+                >
+                  <TextInput
+                    accessibilityLabel={`Easy step ${index + 1}`}
+                    editable={!isAdded}
+                    multiline
+                    onChangeText={(text) => updateEasyStep(index, text)}
+                    placeholder={
+                      index === 0
+                        ? "Put vegetables on the lunch plate before I start eating."
+                        : "Another small step…"
+                    }
+                    placeholderTextColor={colors.textPlaceholder}
+                    selectionColor={colors.primary}
+                    style={[
+                      styles.easyStepInput,
+                      isAdded && styles.easyStepInputAdded,
+                    ]}
+                    value={step.text}
+                  />
+                  <View style={styles.easyStepDivider} />
+                  {isAdded ? (
+                    <View style={styles.easyStepAction}>
+                      <View style={styles.easyStepAddedCircle}>
+                        <CheckIcon color={colors.textMuted} size={11} />
+                      </View>
+                      <AppText color={colors.textMuted} variant="labelStrong">
+                        Added
+                      </AppText>
+                    </View>
+                  ) : (
+                    <Pressable
+                      accessibilityLabel={`Add step ${index + 1} as a task`}
+                      accessibilityRole="button"
+                      disabled={!canAdd}
+                      hitSlop={6}
+                      onPress={() => handleAddAsTask(index)}
+                      style={({ pressed: isPressed }) => [
+                        styles.easyStepAction,
+                        !canAdd && styles.easyStepActionDisabled,
+                        isPressed && pressed,
+                      ]}
+                    >
+                      <View style={styles.easyStepPlusBox}>
+                        <PlusIcon size={12} strokeWidth={2.2} />
+                      </View>
+                      <AppText color={colors.primary} variant="labelStrong">
+                        Add as task
+                      </AppText>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+            <Pressable
+              accessibilityLabel="Add another step"
+              accessibilityRole="button"
+              hitSlop={6}
+              onPress={addEasyStep}
+              style={({ pressed: isPressed }) => [
+                styles.addStepRow,
+                isPressed && pressed,
+              ]}
+            >
+              <View style={styles.addStepCircle}>
+                <PlusIcon color={colors.accentViolet} size={13} strokeWidth={2} />
+              </View>
+              <AppText color={colors.accentViolet} variant="labelStrong">
+                Add another step
+              </AppText>
+            </Pressable>
+            <AppText color={colors.textMuted} style={styles.helperText}>
+              Small steps that make starting effortless. “Add as task” turns a
+              step into a milestone quest instead of saving it here.
+            </AppText>
+          </View>
+        </View>
+
         {textSteps.slice(2).map(renderTextStep)}
       </View>
 
@@ -663,10 +798,80 @@ export default function CreateHabitScreen() {
 }
 
 const styles = StyleSheet.create({
-  addTaskButton: {
+  /** "+ Add another step" — quiet violet row under the step fields. */
+  addStepCircle: {
+    alignItems: "center",
+    borderColor: colors.accentViolet,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: "center",
+    width: 24,
+  },
+  addStepRow: {
+    alignItems: "center",
     alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  /** One easy-start step: input · divider · Add-as-task / Added. */
+  easyStepField: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceGlass,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm + 2,
+    minHeight: 58,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  easyStepFieldSpacing: {
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.lg,
+  },
+  easyStepAction: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs + 2,
+  },
+  easyStepActionDisabled: {
+    opacity: 0.45,
+  },
+  easyStepAddedCircle: {
+    alignItems: "center",
+    borderColor: colors.textMuted,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 20,
+    justifyContent: "center",
+    width: 20,
+  },
+  easyStepDivider: {
+    alignSelf: "stretch",
+    backgroundColor: colors.borderSoft,
+    marginVertical: spacing.xs,
+    width: 1,
+  },
+  easyStepInput: {
+    ...typography.input,
+    ...inputFocusReset,
+    flex: 1,
+    padding: 0,
+    textAlignVertical: "top",
+  },
+  easyStepInputAdded: {
+    color: colors.textMuted,
+  },
+  easyStepPlusBox: {
+    alignItems: "center",
+    borderColor: colors.primary,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    height: 20,
+    justifyContent: "center",
+    width: 20,
   },
   continueButton: {
     marginHorizontal: spacing.md,
@@ -744,18 +949,14 @@ const styles = StyleSheet.create({
     borderColor: ICON_RING_BORDER,
     borderRadius: radius.round,
     borderWidth: 1,
-    height: 70,
     justifyContent: "center",
     ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.26, radius: 11 }),
-    width: 70,
   },
   stepIconRing: {
     borderColor: ICON_RING_INNER,
     borderRadius: radius.round,
     borderWidth: 1,
-    height: 64,
     position: "absolute",
-    width: 64,
   },
   stepLabel: {
     marginBottom: spacing.sm,
