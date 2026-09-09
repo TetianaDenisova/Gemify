@@ -1,9 +1,11 @@
 import { Image } from "expo-image";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View, type TextInput } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
+import { BlockIconArt } from "@/components/TimeBlockTabs";
+import { getTimeBlocks, type TimeBlockRecord } from "@/db";
+import type { BlockIcon } from "@/dto/timeBlocks";
 import {
   AppButton,
   AppInput,
@@ -16,8 +18,10 @@ import {
   CloseIcon,
   DotsIcon,
   HintRow,
+  MilestoneIcon,
   PencilIcon,
   SparkIcon,
+  SunHorizonIcon,
   TrashIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
@@ -34,153 +38,72 @@ import { addDays, toDateKey, todayKey } from "@/utils/dates";
 
 const ACCEPT_STAR_SOURCE = require("../../assets/images/accept-star.png");
 
-export type TimeSlotKey =
-  | "morning"
-  | "beforeWork"
-  | "afterWork"
-  | "evening"
-  | "anytime";
-
 /**
- * Time-of-day options in the accept modal. `time` is the representative HH:MM
- * stored on the quest ("Anytime" leaves the time open).
+ * A time-of-day option in the accept modal — one shared My Day time block.
+ * `time` is the block's start HH:MM stored on the quest (the flexible block
+ * has none and leaves the time open).
  */
-export const TIME_SLOTS: {
-  key: TimeSlotKey;
+export type TimeSlot = {
+  icon: BlockIcon;
+  key: string;
   label: string;
   time: string | null;
-}[] = [
-  { key: "morning", label: "Morning", time: "08:00" },
-  { key: "beforeWork", label: "Before work", time: "07:30" },
-  { key: "afterWork", label: "After work", time: "18:00" },
-  { key: "evening", label: "Evening", time: "20:30" },
-  { key: "anytime", label: "Anytime", time: null },
-];
+};
+
+/**
+ * The scheduler's slots come straight from the shared `time_blocks` table,
+ * so the quest scheduler, Habits, and My Day all speak the same names in the
+ * same order.
+ */
+export function toTimeSlots(blocks: readonly TimeBlockRecord[]): TimeSlot[] {
+  return blocks.map((block) => ({
+    icon: block.iconKey as BlockIcon,
+    key: block.key,
+    label: block.label,
+    time: block.startTime,
+  }));
+}
+
+/**
+ * Label of the time block a stored quest time falls under. Times typed via
+ * "Exact time" show as-is; no time at all reads as the flexible block.
+ */
+export function scheduledTimeLabel(
+  blocks: readonly TimeBlockRecord[],
+  time: string | null,
+): string {
+  const match = blocks.find((block) => block.startTime === time);
+  return match?.label ?? time ?? "Anytime";
+}
 
 export const WEEKDAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-/** Pre-selects the time-of-day slot that best matches the current hour. */
-function suggestTimeSlot(hour: number): TimeSlotKey {
-  if (hour < 9) return "morning";
-  if (hour >= 20) return "evening";
-  return "afterWork";
-}
-
-function SunHorizonIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M8.5 16.5a3.5 3.5 0 0 1 7 0"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-      <Path
-        d="M12 8.5v-2M6.7 11.2 5.3 9.8M17.3 11.2l1.4-1.4M4.5 16.5H6M18 16.5h1.5M4.5 19.5h15"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function BriefcaseIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Rect
-        fill="none"
-        height={11}
-        rx={2}
-        stroke={color}
-        strokeWidth={1.7}
-        width={16}
-        x={4}
-        y={8}
-      />
-      <Path
-        d="M9.5 8V6.5A1.5 1.5 0 0 1 11 5h2a1.5 1.5 0 0 1 1.5 1.5V8M4 12.5h16"
-        fill="none"
-        stroke={color}
-        strokeLinecap="round"
-        strokeWidth={1.7}
-      />
-    </Svg>
-  );
-}
-
-function MoonIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Path
-        d="M18.8 14.6A7.2 7.2 0 0 1 9.4 5.2 7.2 7.2 0 1 0 18.8 14.6Z"
-        fill="none"
-        stroke={color}
-        strokeLinejoin="round"
-        strokeWidth={1.7}
-      />
-      <Path
-        d="m17.6 4.2.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5Z"
-        fill={color}
-      />
-    </Svg>
-  );
-}
-
-function InfinityIcon({
-  color = colors.primary,
-  size = iconSizes.lg,
-}: {
-  color?: string;
-  size?: number;
-}) {
-  return (
-    <Svg height={size} viewBox="0 0 24 24" width={size}>
-      <Circle cx={7.8} cy={12} fill="none" r={3.8} stroke={color} strokeWidth={1.7} />
-      <Circle cx={16.2} cy={12} fill="none" r={3.8} stroke={color} strokeWidth={1.7} />
-    </Svg>
-  );
-}
-
-function SlotIcon({
-  color,
-  size = iconSizes.lg,
-  slotKey,
-}: {
-  color: string;
-  size?: number;
-  slotKey: TimeSlotKey;
-}) {
-  switch (slotKey) {
-    case "beforeWork":
-      return <BriefcaseIcon color={color} size={size} />;
-    case "evening":
-      return <MoonIcon color={color} size={size} />;
-    case "anytime":
-      return <InfinityIcon color={color} size={size} />;
-    default:
-      return <SunHorizonIcon color={color} size={size} />;
+/** Pre-selects the block whose start time most recently passed (else flexible). */
+function suggestSlotKey(
+  blocks: readonly TimeBlockRecord[],
+  now: Date,
+): string | null {
+  const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+  let key: string | null = null;
+  let latest = "";
+  for (const block of blocks) {
+    if (
+      block.startTime !== null &&
+      block.startTime <= clock &&
+      block.startTime >= latest
+    ) {
+      latest = block.startTime;
+      key = block.key;
+    }
   }
+  return (
+    key ??
+    blocks.find((block) => block.startTime === null)?.key ??
+    blocks[0]?.key ??
+    null
+  );
 }
 
 export function SheetActionRow({
@@ -254,6 +177,7 @@ export function QuestActionSheet({
   onDelete,
   onDoToday,
   onEdit,
+  onMoveToMilestone,
   onMoveToTomorrow,
   onSchedule,
   onUnschedule,
@@ -266,6 +190,8 @@ export function QuestActionSheet({
   /** With quest.overdue, replaces "Complete now" with "Do it today". */
   onDoToday?: () => void;
   onEdit: () => void;
+  /** When given, adds "Move to another milestone" (opens a picker). */
+  onMoveToMilestone?: () => void;
   /** When given, adds a "Move to tomorrow" quick action. */
   onMoveToTomorrow?: () => void;
   onSchedule: () => void;
@@ -313,6 +239,13 @@ export function QuestActionSheet({
               icon={<CloseIcon color={colors.textSecondary} size={iconSizes.lg} />}
               label="Remove from schedule"
               onPress={onUnschedule}
+            />
+          ) : null}
+          {onMoveToMilestone ? (
+            <SheetActionRow
+              icon={<MilestoneIcon color={colors.primary} size={iconSizes.lg} />}
+              label="Move to another milestone"
+              onPress={onMoveToMilestone}
             />
           ) : null}
         </>
@@ -406,9 +339,10 @@ export function suggestRescheduleDate(scheduledDate: string | null): Date {
 
 /**
  * "Accept quest" modal: pick a day (next 7, or any date via the ⋯ calendar
- * chip) and a time of day — five named slots plus an exact time typed into
- * inline HH:MM fields — with a pre-selected suggestion for the current
- * moment. Rescheduling reuses it with its own title, CTA, and initial day.
+ * chip) and a time of day — the shared My Day time blocks plus an exact time
+ * typed into inline HH:MM fields — with a pre-selected suggestion for the
+ * current moment. Rescheduling reuses it with its own title, CTA, and
+ * initial day.
  */
 export function AcceptQuestModal({
   ctaLabel = "ACCEPT QUEST",
@@ -421,13 +355,14 @@ export function AcceptQuestModal({
   ctaLabel?: string;
   /** Day pre-selected on open (defaults to today). */
   initialDate?: Date;
-  /** Time-of-day slot pre-selected on open (defaults to the current moment). */
-  initialSlot?: TimeSlotKey;
+  /** Time-block key pre-selected on open (defaults to the current moment). */
+  initialSlot?: string;
   onAccept: (date: string, time: string | null) => void;
   onClose: () => void;
   title?: string;
 }) {
   const [today] = useState(() => new Date());
+  const [blocks, setBlocks] = useState<TimeBlockRecord[]>([]);
   // Day chips cover today + 6; a farther initial date lands on the ⋯ chip.
   const initialOffset: number | "custom" = (() => {
     if (!initialDate) return 0;
@@ -444,13 +379,33 @@ export function AcceptQuestModal({
     initialOffset === "custom" ? (initialDate ?? null) : null,
   );
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [slotKey, setSlotKey] = useState<TimeSlotKey | "customHour">(
-    () => initialSlot ?? suggestTimeSlot(today.getHours()),
+  // null until the time blocks load (unless the caller pre-selected one).
+  const [slotKey, setSlotKey] = useState<string | "customHour" | null>(
+    initialSlot ?? null,
   );
   const [hourText, setHourText] = useState("");
   const [minuteText, setMinuteText] = useState("");
   const hourRef = useRef<TextInput>(null);
   const minuteRef = useRef<TextInput>(null);
+
+  // The slots are the shared My Day time blocks; suggest the block matching
+  // the current moment once they arrive (unless the caller picked one).
+  useEffect(() => {
+    let cancelled = false;
+    getTimeBlocks()
+      .then((list) => {
+        if (cancelled) return;
+        setBlocks(list);
+        setSlotKey((current) => current ?? suggestSlotKey(list, new Date()));
+      })
+      .catch((cause: unknown) => {
+        console.error("Failed to load the time blocks", cause);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const slots = toTimeSlots(blocks);
 
   const days = Array.from({ length: 7 }, (_, offset) => {
     const date = new Date(today);
@@ -482,7 +437,7 @@ export function AcceptQuestModal({
     : null;
   const acceptTime = customHourSelected
     ? customTime
-    : (TIME_SLOTS.find((entry) => entry.key === slotKey) ?? TIME_SLOTS[0]).time;
+    : (slots.find((entry) => entry.key === slotKey)?.time ?? null);
 
   return (
     <AppModal maxWidth={640} onClose={onClose} visible>
@@ -596,7 +551,7 @@ export function AcceptQuestModal({
         <AppText variant="pill">Pick a time of day</AppText>
       </View>
       <View style={styles.acceptTimeWrap}>
-        {TIME_SLOTS.map((entry) => {
+        {slots.map((entry) => {
           const selected = entry.key === slotKey;
           const accent = selected ? colors.primary : colors.textMuted;
           return (
@@ -607,7 +562,7 @@ export function AcceptQuestModal({
                 onPress={() => setSlotKey(entry.key)}
                 style={[styles.timeChip, selected && styles.acceptChipSelected]}
               >
-                <SlotIcon color={accent} size={22} slotKey={entry.key} />
+                <BlockIconArt color={accent} icon={entry.icon} size={22} />
                 <AppText
                   color={selected ? colors.textPrimary : colors.textMuted}
                   numberOfLines={1}
@@ -693,7 +648,7 @@ export function AcceptQuestModal({
       ) : null}
 
       <AppButton
-        disabled={customHourSelected && !customTimeValid}
+        disabled={slotKey === null || (customHourSelected && !customTimeValid)}
         icon={<SparkIcon color={colors.textOnPrimary} size={iconSizes.md} />}
         iconPosition="before"
         label={ctaLabel}

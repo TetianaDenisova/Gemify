@@ -375,6 +375,59 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Milestone step images get the same framing controls as the dream
+    // vision image (see toVersion 12).
+    toVersion: 13,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE milestones ADD COLUMN photo_focus_x REAL NOT NULL DEFAULT 0.5;
+        ALTER TABLE milestones ADD COLUMN photo_focus_y REAL NOT NULL DEFAULT 0.5;
+        ALTER TABLE milestones ADD COLUMN photo_scale REAL NOT NULL DEFAULT 1;
+      `);
+    },
+  },
+  {
+    // Habits: a completed flag. A completed habit leaves the boards and
+    // waits in the Completed Habits list, restorable at any time.
+    toVersion: 14,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE habits ADD COLUMN is_completed INTEGER NOT NULL DEFAULT 0
+          CHECK (is_completed IN (0, 1));
+      `);
+    },
+  },
+  {
+    // The seeded "Day" block reads better as "After work". Only untouched
+    // labels rename (a user's custom label wins); a mirrored routine_title
+    // ("no custom copy") follows the label, matching updateTimeBlock.
+    toVersion: 15,
+    up: async (db) => {
+      await db.execAsync(`
+        UPDATE time_blocks SET routine_title = 'After work'
+          WHERE key = 'day' AND label = 'Day' AND routine_title = 'Day';
+        UPDATE time_blocks SET label = 'After work'
+          WHERE key = 'day' AND label = 'Day';
+      `);
+    },
+  },
+  {
+    // Default block start times follow the renamed blocks: wake-up moves to
+    // 07:00, After work to 15:00, Evening to 20:00. Only rows still at the
+    // seeded times change — a user's custom time wins.
+    toVersion: 16,
+    up: async (db) => {
+      await db.execAsync(`
+        UPDATE time_blocks SET start_time = '07:00'
+          WHERE key = 'wake-up' AND start_time = '06:00';
+        UPDATE time_blocks SET start_time = '15:00'
+          WHERE key = 'day' AND start_time = '13:00';
+        UPDATE time_blocks SET start_time = '20:00'
+          WHERE key = 'evening' AND start_time = '21:00';
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

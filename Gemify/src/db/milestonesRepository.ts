@@ -12,11 +12,14 @@ type MilestoneRow = {
   reward: string | null;
   status: Milestone["status"];
   photo_uri: string | null;
+  photo_focus_x: number;
+  photo_focus_y: number;
+  photo_scale: number;
 };
 
 const SELECT_MILESTONE = `
   SELECT id, dream_id, sequence_number, title, state, artifact, mentor, reward,
-         status, photo_uri
+         status, photo_uri, photo_focus_x, photo_focus_y, photo_scale
   FROM milestones
 `;
 
@@ -32,6 +35,9 @@ function toMilestone(row: MilestoneRow): Milestone {
     reward: row.reward,
     status: row.status,
     photoUri: row.photo_uri,
+    photoFocusX: row.photo_focus_x,
+    photoFocusY: row.photo_focus_y,
+    photoScale: row.photo_scale,
   };
 }
 
@@ -86,8 +92,9 @@ export async function insertMilestone(
 
     const inserted = await db.runAsync(
       `INSERT INTO milestones
-         (dream_id, sequence_number, title, state, artifact, mentor, reward, photo_uri)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (dream_id, sequence_number, title, state, artifact, mentor, reward,
+          photo_uri, photo_focus_x, photo_focus_y, photo_scale)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dreamId,
         atIndex,
@@ -97,6 +104,9 @@ export async function insertMilestone(
         input.mentor?.trim() || null,
         input.reward?.trim() || null,
         input.photoUri ?? null,
+        input.photoFocusX ?? 0.5,
+        input.photoFocusY ?? 0.5,
+        input.photoScale ?? 1,
       ],
     );
     milestoneId = inserted.lastInsertRowId;
@@ -115,7 +125,7 @@ export async function updateMilestone(
   patch: MilestonePatch,
 ): Promise<Milestone | null> {
   const assignments: string[] = [];
-  const params: (string | null)[] = [];
+  const params: (string | number | null)[] = [];
 
   if (patch.title !== undefined) {
     const title = patch.title.trim();
@@ -139,6 +149,18 @@ export async function updateMilestone(
   if (patch.photoUri !== undefined) {
     assignments.push("photo_uri = ?");
     params.push(patch.photoUri);
+  }
+  if (patch.photoFocusX !== undefined) {
+    assignments.push("photo_focus_x = ?");
+    params.push(patch.photoFocusX);
+  }
+  if (patch.photoFocusY !== undefined) {
+    assignments.push("photo_focus_y = ?");
+    params.push(patch.photoFocusY);
+  }
+  if (patch.photoScale !== undefined) {
+    assignments.push("photo_scale = ?");
+    params.push(patch.photoScale);
   }
 
   if (assignments.length > 0) {

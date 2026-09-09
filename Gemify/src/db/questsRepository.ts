@@ -192,6 +192,10 @@ export async function updateQuest(
     assignments.push("title = ?");
     params.push(title);
   }
+  if (patch.milestoneId !== undefined) {
+    assignments.push("milestone_id = ?");
+    params.push(patch.milestoneId);
+  }
   if (patch.isActive !== undefined) {
     assignments.push("is_active = ?");
     params.push(patch.isActive ? 1 : 0);

@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useCallback, useMemo, useState } from "react";
 import Svg, { Path } from "react-native-svg";
 
@@ -8,11 +8,16 @@ import {
   toBoardHabit,
   type BoardHabit,
 } from "@/components/HabitBoardCard";
+import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import {
   deleteHabit,
+  getCompletedHabits,
   getDreams,
+  getHabitDoneCount,
   setHabitDetailCheck,
+  updateHabit,
   type Dream,
+  type Habit as DbHabit,
   type HabitDetailSection,
 } from "@/db";
 import { useHabitWeek, type HabitWeekView } from "@/hooks/useHabitWeek";
@@ -21,11 +26,15 @@ import {
   AppModal,
   ConfirmDialog,
   AppText,
+  CheckIcon,
   ChevronIcon,
-  GearIcon,
+  DotsIcon,
+  DreamIcon,
+  HistoryIcon,
   IconButton,
   PencilIcon,
   PlusIcon,
+  RepeatIcon,
   ScreenScaffold,
   SparkIcon,
   TrashIcon,
@@ -35,6 +44,7 @@ import {
   fontSizes,
   layout,
   lineHeights,
+  pressed as pressedStyle,
   radius,
   shadowStyle,
   spacing,
@@ -168,6 +178,7 @@ function HabitRow({
   habit,
   onDayPress,
   onDetailToggle,
+  onOpenMenu,
   onPress,
 }: {
   activeDayIndex: number;
@@ -177,6 +188,7 @@ function HabitRow({
   habit: Habit;
   onDayPress: (dayIndex: number) => void;
   onDetailToggle: (section: HabitDetailSection) => void;
+  onOpenMenu: () => void;
   onPress: () => void;
 }) {
   return (
@@ -195,6 +207,20 @@ function HabitRow({
       onDayPress={onDayPress}
       onDetailToggle={onDetailToggle}
       onPress={onPress}
+      trailing={
+        <Pressable
+          accessibilityLabel={`Options for the habit ${habit.title}`}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onOpenMenu}
+          style={({ pressed: isPressed }) => [
+            styles.menuButton,
+            isPressed && pressedStyle,
+          ]}
+        >
+          <DotsIcon color={colors.textSecondary} size={20} />
+        </Pressable>
+      }
     />
   );
 }
@@ -233,10 +259,30 @@ export default function HabitsScreen() {
     id: number;
     title: string;
   } | null>(null);
-  const [manageOpen, setManageOpen] = useState(false);
+  const [completedOpen, setCompletedOpen] = useState(false);
+  const [completedHabits, setCompletedHabits] = useState<
+    { habit: DbHabit; doneCount: number }[]
+  >([]);
+  const [menuHabit, setMenuHabit] = useState<Habit | null>(null);
   const [dreams, setDreams] = useState<Dream[]>([]);
   const { habits: habitViews, refresh, setCompletion, weekDates } =
     useHabitWeek();
+
+  const refreshCompleted = useCallback(() => {
+    getCompletedHabits()
+      .then((list) =>
+        Promise.all(
+          list.map(async (habit) => ({
+            habit,
+            doneCount: await getHabitDoneCount(habit.id),
+          })),
+        ),
+      )
+      .then(setCompletedHabits)
+      .catch((cause: unknown) =>
+        console.error("Failed to load finished habits", cause),
+      );
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -245,7 +291,8 @@ export default function HabitsScreen() {
         .catch((cause: unknown) =>
           console.error("Failed to load dreams", cause),
         );
-    }, []),
+      refreshCompleted();
+    }, [refreshCompleted]),
   );
 
   // Monday-first index of today, matching the week strip's order.
@@ -318,11 +365,34 @@ export default function HabitsScreen() {
   }
 
   function handleEdit(habitId: number) {
-    setManageOpen(false);
+    setMenuHabit(null);
     router.push({
       pathname: "/create-habit",
       params: { habitId: String(habitId) },
     });
+  }
+
+  // Completing removes the habit from the boards; it waits in the
+  // Completed Habits modal, restorable at any time.
+  async function handleCompleteHabit(habitId: number) {
+    setMenuHabit(null);
+    try {
+      await updateHabit(habitId, { isCompleted: true });
+      await refresh();
+      refreshCompleted();
+    } catch (cause) {
+      console.error("Failed to complete the habit", cause);
+    }
+  }
+
+  async function handleRestoreHabit(habitId: number) {
+    try {
+      await updateHabit(habitId, { isCompleted: false });
+      await refresh();
+      refreshCompleted();
+    } catch (cause) {
+      console.error("Failed to restore the habit", cause);
+    }
   }
 
   async function handleDeleteConfirmed() {
@@ -330,6 +400,7 @@ export default function HabitsScreen() {
     try {
       await deleteHabit(deleteTarget.id);
       await refresh();
+      refreshCompleted();
     } catch (cause) {
       console.error("Failed to delete the habit", cause);
     }
@@ -340,9 +411,9 @@ export default function HabitsScreen() {
     <ScreenScaffold backgroundGradient={HABITS_BACKGROUND} tabClearance topInset>
       <View style={[styles.header, compact && styles.headerCompact]}>
         <IconButton
-          accessibilityLabel="Manage habits"
-          icon={<GearIcon size={compact ? 22 : 25} />}
-          onPress={() => setManageOpen(true)}
+          accessibilityLabel="Finished habits"
+          icon={<HistoryIcon size={compact ? 22 : 25} />}
+          onPress={() => setCompletedOpen(true)}
           size={compact ? "sm" : "md"}
         />
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
@@ -381,6 +452,7 @@ export default function HabitsScreen() {
                 key={habit.id}
                 onDayPress={(dayIndex) => handleDayPress(habit, dayIndex)}
                 onDetailToggle={(section) => handleDetailToggle(habit, section)}
+                onOpenMenu={() => setMenuHabit(habit)}
                 onPress={() => handleHabitPress(habit.id)}
               />
             ))}
@@ -396,59 +468,99 @@ export default function HabitsScreen() {
         </View>
       ) : null}
 
+      {/* Per-habit ⋯ menu: Complete, Edit, Delete. */}
+      <ActionSheet
+        onClose={() => setMenuHabit(null)}
+        title={menuHabit?.title}
+        visible={menuHabit !== null}
+      >
+        <SheetActionRow
+          icon={<CheckIcon color={colors.primary} size={22} />}
+          label="Finish habit"
+          onPress={() => {
+            if (menuHabit) handleCompleteHabit(menuHabit.id);
+          }}
+        />
+        <SheetActionRow
+          icon={<PencilIcon size={22} strokeWidth={1.7} variant="detailed" />}
+          label="Edit"
+          onPress={() => {
+            if (menuHabit) handleEdit(menuHabit.id);
+          }}
+        />
+        <SheetActionRow
+          danger
+          icon={<TrashIcon size={22} />}
+          label="Delete"
+          onPress={() => {
+            if (menuHabit) {
+              setDeleteTarget({ id: menuHabit.id, title: menuHabit.title });
+            }
+            setMenuHabit(null);
+          }}
+        />
+      </ActionSheet>
+
       <AppModal
-        onClose={() => setManageOpen(false)}
+        onClose={() => setCompletedOpen(false)}
         variant="sheet"
-        visible={manageOpen}
+        visible={completedOpen}
       >
         <AppText align="center" color={colors.primary} variant="titleSm">
-          Manage Habits
+          Finished Habits
         </AppText>
         <AppText align="center" style={styles.manageSubtitle} variant="bodySmall">
-          All your habits in one place
+          Finished habits rest here — restore one to keep going
         </AppText>
         <View style={styles.manageList}>
-          {habitViews.map((view) => (
-            <View key={view.habit.id} style={styles.manageRow}>
+          {completedHabits.map(({ doneCount, habit }) => (
+            <View key={habit.id} style={styles.manageRow}>
               <View style={styles.manageCopy}>
                 <AppText numberOfLines={1} variant="button">
-                  {view.habit.title}
+                  {habit.title}
                 </AppText>
-                <AppText color={colors.textMuted} variant="bodySmall">
-                  Day {view.doneCount} / {view.habit.goalDays}
-                </AppText>
+                <View style={styles.manageMetaRow}>
+                  <DreamIcon size={14} />
+                  <AppText
+                    color={colors.textMuted}
+                    numberOfLines={1}
+                    style={styles.manageMetaDream}
+                    variant="bodySmall"
+                  >
+                    {dreams.find((dream) => dream.id === habit.dreamId)
+                      ?.title ?? "—"}
+                  </AppText>
+                  <AppText color={colors.textMuted} variant="bodySmall">
+                    · {doneCount} {doneCount === 1 ? "day" : "days"}
+                  </AppText>
+                </View>
               </View>
               <IconButton
-                accessibilityLabel={`Edit ${view.habit.title}`}
-                icon={
-                  <PencilIcon size={18} strokeWidth={1.7} variant="detailed" />
-                }
-                onPress={() => handleEdit(view.habit.id)}
+                accessibilityLabel={`Restore ${habit.title}`}
+                icon={<RepeatIcon size={18} />}
+                onPress={() => handleRestoreHabit(habit.id)}
                 size="sm"
               />
               <IconButton
-                accessibilityLabel={`Delete ${view.habit.title}`}
+                accessibilityLabel={`Delete ${habit.title}`}
                 icon={<TrashIcon size={18} />}
                 onPress={() => {
-                  setManageOpen(false);
-                  setDeleteTarget({
-                    id: view.habit.id,
-                    title: view.habit.title,
-                  });
+                  setCompletedOpen(false);
+                  setDeleteTarget({ id: habit.id, title: habit.title });
                 }}
                 size="sm"
               />
             </View>
           ))}
-          {habitViews.length === 0 ? (
+          {completedHabits.length === 0 ? (
             <AppText align="center" color={colors.textMuted} variant="bodySmall">
-              No habits yet. Tap + to create the first one.
+              No finished habits yet.
             </AppText>
           ) : null}
         </View>
         <AppButton
           label="Close"
-          onPress={() => setManageOpen(false)}
+          onPress={() => setCompletedOpen(false)}
           style={styles.manageClose}
           variant="secondary"
         />
@@ -536,6 +648,20 @@ const styles = StyleSheet.create({
   },
   manageSubtitle: {
     marginTop: spacing.xs,
+  },
+  /** Dream breadcrumb + day counter under a finished habit's name. */
+  manageMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs + 2,
+    marginTop: 2,
+  },
+  manageMetaDream: {
+    flexShrink: 1,
+  },
+  /** Tap target for the row's ⋯ menu. */
+  menuButton: {
+    padding: spacing.xs,
   },
   todayBar: {
     alignItems: "center",

@@ -51,6 +51,7 @@ export {
 export {
   createHabit,
   deleteHabit,
+  getCompletedHabits,
   getHabitById,
   getHabitCompletions,
   getHabitDetailChecks,

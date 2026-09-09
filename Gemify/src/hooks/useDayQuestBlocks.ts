@@ -29,8 +29,12 @@ export type UseDayQuestBlocksResult = {
   error: string | null;
   totalQuests: number;
   completedQuests: number;
-  /** Persists the done state and updates local state optimistically. */
-  toggleQuest: (questId: number, done: boolean) => void;
+  /**
+   * Persists the done state and updates local state optimistically. The
+   * returned promise resolves once the write landed (so callers can refresh
+   * derived data, e.g. dream progress).
+   */
+  toggleQuest: (questId: number, done: boolean) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -163,10 +167,13 @@ export function useDayQuestBlocks(date: string): UseDayQuestBlocksResult {
           ),
         })),
       );
-      setQuestDone(questId, done).catch((cause: unknown) => {
-        console.error("Failed to save the quest state", cause);
-        if (mounted.current) refresh();
-      });
+      return setQuestDone(questId, done).then(
+        () => undefined,
+        (cause: unknown) => {
+          console.error("Failed to save the quest state", cause);
+          if (mounted.current) refresh();
+        },
+      );
     },
     [refresh],
   );

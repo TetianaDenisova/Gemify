@@ -1,4 +1,3 @@
-import { Image as ExpoImage } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -30,7 +29,13 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
 
-import type { DreamPhotoTransform } from "@/components/DreamPhotoFrame";
+import {
+  clampPhotoScale,
+  DEFAULT_PHOTO_TRANSFORM,
+  DreamPhoto,
+  DreamPhotoAdjuster,
+  type DreamPhotoTransform,
+} from "@/components/DreamPhotoFrame";
 import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
 import {
@@ -66,7 +71,9 @@ import {
   Checkbox,
   CloseIcon,
   IconButton,
+  MinusIcon,
   PencilIcon,
+  PlusIcon,
   ProgressBar,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
@@ -87,6 +94,7 @@ import {
   shadows,
   spacing,
   typography,
+  withOpacity,
 } from "@/theme/theme";
 
 type MilestoneModalMode = "view" | "edit" | "add";
@@ -101,6 +109,8 @@ type MilestoneFormValues = {
   mentor: string;
   /** Draft step image (picker URI or the stored URI), null when absent. */
   photoUri: string | null;
+  /** Draft framing of the step image (focus point + zoom). */
+  photoTransform: DreamPhotoTransform;
   reward: string;
   state: string;
   title: string;
@@ -134,6 +144,7 @@ const EMPTY_MILESTONE_FORM: MilestoneFormValues = {
   artifact: "",
   mentor: "",
   photoUri: null,
+  photoTransform: DEFAULT_PHOTO_TRANSFORM,
   reward: "",
   state: "",
   title: "",
@@ -484,6 +495,11 @@ function MilestoneModal({
           artifact: state.milestone.artifact ?? "",
           mentor: state.milestone.mentor ?? "",
           photoUri: state.milestone.photoUri ?? null,
+          photoTransform: {
+            focusX: state.milestone.photoFocusX ?? 0.5,
+            focusY: state.milestone.photoFocusY ?? 0.5,
+            scale: state.milestone.photoScale ?? 1,
+          },
           reward: state.milestone.reward ?? "",
           state: state.milestone.state,
           title: state.milestone.title,
@@ -513,12 +529,26 @@ function MilestoneModal({
         setDraft((current) => ({
           ...current,
           photoUri: result.assets[0].uri,
+          // A fresh photo starts from the plain centered cover fit.
+          photoTransform: DEFAULT_PHOTO_TRANSFORM,
         }));
       }
     } catch (cause) {
       console.error("Failed to pick the milestone image", cause);
     }
   };
+
+  const setDraftTransform = (photoTransform: DreamPhotoTransform) =>
+    setDraft((current) => ({ ...current, photoTransform }));
+
+  const zoomStepPhoto = (factor: number) =>
+    setDraft((current) => ({
+      ...current,
+      photoTransform: {
+        ...current.photoTransform,
+        scale: clampPhotoScale(current.photoTransform.scale * factor),
+      },
+    }));
 
   const mode: MilestoneModalMode = state?.mode ?? "view";
   const milestone = state && state.mode !== "add" ? state.milestone : null;
@@ -539,7 +569,10 @@ function MilestoneModal({
       (field) => draft[field.key] !== initialValues[field.key],
     ) ||
     draft.title !== initialValues.title ||
-    draft.photoUri !== initialValues.photoUri;
+    draft.photoUri !== initialValues.photoUri ||
+    draft.photoTransform.focusX !== initialValues.photoTransform.focusX ||
+    draft.photoTransform.focusY !== initialValues.photoTransform.focusY ||
+    draft.photoTransform.scale !== initialValues.photoTransform.scale;
   // Only title and state are mandatory; artifact, mentor, and reward are
   // optional.
   const requiredKeys: readonly ("title" | "state")[] = ["title", "state"];
@@ -674,20 +707,83 @@ function MilestoneModal({
                 {mode === "view" ? (
                   milestone?.photoUri ? (
                     <View style={styles.stepPhotoFrame}>
-                      <ExpoImage
-                        contentFit="cover"
-                        source={{ uri: milestone.photoUri }}
+                      <DreamPhoto
                         style={styles.stepPhoto}
+                        transform={{
+                          focusX: milestone.photoFocusX ?? 0.5,
+                          focusY: milestone.photoFocusY ?? 0.5,
+                          scale: milestone.photoScale ?? 1,
+                        }}
+                        uri={milestone.photoUri}
                       />
                     </View>
                   ) : null
+                ) : draft.photoUri ? (
+                  <>
+                    <View style={styles.stepPhotoFrame}>
+                      <DreamPhotoAdjuster
+                        onChange={setDraftTransform}
+                        style={StyleSheet.absoluteFill}
+                        transform={draft.photoTransform}
+                        uri={draft.photoUri}
+                      />
+                      <View style={styles.stepPhotoZoomControls}>
+                        <Pressable
+                          accessibilityLabel="Zoom the step photo out"
+                          accessibilityRole="button"
+                          onPress={() => zoomStepPhoto(1 / 1.25)}
+                          style={({ pressed }) => [
+                            styles.stepPhotoZoomButton,
+                            pressed && pressedStyle,
+                          ]}
+                        >
+                          <MinusIcon
+                            color={colors.textPrimary}
+                            size={iconSizes.sm}
+                          />
+                        </Pressable>
+                        <Pressable
+                          accessibilityLabel="Zoom the step photo in"
+                          accessibilityRole="button"
+                          onPress={() => zoomStepPhoto(1.25)}
+                          style={({ pressed }) => [
+                            styles.stepPhotoZoomButton,
+                            pressed && pressedStyle,
+                          ]}
+                        >
+                          <PlusIcon
+                            color={colors.textPrimary}
+                            size={iconSizes.sm}
+                          />
+                        </Pressable>
+                      </View>
+                      <Pressable
+                        accessibilityLabel="Change the step photo"
+                        accessibilityRole="button"
+                        onPress={pickStepPhoto}
+                        style={({ pressed }) => [
+                          styles.stepPhotoEditBadge,
+                          pressed && pressedStyle,
+                        ]}
+                      >
+                        <PencilIcon
+                          color={colors.textOnPrimary}
+                          size={iconSizes.sm}
+                        />
+                      </Pressable>
+                    </View>
+                    <AppText
+                      align="center"
+                      color={colors.textMuted}
+                      style={styles.stepPhotoHint}
+                      variant="caption"
+                    >
+                      Drag the photo to choose its focus, zoom with − / +
+                    </AppText>
+                  </>
                 ) : (
                   <Pressable
-                    accessibilityLabel={
-                      draft.photoUri
-                        ? "Change the step photo"
-                        : "Add a step photo"
-                    }
+                    accessibilityLabel="Add a step photo"
                     accessibilityRole="button"
                     onPress={pickStepPhoto}
                     style={({ pressed }) => [
@@ -695,22 +791,14 @@ function MilestoneModal({
                       pressed && pressedStyle,
                     ]}
                   >
-                    {draft.photoUri ? (
-                      <ExpoImage
-                        contentFit="cover"
-                        source={{ uri: draft.photoUri }}
-                        style={styles.stepPhoto}
-                      />
-                    ) : (
-                      <View style={styles.stepPhotoPlaceholder}>
-                        <AppText
-                          color={colors.textMuted}
-                          variant="bodySmall"
-                        >
-                          Add a photo of this step
-                        </AppText>
-                      </View>
-                    )}
+                    <View style={styles.stepPhotoPlaceholder}>
+                      <AppText
+                        color={colors.textMuted}
+                        variant="bodySmall"
+                      >
+                        Add a photo of this step
+                      </AppText>
+                    </View>
                     <View style={styles.stepPhotoEditBadge}>
                       <PencilIcon
                         color={colors.textOnPrimary}
@@ -1032,6 +1120,9 @@ function toJourneyData(milestone: Milestone): JourneyMilestoneData {
     id: displayId,
     mentor: milestone.mentor ?? undefined,
     photoUri: milestone.photoUri,
+    photoFocusX: milestone.photoFocusX,
+    photoFocusY: milestone.photoFocusY,
+    photoScale: milestone.photoScale,
     reward: milestone.reward ?? undefined,
     state: milestone.state ?? "",
     subtitle: "",
@@ -1177,6 +1268,9 @@ export function GoalJourneyMapScreen() {
           mentor: values.mentor,
           reward: values.reward,
           photoUri: storedPhoto,
+          photoFocusX: values.photoTransform.focusX,
+          photoFocusY: values.photoTransform.focusY,
+          photoScale: values.photoTransform.scale,
         });
       } else {
         const dbId = dbIdByDisplayId.get(modalState.milestone.id);
@@ -1198,6 +1292,9 @@ export function GoalJourneyMapScreen() {
             mentor: values.mentor,
             reward: values.reward,
             photoUri: storedPhoto,
+            photoFocusX: values.photoTransform.focusX,
+            photoFocusY: values.photoTransform.focusY,
+            photoScale: values.photoTransform.scale,
           });
         }
       }
@@ -1556,6 +1653,29 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     width: 36,
     ...shadows.softDark,
+  },
+  /** How-to line under the adjustable step photo. */
+  stepPhotoHint: {
+    marginBottom: spacing.sm,
+    marginTop: -spacing.xs / 2,
+  },
+  /** Quiet − / + pair opposite the pencil badge. */
+  stepPhotoZoomControls: {
+    bottom: spacing.sm,
+    flexDirection: "row",
+    gap: spacing.sm,
+    left: spacing.sm,
+    position: "absolute",
+  },
+  stepPhotoZoomButton: {
+    alignItems: "center",
+    backgroundColor: withOpacity(colors.surfaceDeep, 0.8),
+    borderColor: colors.borderStrong,
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
   },
   modalTitleCompact: {
     fontSize: fontSizes.xxxl,

@@ -199,6 +199,53 @@ const backupUpgrades: BackupUpgrade[] = [
       }
     },
   },
+  {
+    // v13 added the same photo framing to milestone step images.
+    toVersion: 13,
+    up: (doc) => {
+      for (const row of doc.tables.milestones ?? []) {
+        if (row.photo_focus_x === undefined) row.photo_focus_x = 0.5;
+        if (row.photo_focus_y === undefined) row.photo_focus_y = 0.5;
+        if (row.photo_scale === undefined) row.photo_scale = 1;
+      }
+    },
+  },
+  {
+    // v14 added habits.is_completed; older backups have only active habits.
+    toVersion: 14,
+    up: (doc) => {
+      for (const row of doc.tables.habits ?? []) {
+        if (row.is_completed === undefined) row.is_completed = 0;
+      }
+    },
+  },
+  {
+    // v15 renamed the untouched seeded "Day" block to "After work".
+    toVersion: 15,
+    up: (doc) => {
+      for (const row of doc.tables.time_blocks ?? []) {
+        if (row.key === "day" && row.label === "Day") {
+          if (row.routine_title === "Day") row.routine_title = "After work";
+          row.label = "After work";
+        }
+      }
+    },
+  },
+  {
+    // v16 moved the untouched seeded block start times (07:00/15:00/20:00).
+    toVersion: 16,
+    up: (doc) => {
+      const moves: Record<string, [string, string]> = {
+        "wake-up": ["06:00", "07:00"],
+        day: ["13:00", "15:00"],
+        evening: ["21:00", "20:00"],
+      };
+      for (const row of doc.tables.time_blocks ?? []) {
+        const move = moves[row.key as string];
+        if (move && row.start_time === move[0]) row.start_time = move[1];
+      }
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,10 @@ export type JourneyMilestoneContent = {
   mentor?: string;
   /** Attached step image URI shown in the milestone sheet. */
   photoUri?: string | null;
+  /** Step-image framing (focus fractions + zoom), defaults to centered cover. */
+  photoFocusX?: number;
+  photoFocusY?: number;
+  photoScale?: number;
   reward?: string;
   state: string;
   subtitle: string;

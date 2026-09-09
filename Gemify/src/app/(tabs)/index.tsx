@@ -16,12 +16,14 @@ import {
   AppButton,
   AppText,
   ArrowRightIcon,
+  Badge,
   Card,
   Checkbox,
   ChevronIcon,
   DreamIcon,
   MilestoneIcon,
   PlusIcon,
+  RepeatIcon,
   ScreenScaffold,
   SectionHeader,
   SparkIcon,
@@ -138,7 +140,7 @@ function toGoal(dream: DreamSummary): Goal {
 export default function HomeScreen() {
   const router = useRouter();
   const today = todayKey();
-  const { dreams, loading } = useDreamSummaries();
+  const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
   const { blocks, completedQuests, toggleQuest, totalQuests } =
     useDayQuestBlocks(today);
 
@@ -178,22 +180,33 @@ export default function HomeScreen() {
 
     // Monday-first index of today, matching the habit week arrays.
     const habitDayIndex = (now.getDay() + 6) % 7;
-    const habitActions = habitViews
+    const todaysHabitViews = habitViews.filter(
+      (view) =>
+        view.scheduleDays.length === 0 ||
+        view.scheduleDays.includes(habitDayIndex),
+    );
+    const toHabitAction = (view: (typeof habitViews)[number]) => ({
+      done: view.weekProgress[habitDayIndex] === "done",
+      habitId: view.habit.id,
+      icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
+      // The dream this habit supports — habit rows show it where quest rows
+      // show their dream › milestone breadcrumb.
+      subtitle:
+        dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
+      title: view.habit.title,
+    });
+    // Every habit scheduled today, for the day's completion math.
+    const habitActions = todaysHabitViews.map(toHabitAction);
+    // Only habits whose time block is the current focus join the focus list;
+    // "Anytime" habits (no block, or the flexible block) fit any moment.
+    const focusHabitActions = todaysHabitViews
       .filter(
         (view) =>
-          view.scheduleDays.length === 0 ||
-          view.scheduleDays.includes(habitDayIndex),
+          view.habit.timeOfDay === null ||
+          view.habit.timeOfDay === flexibleBlock?.key ||
+          view.habit.timeOfDay === focusBlock?.key,
       )
-      .map((view) => ({
-        done: view.weekProgress[habitDayIndex] === "done",
-        habitId: view.habit.id,
-        icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
-        // The dream this habit supports — habit rows show it where quest rows
-        // show their dream › milestone breadcrumb.
-        subtitle:
-          dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
-        title: view.habit.title,
-      }));
+      .map(toHabitAction);
 
     const questActions = focusBlock
       ? flexibleBlock && flexibleBlock.key !== focusBlock.key
@@ -201,7 +214,7 @@ export default function HomeScreen() {
         : focusBlock.actions
       : [];
     // Checked-off actions leave the focus list.
-    const focusActions = [...questActions, ...habitActions].filter(
+    const focusActions = [...questActions, ...focusHabitActions].filter(
       (action) => !action.done,
     );
     const currentBlock = focusBlock
@@ -232,24 +245,47 @@ export default function HomeScreen() {
     );
 
     // Everything still waiting today outside the current focus: every block
-    // with open quests, upcoming ones first (nearest first), then earlier
-    // leftovers. The focus and flexible blocks are excluded — their open
-    // quests already sit in the focus list.
+    // with open quests or habits, upcoming ones first (nearest first), then
+    // earlier leftovers. The focus and flexible blocks are excluded — their
+    // open items already sit in the focus list.
     const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
       now.getMinutes(),
     ).padStart(2, "0")}`;
+    // Open habits grouped under their (non-focus, timed) block, so they wait
+    // under "Later today" exactly like the block's quests.
+    const laterHabitsByBlock = new Map<
+      string,
+      ReturnType<typeof toHabitAction>[]
+    >();
+    for (const view of todaysHabitViews) {
+      const blockKey = view.habit.timeOfDay;
+      if (
+        blockKey === null ||
+        blockKey === flexibleBlock?.key ||
+        blockKey === focusBlock?.key
+      ) {
+        continue;
+      }
+      const action = toHabitAction(view);
+      if (action.done) continue;
+      const list = laterHabitsByBlock.get(blockKey) ?? [];
+      list.push(action);
+      laterHabitsByBlock.set(blockKey, list);
+    }
     const laterBlocks = blocks
       .filter(
         (block) =>
-          block.key !== focusBlock?.key &&
-          block.time !== "Flexible" &&
-          block.actions.some((action) => !action.done),
+          block.key !== focusBlock?.key && block.time !== "Flexible",
       )
       .map((block) => ({
         ...block,
-        actions: block.actions.filter((action) => !action.done),
+        actions: [
+          ...block.actions.filter((action) => !action.done),
+          ...(laterHabitsByBlock.get(block.key) ?? []),
+        ],
         upcoming: block.time > clock,
       }))
+      .filter((block) => block.actions.length > 0)
       .sort((a, b) => {
         if (a.upcoming !== b.upcoming) return a.upcoming ? -1 : 1;
         return a.time < b.time ? -1 : 1;
@@ -342,12 +378,29 @@ export default function HomeScreen() {
                 style={[styles.focusRow, index > 0 && styles.focusRowDivider]}
               >
                 <View style={styles.focusMedallion}>
-                  <SparkIcon color={colors.primary} size={22} />
+                  {"questId" in action ? (
+                    <SparkIcon color={colors.primary} size={22} />
+                  ) : (
+                    <RepeatIcon color={colors.primary} size={22} />
+                  )}
                 </View>
                 <View style={styles.focusCopy}>
-                  <AppText numberOfLines={2} variant="pill">
-                    {action.title}
-                  </AppText>
+                  <View style={styles.focusTitleRow}>
+                    <AppText
+                      numberOfLines={2}
+                      style={styles.focusTitleText}
+                      variant="pill"
+                    >
+                      {action.title}
+                    </AppText>
+                    {"questId" in action ? null : (
+                      <Badge
+                        label="HABIT"
+                        style={styles.habitBadge}
+                        textStyle={styles.habitBadgeText}
+                      />
+                    )}
+                  </View>
                   {"questId" in action ? (
                     <View style={styles.focusBreadcrumb}>
                       <DreamIcon size={16} />
@@ -391,13 +444,22 @@ export default function HomeScreen() {
                   <AppText color={colors.primary} variant="cardTitle">
                     +{Math.max(1, Math.round(action.progressPercent))}%
                   </AppText>
-                ) : null}
+                ) : (
+                  // Completing a habit adds one day to its streak.
+                  <AppText color={colors.primary} variant="cardTitle">
+                    +1 day
+                  </AppText>
+                )}
                 <Checkbox
                   accessibilityLabel={`Mark ${action.title} done`}
                   checked={action.done}
                   onPress={() => {
                     if ("questId" in action) {
-                      toggleQuest(action.questId, !action.done);
+                      // The dream's card percentage reflects the change the
+                      // moment the write lands — no refocus needed.
+                      toggleQuest(action.questId, !action.done).then(
+                        refreshDreams,
+                      );
                     } else {
                       setCompletion(
                         action.habitId,
@@ -457,17 +519,34 @@ export default function HomeScreen() {
                 </View>
                 {block.actions.map((action, index) => (
                   <View
-                    key={action.questId}
+                    key={
+                      "questId" in action
+                        ? `q${action.questId}`
+                        : `h${action.habitId}`
+                    }
                     style={index > 0 ? styles.laterActionSpacing : undefined}
                   >
-                    <AppText
-                      color={LATER_COLORS.title}
-                      numberOfLines={2}
-                      style={styles.laterQuestTitle}
-                      variant="body"
-                    >
-                      {action.title}
-                    </AppText>
+                    <View style={styles.laterActionTitleRow}>
+                      <AppText
+                        color={LATER_COLORS.title}
+                        numberOfLines={2}
+                        style={[
+                          styles.laterQuestTitle,
+                          styles.laterActionTitleText,
+                        ]}
+                        variant="body"
+                      >
+                        {action.title}
+                      </AppText>
+                      {"questId" in action ? null : (
+                        <Badge
+                          color={LATER_COLORS.time}
+                          label="HABIT"
+                          style={styles.habitBadge}
+                          textStyle={styles.habitBadgeText}
+                        />
+                      )}
+                    </View>
                     <View style={styles.laterBreadcrumb}>
                       <DreamIcon color={LATER_COLORS.icon} size={16} />
                       <AppText
@@ -476,22 +555,31 @@ export default function HomeScreen() {
                         style={styles.laterCrumbLabel}
                         variant="subtitle"
                       >
-                        {action.dreamTitle}
+                        {"questId" in action
+                          ? action.dreamTitle
+                          : action.subtitle}
                       </AppText>
-                      <ChevronIcon
-                        color={LATER_COLORS.crumb}
-                        direction="right"
-                        size={13}
-                      />
-                      <MilestoneIcon color={LATER_COLORS.icon} size={16} />
-                      <AppText
-                        color={LATER_COLORS.crumb}
-                        numberOfLines={1}
-                        style={styles.laterCrumbLabel}
-                        variant="subtitle"
-                      >
-                        {action.milestoneTitle}
-                      </AppText>
+                      {"questId" in action ? (
+                        <>
+                          <ChevronIcon
+                            color={LATER_COLORS.crumb}
+                            direction="right"
+                            size={13}
+                          />
+                          <MilestoneIcon
+                            color={LATER_COLORS.icon}
+                            size={16}
+                          />
+                          <AppText
+                            color={LATER_COLORS.crumb}
+                            numberOfLines={1}
+                            style={styles.laterCrumbLabel}
+                            variant="subtitle"
+                          >
+                            {action.milestoneTitle}
+                          </AppText>
+                        </>
+                      ) : null}
                     </View>
                   </View>
                 ))}
@@ -565,6 +653,22 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderFaint,
     borderTopWidth: 1,
   },
+  focusTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  focusTitleText: {
+    flexShrink: 1,
+  },
+  /** Compact outlined HABIT tag beside the habit's name. */
+  habitBadge: {
+    minHeight: 0,
+    paddingVertical: 2,
+  },
+  habitBadgeText: {
+    letterSpacing: 1,
+  },
   sectionHeader: {
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
@@ -581,6 +685,14 @@ const styles = StyleSheet.create({
   /** Breathing room between stacked quests inside one Later-today block. */
   laterActionSpacing: {
     marginTop: spacing.sm,
+  },
+  laterActionTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  laterActionTitleText: {
+    flexShrink: 1,
   },
   laterBadge: {
     alignItems: "center",

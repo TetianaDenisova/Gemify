@@ -132,6 +132,88 @@ export function PlusIcon({
   );
 }
 
+/** Clock face with a rewind arrow — history / finished items. */
+export function HistoryIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4.5 4.5V9H9"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M5.2 9a8 8 0 1 1-1 5"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M12 8.2V12l2.8 1.9"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Two curved arrows — recurrence; marks habit rows. */
+export function RepeatIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M4 11V9.5A4.5 4.5 0 0 1 8.5 5H20M20 13v1.5A4.5 4.5 0 0 1 15.5 19H4"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M17 2l3 3-3 3M7 16l-3 3 3 3"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Sun over the horizon — "do it today" actions. */
+export function SunHorizonIcon({
+  color = colors.primary,
+  size = 20,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M8.5 16.5a3.5 3.5 0 0 1 7 0"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M12 8.5v-2M6.7 11.2 5.3 9.8M17.3 11.2l1.4-1.4M4.5 16.5H6M18 16.5h1.5M4.5 19.5h15"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function MinusIcon({
   color = colors.primary,
   size = 20,

@@ -3,20 +3,24 @@ import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
+import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   createHabit,
+  createQuest,
   deleteHabit,
   getDreams,
   getHabitById,
   getHabitDetails,
   getHabitScheduleDays,
+  getMilestones,
   getTimeBlocks,
   setHabitDetails,
   setHabitScheduleDays,
   updateHabit,
   type Dream,
   type HabitDetailSection,
+  type Milestone,
   type TimeBlockRecord,
 } from "@/db";
 import type { BlockIcon } from "@/dto/timeBlocks";
@@ -30,6 +34,7 @@ import {
   Chip,
   CloseIcon,
   ListItem,
+  MilestoneIcon,
   ScreenHeader,
   ScreenScaffold,
   SparkIcon,
@@ -228,6 +233,12 @@ export default function CreateHabitScreen() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  /** Milestone picker for "Add as task"; null = closed. */
+  const [taskMilestones, setTaskMilestones] = useState<Milestone[] | null>(
+    null,
+  );
+  /** Title of the milestone the starter task landed in (confirmation line). */
+  const [taskAddedTo, setTaskAddedTo] = useState<string | null>(null);
 
   // The dream list (a habit must attach to one) and the routine time blocks —
   // the same blocks My Day is built from.
@@ -379,6 +390,39 @@ export default function CreateHabitScreen() {
     setValues((current) => ({ ...current, [key]: value }));
   }
 
+  // "Add as task": the starter text becomes a quest in one of the dream's
+  // milestones (habits attach to a dream, so the milestone is picked here).
+  async function handleAddAsTask() {
+    if (selectedDreamId === null) {
+      setFormError("Pick a dream first — the task lives in its milestone.");
+      return;
+    }
+    try {
+      const milestones = await getMilestones(selectedDreamId);
+      if (milestones.length === 0) {
+        setFormError(
+          "This dream has no milestones yet — add one on the journey map first.",
+        );
+        return;
+      }
+      setFormError(null);
+      setTaskMilestones(milestones);
+    } catch (cause) {
+      console.error("Failed to load the milestones", cause);
+    }
+  }
+
+  async function handleTaskMilestonePicked(milestone: Milestone) {
+    setTaskMilestones(null);
+    try {
+      await createQuest(milestone.id, values.easyStart.trim());
+      setTaskAddedTo(milestone.title);
+    } catch (cause) {
+      console.error("Failed to add the starter task", cause);
+      setFormError("Something went wrong while adding the task.");
+    }
+  }
+
   function toggleDay(day: Day) {
     setSelectedDays((current) => {
       const next = new Set(current);
@@ -394,6 +438,7 @@ export default function CreateHabitScreen() {
   }
 
   function renderTextStep(step: FormStep) {
+    const isEasyStart = step.input === "easyStart";
     return (
       <View key={step.title} style={styles.formRow}>
         <StepIconMedallion name={step.icon} />
@@ -402,7 +447,12 @@ export default function CreateHabitScreen() {
             accessibilityLabel={step.title}
             label={step.title}
             multiline={step.multiline}
-            onChangeText={(value) => updateValue(step.input, value)}
+            onChangeText={(value) => {
+              updateValue(step.input, value);
+              // The starter text changed — the earlier task no longer
+              // reflects it, so drop the confirmation.
+              if (isEasyStart) setTaskAddedTo(null);
+            }}
             placeholder={step.placeholder}
             selectionColor={colors.primary}
             value={values[step.input]}
@@ -411,6 +461,24 @@ export default function CreateHabitScreen() {
             <AppText color={colors.textMuted} style={styles.helperText}>
               {step.helper}
             </AppText>
+          ) : null}
+          {isEasyStart && values.easyStart.trim().length > 0 ? (
+            taskAddedTo ? (
+              <AppText
+                color={colors.primary}
+                style={styles.helperText}
+                variant="bodySmall"
+              >
+                ✓ Added as a task to “{taskAddedTo}”
+              </AppText>
+            ) : (
+              <AppButton
+                label="Add as task"
+                onPress={handleAddAsTask}
+                style={styles.addTaskButton}
+                variant="secondary"
+              />
+            )
           ) : null}
         </View>
       </View>
@@ -574,11 +642,32 @@ export default function CreateHabitScreen() {
         title="Delete this habit?"
         visible={deleteConfirmOpen}
       />
+
+      {/* Milestone picker for the "Add as task" starter quest. */}
+      <ActionSheet
+        onClose={() => setTaskMilestones(null)}
+        title="Add the task to which milestone?"
+        visible={taskMilestones !== null}
+      >
+        {(taskMilestones ?? []).map((milestone) => (
+          <SheetActionRow
+            icon={<MilestoneIcon color={colors.primary} size={22} />}
+            key={milestone.id}
+            label={milestone.title}
+            onPress={() => handleTaskMilestonePicked(milestone)}
+          />
+        ))}
+      </ActionSheet>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
+  addTaskButton: {
+    alignSelf: "flex-start",
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
   continueButton: {
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,

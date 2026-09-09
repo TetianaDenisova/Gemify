@@ -16,6 +16,7 @@ type HabitRow = {
   time_of_day: Habit["timeOfDay"];
   goal_days: number;
   is_archived: number;
+  is_completed: number;
 };
 
 // time_block_key holds the habit's time of day (a My Day block key); the
@@ -23,7 +24,7 @@ type HabitRow = {
 const SELECT_HABIT = `
   SELECT id, dream_id, title, cue,
          COALESCE(time_block_key, time_of_day) AS time_of_day,
-         goal_days, is_archived
+         goal_days, is_archived, is_completed
   FROM habits
 `;
 
@@ -36,6 +37,7 @@ function toHabit(row: HabitRow): Habit {
     timeOfDay: row.time_of_day,
     goalDays: row.goal_days,
     isArchived: row.is_archived === 1,
+    isCompleted: row.is_completed === 1,
   };
 }
 
@@ -90,13 +92,17 @@ export async function createHabit(input: NewHabit): Promise<Habit> {
   return habit;
 }
 
-/** All habits (Habits screen groups them by dream), archived hidden. */
+/**
+ * All active habits (Habits screen groups them by dream) — archived and
+ * completed hidden.
+ */
 export async function getHabits(includeArchived = false): Promise<Habit[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<HabitRow>(
     includeArchived
-      ? `${SELECT_HABIT} ORDER BY dream_id, id`
-      : `${SELECT_HABIT} WHERE is_archived = 0 ORDER BY dream_id, id`,
+      ? `${SELECT_HABIT} WHERE is_completed = 0 ORDER BY dream_id, id`
+      : `${SELECT_HABIT} WHERE is_archived = 0 AND is_completed = 0
+         ORDER BY dream_id, id`,
   );
   return rows.map(toHabit);
 }
@@ -104,8 +110,20 @@ export async function getHabits(includeArchived = false): Promise<Habit[]> {
 export async function getHabitsByDream(dreamId: number): Promise<Habit[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<HabitRow>(
-    `${SELECT_HABIT} WHERE dream_id = ? AND is_archived = 0 ORDER BY id`,
+    `${SELECT_HABIT}
+     WHERE dream_id = ? AND is_archived = 0 AND is_completed = 0
+     ORDER BY id`,
     [dreamId],
+  );
+  return rows.map(toHabit);
+}
+
+/** The Completed Habits list — restorable or deletable from its modal. */
+export async function getCompletedHabits(): Promise<Habit[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<HabitRow>(
+    `${SELECT_HABIT} WHERE is_archived = 0 AND is_completed = 1
+     ORDER BY dream_id, id`,
   );
   return rows.map(toHabit);
 }
@@ -153,6 +171,10 @@ export async function updateHabit(
   if (patch.isArchived !== undefined) {
     assignments.push("is_archived = ?");
     params.push(patch.isArchived ? 1 : 0);
+  }
+  if (patch.isCompleted !== undefined) {
+    assignments.push("is_completed = ?");
+    params.push(patch.isCompleted ? 1 : 0);
   }
 
   if (assignments.length > 0) {

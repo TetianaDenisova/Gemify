@@ -19,9 +19,9 @@ import {
   AcceptQuestModal,
   ActionSheet,
   QuestActionSheet,
+  scheduledTimeLabel,
   SheetActionRow,
   TextPromptModal,
-  TIME_SLOTS,
   WEEKDAY_LABELS,
 } from "@/components/QuestActions";
 import {
@@ -31,11 +31,13 @@ import {
   getMilestoneById,
   getMilestones,
   getQuests,
+  getTimeBlocks,
   setQuestDone,
   updateMilestone,
   updateQuest,
   type Milestone,
   type Quest,
+  type TimeBlockRecord,
 } from "@/db";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
@@ -52,6 +54,7 @@ import {
   CloseIcon,
   DotsIcon,
   ImageIcon,
+  MilestoneIcon,
   PencilIcon,
   PlusIcon,
   ScreenHeader,
@@ -88,7 +91,10 @@ type ContentTab = "quests" | "habits";
  * or "Wed 28 · Morning". Falls back to "This week" for planned quests with
  * no date yet.
  */
-function scheduleLabel(quest: Quest): string {
+function scheduleLabel(
+  quest: Quest,
+  timeBlocks: readonly TimeBlockRecord[],
+): string {
   if (!quest.scheduledDate) return "This week";
 
   const today = new Date();
@@ -106,8 +112,7 @@ function scheduleLabel(quest: Quest): string {
     dayLabel = `${weekday[0]}${weekday.slice(1).toLowerCase()} ${date.getDate()}`;
   }
 
-  const slot = TIME_SLOTS.find((entry) => entry.time === quest.scheduledTime);
-  return `${dayLabel} · ${slot?.label ?? quest.scheduledTime}`;
+  return `${dayLabel} · ${scheduledTimeLabel(timeBlocks, quest.scheduledTime)}`;
 }
 
 const QUEST_ICON_VARIANT_COUNT = 4;
@@ -215,12 +220,14 @@ function QuestRow({
   onOpenMenu,
   onToggleQuest,
   quest,
+  timeBlocks,
 }: {
   compact: boolean;
   onAccept: () => void;
   onOpenMenu: () => void;
   onToggleQuest: () => void;
   quest: Quest;
+  timeBlocks: readonly TimeBlockRecord[];
 }) {
   // Stable pseudo-random pick so each quest keeps its spark across renders.
   const iconVariant = (quest.id * 31 + 7) % QUEST_ICON_VARIANT_COUNT;
@@ -249,7 +256,7 @@ function QuestRow({
               <View style={styles.questScheduleRow}>
                 <CalendarIcon color={colors.primary} size={iconSizes.sm} />
                 <AppText color={colors.primary} variant="labelStrong">
-                  {scheduleLabel(quest)}
+                  {scheduleLabel(quest, timeBlocks)}
                 </AppText>
               </View>
             ) : null}
@@ -418,6 +425,10 @@ export default function MilestoneQuestsScreen() {
   );
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([]);
+  /** The dream's full path — targets for "Move to another milestone". */
+  const [dreamMilestones, setDreamMilestones] = useState<Milestone[]>([]);
+  const [moveQuest, setMoveQuest] = useState<Quest | null>(null);
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
   const { habits, setCompletion, weekDates } = useHabitWeek(
@@ -426,6 +437,9 @@ export default function MilestoneQuestsScreen() {
 
   const loadScreen = useCallback(async () => {
     try {
+      // Schedule captions name the shared My Day time blocks.
+      setTimeBlocks(await getTimeBlocks());
+
       let resolved: Milestone | null = null;
       const paramId = Number(milestoneIdParam);
       if (milestoneIdParam && Number.isFinite(paramId) && paramId > 0) {
@@ -445,10 +459,12 @@ export default function MilestoneQuestsScreen() {
       setMilestone(resolved);
       if (!resolved) {
         setQuests([]);
+        setDreamMilestones([]);
         return;
       }
 
       setQuests(await getQuests(resolved.id));
+      setDreamMilestones(await getMilestones(resolved.dreamId));
     } catch (cause) {
       console.error("Failed to load milestone quests", cause);
     }
@@ -487,6 +503,19 @@ export default function MilestoneQuestsScreen() {
   // The milestone can be closed once every quest is checked off. No quests
   // at all also counts as ready.
   const allQuestsComplete = quests.every((quest) => quest.isDone);
+
+  // Reassigns the quest to the picked milestone; both milestones' progress
+  // follows from their quest lists, so a reload refreshes everything.
+  const handleMoveQuest = async (target: Milestone) => {
+    if (!moveQuest) return;
+    try {
+      await updateQuest(moveQuest.id, { milestoneId: target.id });
+      await loadScreen();
+    } catch (cause) {
+      console.error("Failed to move the quest", cause);
+    }
+    setMoveQuest(null);
+  };
 
   const handleCompleteMilestone = async () => {
     if (!milestone) return;
@@ -734,6 +763,7 @@ export default function MilestoneQuestsScreen() {
               onOpenMenu={() => setMenuQuest(quest)}
               onToggleQuest={() => handleToggleQuest(quest)}
               quest={quest}
+              timeBlocks={timeBlocks}
             />
           ))}
 
@@ -854,8 +884,41 @@ export default function MilestoneQuestsScreen() {
           }
           setMenuQuest(null);
         }}
+        onMoveToMilestone={() => {
+          setMoveQuest(menuQuest);
+          setMenuQuest(null);
+        }}
         quest={menuQuest}
       />
+
+      {/* Milestone picker for "Move to another milestone". */}
+      <ActionSheet
+        onClose={() => setMoveQuest(null)}
+        title={moveQuest ? `Move “${moveQuest.title}” to…` : undefined}
+        visible={moveQuest !== null}
+      >
+        {dreamMilestones
+          .filter((entry) => entry.id !== milestone?.id)
+          .map((entry) => (
+            <SheetActionRow
+              icon={<MilestoneIcon color={colors.primary} size={iconSizes.lg} />}
+              key={entry.id}
+              label={entry.title}
+              onPress={() => handleMoveQuest(entry)}
+            />
+          ))}
+        {dreamMilestones.filter((entry) => entry.id !== milestone?.id)
+          .length === 0 ? (
+          <AppText
+            align="center"
+            color={colors.textMuted}
+            style={styles.movePickerEmpty}
+            variant="bodySmall"
+          >
+            This dream has no other milestones yet.
+          </AppText>
+        ) : null}
+      </ActionSheet>
 
       {acceptQuest ? (
         <AcceptQuestModal
@@ -995,6 +1058,9 @@ const styles = StyleSheet.create({
   emptyCard: {
     marginBottom: spacing.md,
     paddingVertical: spacing.lg,
+  },
+  movePickerEmpty: {
+    paddingVertical: spacing.md,
   },
   habitCard: {
     backgroundColor: colors.surfaceCard,

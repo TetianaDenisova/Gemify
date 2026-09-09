@@ -70,8 +70,6 @@ function getThemeColor(themeColor: ThemeColor) {
 
 export function GoalCard({ goal, onPress }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
-  // A journey not yet started gets an invitation, never a "0%".
-  const notStarted = Math.round(goal.progressPercent) === 0;
 
   return (
     <Pressable
@@ -121,10 +119,11 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         </View>
 
         <View style={styles.progressColumn}>
+          {/* Always a percentage — a fresh dream reads "0%", in the same
+              spot as every other card, so the list stays consistent. */}
           <ProgressRing
             backgroundColor={colors.surfaceDeep}
             color={accentColor}
-            label={notStarted ? "✦" : undefined}
             labelColor={accentColor}
             size={RING_SIZE}
             strokeWidth={2}

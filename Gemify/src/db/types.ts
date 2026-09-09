@@ -64,6 +64,10 @@ export type Milestone = {
   status: MilestoneStatus;
   /** Attached step image (durable app-storage URI), null when absent. */
   photoUri: string | null;
+  /** Step-image framing — same semantics as the dream photo fields. */
+  photoFocusX: number;
+  photoFocusY: number;
+  photoScale: number;
 };
 
 export type NewMilestone = {
@@ -73,6 +77,9 @@ export type NewMilestone = {
   mentor?: string | null;
   reward?: string | null;
   photoUri?: string | null;
+  photoFocusX?: number;
+  photoFocusY?: number;
+  photoScale?: number;
 };
 
 export type MilestonePatch = {
@@ -83,6 +90,9 @@ export type MilestonePatch = {
   reward?: string | null;
   status?: MilestoneStatus;
   photoUri?: string | null;
+  photoFocusX?: number;
+  photoFocusY?: number;
+  photoScale?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -109,6 +119,8 @@ export type Quest = {
 
 export type QuestPatch = {
   title?: string;
+  /** Reassigns the quest to another milestone (same-dream moves in the UI). */
+  milestoneId?: number;
   isActive?: boolean;
   isDone?: boolean;
   scheduledDate?: string | null;
@@ -154,6 +166,8 @@ export type Habit = {
   timeOfDay: HabitTimeOfDay | null;
   goalDays: number;
   isArchived: boolean;
+  /** Completed habits leave the boards; restorable from Completed Habits. */
+  isCompleted: boolean;
 };
 
 export type HabitDetailSection = "easy_start" | "easy_version" | "backup_plan";
@@ -183,6 +197,7 @@ export type HabitPatch = {
   timeOfDay?: HabitTimeOfDay | null;
   goalDays?: number;
   isArchived?: boolean;
+  isCompleted?: boolean;
 };
 
 /** Stored day statuses; "open" (no record yet) is the absence of a row. */

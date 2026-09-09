@@ -28,14 +28,17 @@ export {
   DotsIcon,
   DreamIcon,
   GearIcon,
+  HistoryIcon,
   ImageIcon,
   MilestoneIcon,
   MinusIcon,
   PencilIcon,
   PlusIcon,
+  RepeatIcon,
   SparkIcon,
   SparkleGlyphIcon,
   StepIcon,
+  SunHorizonIcon,
   TrashIcon,
 } from "./icons";
 export type {
