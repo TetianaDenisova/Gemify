@@ -29,15 +29,17 @@ const GOAL_SHADE = [
 /**
  * The dream art is ultra-wide (~2.4:1) with the glowing subject on the right,
  * so it anchors right at full card height instead of covering (which would
- * crop the spires). The card backing matches the art's near-black left edge,
- * making the hand-off invisible under the shade.
+ * crop the spires). It stops short of the progress column, so the ring sits
+ * on the card backing rather than over the artwork; that backing matches the
+ * art's near-black left edge, making the hand-off invisible under the shade.
  */
 const ART_ASPECT_RATIO = 2.4;
 const ART_BACKING = "#01030E";
 
 /**
- * Fixed right-hand column reserved for the progress ring; it sizes the scrim
- * below so the ring area darkens just enough for the percentage to read.
+ * Fixed right-hand column reserved for the progress ring. Its width is where
+ * the art stops (and where the seam scrim below ends), so the ring always has
+ * clear backing under it on phone and on wide screens alike.
  */
 const RING_SIZE = 50;
 const RING_SIZE_PHONE = 42;
@@ -45,11 +47,12 @@ const RING_EDGE_GAP = spacing.md;
 const ART_RING_GAP = 14;
 const ringColumnWidth = (ringSize: number) =>
   ringSize + RING_EDGE_GAP + ART_RING_GAP;
+const SEAM_WIDTH = 72;
 
 /**
- * Soft scrim under the progress column. The art runs edge to edge, so this
- * only dims the ring area for readability — it must never go opaque, or it
- * swallows the glowing subject that sits on the art's right side.
+ * Soft scrim over the art's right edge, fading it into the card backing that
+ * carries the progress ring. It sits entirely left of the ring column, so the
+ * ring reads on flat backing and the art's glowing subject stays visible.
  */
 const SEAM_SHADE = [
   "rgba(1, 3, 14, 0)",
@@ -87,9 +90,11 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       ]}
     >
       {/* Always the preset art for the goal's slot — the user's dream photo
-          stays on the journey map, not the home list. The art bleeds to the
-          card's right edge; the seam scrim keeps the ring readable over it. */}
-      <View style={styles.artContainer}>
+          stays on the journey map, not the home list. The art ends where the
+          progress column starts, so the ring never sits on top of it. */}
+      <View
+        style={[styles.artContainer, { right: ringColumnWidth(ringSize) }]}
+      >
         <Image
           source={goalImages[goal.imageKey]}
           style={styles.backgroundImage}
@@ -111,7 +116,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         start={{ x: 0, y: 0.5 }}
         style={[
           styles.seamShade,
-          { width: ringColumnWidth(ringSize) + 56 },
+          { right: ringColumnWidth(ringSize), width: SEAM_WIDTH },
         ]}
       />
 
