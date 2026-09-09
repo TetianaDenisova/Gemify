@@ -136,15 +136,18 @@ function DayCell({
       >
         {day.date}
       </AppText>
-      <View style={[styles.dayCountPill, day.selected && styles.dayCountPillSelected]}>
-        <View style={[styles.dayCountDot, { backgroundColor: dotColor }]} />
-        <AppText
-          color={day.selected ? colors.primary : colors.textSecondary}
-          variant="caption"
-        >
-          {day.count}
-        </AppText>
-      </View>
+      {/* Seven count pills are noise on a 370 pt strip — the phone drops them. */}
+      {phone ? null : (
+        <View style={[styles.dayCountPill, day.selected && styles.dayCountPillSelected]}>
+          <View style={[styles.dayCountDot, { backgroundColor: dotColor }]} />
+          <AppText
+            color={day.selected ? colors.primary : colors.textSecondary}
+            variant="caption"
+          >
+            {day.count}
+          </AppText>
+        </View>
+      )}
       <Animated.View
         style={[StyleSheet.absoluteFill, styles.dayDropTarget, dropHighlightStyle]}
       />
@@ -335,9 +338,11 @@ export default function SprintScreen() {
   // The copy and Add quest button overlay the artwork; the week strip and day
   // heading sit above it, so it takes a bit less height than on My Day.
   // 874 * 0.42 = 367 pt of artwork under a week strip on a 402 pt screen.
-  const emptyImageHeight = phone
-    ? Math.min(320, Math.max(200, Math.round(windowHeight * 0.28)))
-    : Math.min(480, Math.max(280, Math.round(windowHeight * 0.42)));
+  // Phones skip the artwork — the card sizes itself to the copy instead.
+  const emptyImageHeight = Math.min(
+    480,
+    Math.max(280, Math.round(windowHeight * 0.42)),
+  );
 
   // Drag plumbing shared by every quest card: finger position, week-strip
   // cell rects (measured at lift), and the currently hovered day cell.
@@ -713,23 +718,30 @@ export default function SprintScreen() {
           ))}
         </View>
 
-        <View style={styles.dayHeadingRow}>
-          <IconButton
-            accessibilityLabel="Previous week"
-            icon={<ChevronIcon direction="left" />}
-            onPress={() => shiftWeek(-1)}
-            size="sm"
-          />
-          <AppText style={styles.dayHeading} variant="titleSm">
-            {selectedHeading}
-          </AppText>
-          <IconButton
-            accessibilityLabel="Next week"
-            icon={<ChevronIcon direction="right" />}
-            onPress={() => shiftWeek(1)}
-            size="sm"
-          />
-        </View>
+        {/*
+          The selected day cell already names the date, and the header's
+          calendar button jumps to any week — so the phone drops this row
+          rather than wrapping a long date between two arrows.
+        */}
+        {phone ? null : (
+          <View style={styles.dayHeadingRow}>
+            <IconButton
+              accessibilityLabel="Previous week"
+              icon={<ChevronIcon direction="left" />}
+              onPress={() => shiftWeek(-1)}
+              size="sm"
+            />
+            <AppText style={styles.dayHeading} variant="titleSm">
+              {selectedHeading}
+            </AppText>
+            <IconButton
+              accessibilityLabel="Next week"
+              icon={<ChevronIcon direction="right" />}
+              onPress={() => shiftWeek(1)}
+              size="sm"
+            />
+          </View>
+        )}
 
         {scheduled.length > 0 ? (
           <>
@@ -757,17 +769,31 @@ export default function SprintScreen() {
             )}
           </>
         ) : (
-          <View style={[styles.emptyDay, { height: emptyImageHeight }]}>
-            <Image
-              contentFit="cover"
-              source={EMPTY_SPACE_SOURCE}
-              style={StyleSheet.absoluteFill}
-            />
-            <LinearGradient
-              colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.88)"]}
-              style={styles.emptyDayShade}
-            />
-            <View style={styles.emptyDayContent}>
+          <View
+            style={[
+              styles.emptyDay,
+              phone ? styles.emptyDayPlain : { height: emptyImageHeight },
+            ]}
+          >
+            {phone ? null : (
+              <>
+                <Image
+                  contentFit="cover"
+                  source={EMPTY_SPACE_SOURCE}
+                  style={StyleSheet.absoluteFill}
+                />
+                <LinearGradient
+                  colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.88)"]}
+                  style={styles.emptyDayShade}
+                />
+              </>
+            )}
+            <View
+              style={[
+                styles.emptyDayContent,
+                phone && styles.emptyDayContentPhone,
+              ]}
+            >
               <AppText align="center" variant="titleSm">
                 {isPastDay ? "Nothing was scheduled" : "Nothing scheduled yet"}
               </AppText>
@@ -1026,6 +1052,17 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.lg,
   },
+  /** No artwork to sit above, so the copy keeps even padding. */
+  emptyDayContentPhone: {
+    paddingVertical: spacing.xl,
+  },
+  /** The phone empty state is a plain card — no photo behind the copy. */
+  emptyDayPlain: {
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.borderSoft,
+    borderWidth: 1,
+    justifyContent: "center",
+  },
   emptyDayCopy: {
     marginTop: spacing.sm,
   },
@@ -1081,8 +1118,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
-  /** Seven cells share 370 pt — the gaps have to give first. */
+  /**
+   * Seven cells share 370 pt — the gaps have to give first. The strip also
+   * carries its own bottom margin here, since the day-heading row that
+   * normally separates it from the board is gone.
+   */
   weekStripPhone: {
     gap: spacing.xs,
+    marginBottom: spacing.lg,
   },
 });

@@ -63,11 +63,9 @@ export default function MyDayScreen() {
   const tabBarHeight = tabBarHeightFor(phone);
   // The copy and Add quest button overlay the artwork, so it can take most of
   // the free vertical space while everything stays visible.
-  // 874 * 0.5 = 437 pt of empty art on a 402 pt-wide screen; the phone takes
-  // a third of the height instead.
-  const emptyImageHeight = phone
-    ? Math.min(360, Math.max(220, Math.round(height * 0.3)))
-    : Math.min(560, Math.max(300, Math.round(height * 0.5)));
+  // 874 * 0.5 = 437 pt of empty art on a 402 pt-wide screen. Phones skip the
+  // artwork entirely — the card sizes itself to the copy instead.
+  const emptyImageHeight = Math.min(560, Math.max(300, Math.round(height * 0.5)));
 
   // No explicit selection yet → the block matching the clock right now.
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -248,17 +246,33 @@ export default function MyDayScreen() {
           <TimeBlockCard
             block={activeBlock}
             emptySlot={
-              <View style={[styles.emptyBlock, { height: emptyImageHeight }]}>
-                <Image
-                  contentFit="cover"
-                  source={EMPTY_SPACE_SOURCE}
-                  style={StyleSheet.absoluteFill}
-                />
-                <LinearGradient
-                  colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.88)"]}
-                  style={styles.emptyBlockShade}
-                />
-                <View style={styles.emptyBlockContent}>
+              <View
+                style={[
+                  styles.emptyBlock,
+                  phone
+                    ? styles.emptyBlockPlain
+                    : { height: emptyImageHeight },
+                ]}
+              >
+                {phone ? null : (
+                  <>
+                    <Image
+                      contentFit="cover"
+                      source={EMPTY_SPACE_SOURCE}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <LinearGradient
+                      colors={["rgba(4, 7, 17, 0)", "rgba(4, 7, 17, 0.88)"]}
+                      style={styles.emptyBlockShade}
+                    />
+                  </>
+                )}
+                <View
+                  style={[
+                    styles.emptyBlockContent,
+                    phone && styles.emptyBlockContentPhone,
+                  ]}
+                >
                   <AppText align="center" variant="titleSm">
                     {isPastDay
                       ? "Nothing was scheduled"
@@ -456,6 +470,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.lg,
     paddingBottom: 64,
+  },
+  /** No artwork to sit above, so the copy keeps even padding. */
+  emptyBlockContentPhone: {
+    paddingVertical: spacing.xl,
+  },
+  /** The phone empty state is a plain card — no photo behind the copy. */
+  emptyBlockPlain: {
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.borderSoft,
+    borderWidth: 1,
+    justifyContent: "center",
   },
   emptyBlockCopy: {
     marginTop: spacing.sm,

@@ -30,6 +30,7 @@ import {
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
+  controlsPhone,
   fontSizes,
   fonts,
   layout,
@@ -294,6 +295,10 @@ function QuestBarsChart({
 
   const plotLeft = axisWidth + 6;
   const slot = points.length > 0 ? (chartWidth - plotLeft) / points.length : 0;
+  // Seven slots share ~330 pt on a phone: a 72 pt label box would sit under
+  // its neighbours, so the label never gets wider than its own slot.
+  const axisLabelWidth = phone ? Math.max(32, Math.min(72, slot)) : 72;
+  const valueLabelWidth = phone ? Math.max(30, Math.min(64, slot)) : 64;
   const barWidth = Math.max(
     14,
     Math.min(
@@ -390,8 +395,9 @@ function QuestBarsChart({
                     styles.barPercentLabel,
                     compact && styles.barPercentLabelCompact,
                     {
-                      left: bar.center - 32,
+                      left: bar.center - valueLabelWidth / 2,
                       top: labelInside ? bar.top + 8 : bar.top - 20,
+                      width: valueLabelWidth,
                     },
                   ]}
                 >
@@ -421,7 +427,7 @@ function QuestBarsChart({
               style={[
                 styles.barAxisLabel,
                 compact && styles.barAxisLabelCompact,
-                { left: bar.center - 36 },
+                { left: bar.center - axisLabelWidth / 2, width: axisLabelWidth },
               ]}
               variant="pill"
             >
@@ -458,9 +464,115 @@ export default function ProgressScreen() {
   const currentPercent =
     lineRange.points[lineRange.points.length - 1].percent;
 
+  const goalPicker = (
+    <Card
+      padded={false}
+      style={[styles.goalPicker, phone && styles.goalPickerPhone]}
+      variant="glass"
+    >
+      <ListItem
+        accessibilityLabel="Choose goal"
+        last
+        leading={<SparkleGlyphIcon size={18} />}
+        minHeight={phone ? controlsPhone.button.section.minHeight : undefined}
+        onPress={() => setGoalPickerOpen((open) => !open)}
+        style={[styles.goalPickerRow, phone && styles.goalPickerRowPhone]}
+        title={selectedGoal.label}
+        trailing={<ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />}
+      />
+      {goalPickerOpen
+        ? progressContent.goals
+            .filter((goal) => goal.key !== selectedGoal.key)
+            .map((goal) => (
+              <ListItem
+                key={goal.key}
+                last
+                minHeight={
+                  phone ? controlsPhone.button.section.minHeight : undefined
+                }
+                onPress={() => {
+                  setGoalKey(goal.key);
+                  setGoalPickerOpen(false);
+                }}
+                style={[styles.goalOption, phone && styles.goalPickerRowPhone]}
+                title={goal.label}
+                titleColor={colors.textSecondary}
+              />
+            ))
+        : null}
+    </Card>
+  );
+
+  const rangePicker = (
+    <View style={[styles.overviewRow, phone && styles.overviewRowPhone]}>
+      {/* Each chart card below carries its own title; dropping this gives
+          the range picker a full-width row of its own. */}
+      {phone ? null : (
+        <AppText color={colors.accentViolet} variant="bodySerif">
+          Progress overview
+        </AppText>
+      )}
+      <View>
+        <Pressable
+          accessibilityLabel="Choose range"
+          accessibilityRole="button"
+          onPress={() => setRangePickerOpen((open) => !open)}
+          style={({ pressed: isPressed }) => [
+            styles.rangeTrigger,
+            compact && { width: Math.min(228, width * 0.45) },
+            phone && styles.rangeTriggerPhone,
+            phone && { width: Math.min(150, width * 0.42) },
+            isPressed && pressed,
+          ]}
+        >
+          <AppText
+            numberOfLines={1}
+            style={[styles.rangeLabel, phone && styles.rangeLabelPhone]}
+            variant="pill"
+          >
+            {lineRange.label}
+          </AppText>
+          <View style={rangePickerOpen ? styles.chevronOpen : null}>
+            <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
+          </View>
+        </Pressable>
+        {rangePickerOpen ? (
+          <View style={styles.rangeMenu}>
+            {lineTab.ranges
+              .filter((range) => range.key !== lineRange.key)
+              .map((range, index) => (
+                <Pressable
+                  key={range.key}
+                  onPress={() => {
+                    setRangeKey(range.key);
+                    setRangePickerOpen(false);
+                  }}
+                  style={({ pressed: isPressed }) => [
+                    styles.rangeOption,
+                    index === 0 && styles.rangeOptionFirst,
+                    isPressed && pressed,
+                  ]}
+                >
+                  <AppText color={colors.textSecondary} variant="pill">
+                    {range.label}
+                  </AppText>
+                </Pressable>
+              ))}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
-      <View style={[styles.header, compact && styles.headerCompact]}>
+      <View
+        style={[
+          styles.header,
+          compact && styles.headerCompact,
+          phone && styles.headerPhone,
+        ]}
+      >
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
           <AppText
             align="center"
@@ -474,88 +586,19 @@ export default function ProgressScreen() {
         </View>
       </View>
 
-      <Card padded={false} style={styles.goalPicker} variant="glass">
-        <ListItem
-          accessibilityLabel="Choose goal"
-          last
-          leading={<SparkleGlyphIcon size={18} />}
-          onPress={() => setGoalPickerOpen((open) => !open)}
-          style={styles.goalPickerRow}
-          title={selectedGoal.label}
-          trailing={<ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />}
-        />
-        {goalPickerOpen
-          ? progressContent.goals
-              .filter((goal) => goal.key !== selectedGoal.key)
-              .map((goal) => (
-                <ListItem
-                  key={goal.key}
-                  last
-                  onPress={() => {
-                    setGoalKey(goal.key);
-                    setGoalPickerOpen(false);
-                  }}
-                  style={styles.goalOption}
-                  title={goal.label}
-                  titleColor={colors.textSecondary}
-                />
-              ))
-          : null}
-      </Card>
-
-      <View style={[styles.overviewRow, phone && styles.overviewRowPhone]}>
-        {/* Each chart card below carries its own title; dropping this gives
-            the range picker a full-width row of its own. */}
-        {phone ? null : (
-          <AppText color={colors.accentViolet} variant="bodySerif">
-            Progress overview
-          </AppText>
-        )}
-        <View>
-          <Pressable
-            accessibilityLabel="Choose range"
-            accessibilityRole="button"
-            onPress={() => setRangePickerOpen((open) => !open)}
-            style={({ pressed: isPressed }) => [
-              styles.rangeTrigger,
-              compact && { width: Math.min(228, width * 0.45) },
-          phone && { width: Math.min(180, width * 0.5) },
-              isPressed && pressed,
-            ]}
-          >
-            <AppText style={styles.rangeLabel} variant="pill">
-              {lineRange.label}
-            </AppText>
-            <View style={rangePickerOpen ? styles.chevronOpen : null}>
-              <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
-            </View>
-          </Pressable>
-          {rangePickerOpen ? (
-            <View style={styles.rangeMenu}>
-              {lineTab.ranges
-                .filter((range) => range.key !== lineRange.key)
-                .map((range, index) => (
-                  <Pressable
-                    key={range.key}
-                    onPress={() => {
-                      setRangeKey(range.key);
-                      setRangePickerOpen(false);
-                    }}
-                    style={({ pressed: isPressed }) => [
-                      styles.rangeOption,
-                      index === 0 && styles.rangeOptionFirst,
-                      isPressed && pressed,
-                    ]}
-                  >
-                    <AppText color={colors.textSecondary} variant="pill">
-                      {range.label}
-                    </AppText>
-                  </Pressable>
-                ))}
-            </View>
-          ) : null}
+      {/* Two full-width selector cards eat a third of a phone screen before
+          any data shows — side by side they cost one row. */}
+      {phone ? (
+        <View style={styles.selectorRowPhone}>
+          {goalPicker}
+          {rangePicker}
         </View>
-      </View>
+      ) : (
+        <>
+          {goalPicker}
+          {rangePicker}
+        </>
+      )}
 
       {!progressContent.hasChartData ? (
         <Card style={styles.sectionCard} variant="glass">
@@ -657,40 +700,60 @@ export default function ProgressScreen() {
                   points={barsRange.points}
                 />
                 {barsRange.summary ? (
-                  <>
-                    {/* A vertical rule between stacked blocks means nothing. */}
-                    {phone ? null : <View style={styles.panelDivider} />}
-                    <View
-                      style={[
-                        styles.summaryPanel,
-                        compact && styles.summaryPanelCompact,
-                        phone && styles.summaryPanelPhone,
-                      ]}
-                    >
-                      <AppText align="center" variant="eyebrow">
-                        {barsRange.summary.eyebrow}
-                      </AppText>
-                      <AppText
-                        color={colors.accentPink}
-                        style={[
-                          styles.summaryValue,
-                          compact && styles.summaryValueCompact,
-                          phone && styles.summaryValuePhone,
-                        ]}
-                        variant="stat"
-                      >
-                        {barsRange.summary.percent}%
-                      </AppText>
-                      <AppText
-                        align="center"
-                        color={colors.textPrimary}
-                        style={styles.summaryCaption}
-                        variant="body"
-                      >
+                  phone ? (
+                    // Stacked under the bars, the average reads as a footer
+                    // row — the same shape as the goal card's overall bar —
+                    // instead of a centered column of three lines.
+                    <View style={styles.summaryFooterPhone}>
+                      <View style={styles.summaryFooterRowPhone}>
+                        <AppText numberOfLines={1} style={styles.summaryEyebrowPhone} variant="eyebrow">
+                          {barsRange.summary.eyebrow}
+                        </AppText>
+                        <AppText
+                          color={colors.accentPink}
+                          style={styles.summaryPercentPhone}
+                          variant="title"
+                        >
+                          {barsRange.summary.percent}%
+                        </AppText>
+                      </View>
+                      <AppText color={colors.textSecondary} variant="bodySmall">
                         {barsRange.summary.caption}
                       </AppText>
                     </View>
-                  </>
+                  ) : (
+                    <>
+                      <View style={styles.panelDivider} />
+                      <View
+                        style={[
+                          styles.summaryPanel,
+                          compact && styles.summaryPanelCompact,
+                        ]}
+                      >
+                        <AppText align="center" variant="eyebrow">
+                          {barsRange.summary.eyebrow}
+                        </AppText>
+                        <AppText
+                          color={colors.accentPink}
+                          style={[
+                            styles.summaryValue,
+                            compact && styles.summaryValueCompact,
+                          ]}
+                          variant="stat"
+                        >
+                          {barsRange.summary.percent}%
+                        </AppText>
+                        <AppText
+                          align="center"
+                          color={colors.textPrimary}
+                          style={styles.summaryCaption}
+                          variant="body"
+                        >
+                          {barsRange.summary.caption}
+                        </AppText>
+                      </View>
+                    </>
+                  )
                 ) : null}
               </View>
             </Card>
@@ -716,7 +779,14 @@ const styles = StyleSheet.create({
   barsCanvas: {
     height: BAR_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
   },
+  /**
+   * Stacked in a column (chartRowPhone), the inherited `flex: 1` would resolve
+   * flexBasis to 0 and collapse the plot — same guard as lineCanvas.
+   */
   barsCanvasPhone: {
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 0,
     height: BAR_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + CHART_X_LABEL_HEIGHT,
   },
   barPercentLabel: {
@@ -832,9 +902,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: "hidden",
   },
+  /** Half of a shared row, so the card sizes to what is left of the pill. */
+  goalPickerPhone: {
+    flex: 1,
+    minWidth: 0,
+  },
   goalPickerRow: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  /** ~200 pt of row: the sparkle, chevron and gaps take all they can spare. */
+  goalPickerRowPhone: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   header: {
     alignItems: "center",
@@ -844,6 +925,10 @@ const styles = StyleSheet.create({
   },
   headerCompact: {
     minHeight: 72,
+  },
+  /** The title is the only thing in this row — it needs no 72 pt band. */
+  headerPhone: {
+    minHeight: 52,
   },
   highlightMain: {
     alignItems: "center",
@@ -931,6 +1016,12 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     lineHeight: lineHeights.lg,
   },
+  /** "This week" has to fit beside a chevron in ~150 pt. */
+  rangeLabelPhone: {
+    flexShrink: 1,
+    fontSize: fontSizes.md,
+    lineHeight: lineHeights.md,
+  },
   rangeMenu: {
     ...shadows.softDark,
     backgroundColor: colors.surface,
@@ -969,13 +1060,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
   },
+  rangeTriggerPhone: {
+    gap: spacing.xs,
+    minHeight: controlsPhone.button.section.minHeight,
+    minWidth: 0,
+    paddingHorizontal: spacing.md,
+  },
   sectionCard: {
     backgroundColor: SECTION_SURFACE,
     borderColor: SECTION_BORDER,
     borderRadius: radius.md,
   },
+  /**
+   * Goal card and range pill share one row. Top-aligned so the goal card can
+   * grow downward with its open option list without stretching the pill.
+   */
+  selectorRowPhone: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    zIndex: 20,
+  },
   summaryCaption: {
     marginTop: spacing.sm,
+  },
+  /** Gold label of the phone average row — yields to the percent beside it. */
+  summaryEyebrowPhone: {
+    flexShrink: 1,
+  },
+  /** Hairline above the average, in place of the tablet's vertical rule. */
+  summaryFooterPhone: {
+    borderTopColor: colors.divider,
+    borderTopWidth: 1,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+  },
+  summaryFooterRowPhone: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  /** Matches the goal card's overall percent, so the two cards rhyme. */
+  summaryPercentPhone: {
+    fontSize: fontSizes.xxxl,
+    lineHeight: lineHeights.xxxl,
   },
   summaryPanel: {
     alignItems: "center",
@@ -987,19 +1117,8 @@ const styles = StyleSheet.create({
   summaryPanelCompact: {
     minWidth: 96,
   },
-  /** Stacked under the bars, the panel spans the card instead of a column. */
-  summaryPanelPhone: {
-    maxWidth: undefined,
-    minWidth: 0,
-    paddingTop: spacing.md,
-    width: "100%",
-  },
   summaryValue: {
     marginTop: spacing.xs,
-  },
-  summaryValuePhone: {
-    fontSize: fontSizes.cardTitle,
-    lineHeight: lineHeights.cardTitle,
   },
   summaryValueCompact: {
     fontSize: fontSizes.screenTitle,
