@@ -8,9 +8,9 @@ import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
-import type { ActionIcon } from "@/dto/timeBlocks";
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
+import { habitIconForId } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
@@ -105,15 +105,6 @@ function greetingForNow(now: Date): string {
 }
 
 /** Dream-magic icon variety for habit rows, stable per habit id. */
-const HABIT_ICONS: readonly ActionIcon[] = [
-  "moon",
-  "crystal",
-  "feather",
-  "star",
-  "wand",
-  "key",
-];
-
 const GOAL_VISUALS: readonly {
   themeColor: ThemeColor;
   imageKey: GoalImageKey;
@@ -194,7 +185,7 @@ export default function HomeScreen() {
     const toHabitAction = (view: (typeof habitViews)[number]) => ({
       done: view.weekProgress[habitDayIndex] === "done",
       habitId: view.habit.id,
-      icon: HABIT_ICONS[view.habit.id % HABIT_ICONS.length],
+      icon: habitIconForId(view.habit.id),
       // The dream this habit supports — habit rows show it where quest rows
       // show their dream › milestone breadcrumb.
       subtitle:
@@ -307,6 +298,10 @@ export default function HomeScreen() {
     };
   }, [blocks, habitViews, dreams, completedQuests, totalQuests]);
 
+  // "Later today" is the fallback for an empty focus, not a second list beside
+  // it: while the current focus has something open, the rest of the day waits.
+  const showLater = !hasFocus && laterBlocks.length > 0;
+
   return (
     <ScreenScaffold tabClearance topInset>
       <HomeHeader
@@ -368,7 +363,7 @@ export default function HomeScreen() {
         title={
           hasFocus || showCelebration
             ? "CURRENT FOCUS"
-            : laterBlocks.length > 0
+            : showLater
               ? "LATER TODAY"
               : "PLAN YOUR WEEK"
         }
@@ -508,9 +503,11 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {laterBlocks.length > 0 ? (
+      {showLater ? (
         <>
-          {hasFocus || showCelebration ? (
+          {/* The celebration card takes the "Current focus" heading, so the
+              list below it needs its own. */}
+          {showCelebration ? (
             <>
               {phone ? null : (
                 <View style={styles.laterDivider}>
@@ -631,7 +628,7 @@ export default function HomeScreen() {
         </>
       ) : null}
 
-      {!hasFocus && !showCelebration && laterBlocks.length === 0 ? (
+      {!hasFocus && !showCelebration && !showLater ? (
         <NextMoveCard
           buttonLabel="Plan my week"
           message={"A few focused steps can move\nyour dreams forward."}

@@ -1,0 +1,11 @@
+# expo-sqlite's web worker needs SharedArrayBuffer, which browsers only hand
+# out under cross-origin isolation. Safari supports "require-corp" only, so
+# these two headers are what makes the database start on an iPhone.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+
+# The service worker must never be served stale, or a deploy cannot roll out.
+/sw.js
+  Cache-Control: no-cache
