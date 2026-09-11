@@ -23,6 +23,7 @@ import {
   updateQuest,
   type QuestWithBreadcrumb,
 } from "@/db";
+import { habitIconForId, useDayHabits } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
@@ -79,18 +80,46 @@ export default function MyDayScreen() {
   const [editQuest, setEditQuest] = useState<DayQuestRef | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DayQuestRef | null>(null);
 
-  const { blocks, completedQuests, refresh, totalQuests, toggleQuest } =
-    useDayQuestBlocks(toDateKey(selectedDate));
+  const dateKey = toDateKey(selectedDate);
+  const { blocks, refresh, toggleQuest } = useDayQuestBlocks(dateKey);
+  const { habits: dayHabits, setDone: setHabitDone } = useDayHabits(dateKey);
 
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
   // Quests on past days are rolled over on the next load, so adding to a day
   // that has passed would silently vanish — don't offer it.
-  const isPastDay = toDateKey(selectedDate) < todayKey();
+  const isPastDay = dateKey < todayKey();
 
   const resolvedActiveKey = activeKey ?? currentBlockKey(blocks, new Date());
   const activeBlock =
     blocks.find((block) => block.key === resolvedActiveKey) ?? blocks[0];
+
+  // The open block's habits: its own, plus the "Anytime" ones (no block, or
+  // the flexible block) that fit any moment — the same rule Home focuses by.
+  const flexibleKey = blocks.find((block) => block.time === "Flexible")?.key;
+  const blockHabits = activeBlock
+    ? dayHabits.filter(
+        (view) =>
+          view.blockKey === activeBlock.key ||
+          view.blockKey === null ||
+          view.blockKey === flexibleKey,
+      )
+    : [];
+  // Habit rows follow the block's quests, so a row index past the quests is a
+  // habit — that keeps TimeBlockCard's index-based callbacks working.
+  const questCount = activeBlock?.actions.length ?? 0;
+  const blockActions = activeBlock
+    ? [
+        ...activeBlock.actions,
+        ...blockHabits.map((view) => ({
+          done: view.done,
+          icon: habitIconForId(view.habit.id),
+          subtitle: "Daily habit",
+          title: view.habit.title,
+        })),
+      ]
+    : [];
+  const completedActions = blockActions.filter((action) => action.done).length;
 
   const openQuestPicker = async () => {
     try {
@@ -108,7 +137,7 @@ export default function MyDayScreen() {
     if (!activeBlock) return;
     try {
       await updateQuest(quest.id, {
-        scheduledDate: toDateKey(selectedDate),
+        scheduledDate: dateKey,
         scheduledTime:
           activeBlock.time === "Flexible" ? null : activeBlock.time,
         isPlanned: true,
@@ -244,7 +273,7 @@ export default function MyDayScreen() {
 
         {activeBlock ? (
           <TimeBlockCard
-            block={activeBlock}
+            block={{ ...activeBlock, actions: blockActions }}
             emptySlot={
               <View
                 style={[
@@ -305,6 +334,7 @@ export default function MyDayScreen() {
               </View>
             }
             onPressAction={(index) => {
+              // Habit rows have no quest menu (reschedule, unschedule, delete).
               const action = activeBlock.actions[index];
               if (action) {
                 setMenuQuest({
@@ -316,7 +346,12 @@ export default function MyDayScreen() {
             }}
             onToggleAction={(index) => {
               const action = activeBlock.actions[index];
-              if (action) toggleQuest(action.questId, !action.done);
+              if (action) {
+                toggleQuest(action.questId, !action.done);
+                return;
+              }
+              const habit = blockHabits[index - questCount];
+              if (habit) setHabitDone(habit.habit.id, !habit.done);
             }}
             separated
             showIntro={false}
@@ -340,8 +375,9 @@ export default function MyDayScreen() {
         ]}
       >
         <TodayProgressCard
-          completedActions={completedQuests}
-          totalActions={totalQuests}
+          completedActions={completedActions}
+          label={activeBlock ? `${activeBlock.label} progress` : "Today's progress"}
+          totalActions={blockActions.length}
         />
       </View>
 
@@ -387,7 +423,7 @@ export default function MyDayScreen() {
           menuQuest
             ? {
                 isDone: menuQuest.done,
-                overdue: toDateKey(selectedDate) < todayKey(),
+                overdue: dateKey < todayKey(),
                 title: menuQuest.title,
               }
             : null
@@ -398,7 +434,7 @@ export default function MyDayScreen() {
       {scheduleQuest ? (
         <AcceptQuestModal
           ctaLabel="RESCHEDULE QUEST"
-          initialDate={suggestRescheduleDate(toDateKey(selectedDate))}
+          initialDate={suggestRescheduleDate(dateKey)}
           key={scheduleQuest.questId}
           onAccept={handleScheduleQuest}
           onClose={() => setScheduleQuest(null)}

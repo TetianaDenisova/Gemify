@@ -42,6 +42,13 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // The database lives in browser storage, which the browser may evict under
+    // pressure. Installed web apps are normally granted this without a prompt.
+    if (Platform.OS !== "web") return;
+    navigator.storage?.persist?.().catch(() => {});
+  }, []);
+
+  useEffect(() => {
     // On web, navigation hides the previous scene with aria-hidden while the
     // tapped button keeps focus, which the browser flags. Drop focus on route
     // change so hidden scenes never contain the focused element.

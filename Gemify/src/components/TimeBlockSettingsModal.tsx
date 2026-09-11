@@ -178,12 +178,18 @@ export function TimeBlockSettingsModal({
   };
 
   const handleRemove = async (block: TimeBlockRecord) => {
+    setError(null);
     try {
       await deleteTimeBlock(block.id);
       await reload();
       onChanged();
     } catch (cause) {
       console.error("Failed to remove the time block", cause);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not remove this time block.",
+      );
     }
   };
 
@@ -300,6 +306,16 @@ export function TimeBlockSettingsModal({
           <AppText align="center" style={styles.hint} variant="bodySmall">
             Tap a block to edit its name, time, or icon.
           </AppText>
+          {error ? (
+            <AppText
+              align="center"
+              color={colors.danger}
+              style={styles.errorText}
+              variant="caption"
+            >
+              {error}
+            </AppText>
+          ) : null}
           <View style={styles.blockList}>
             {blocks.map((block, index) => (
               <View key={block.id}>

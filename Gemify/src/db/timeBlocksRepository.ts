@@ -1,6 +1,19 @@
 import { getDatabase } from "./database";
+import { TIME_BLOCK_SEEDS } from "./seeds";
 import type { TimeBlockIcon, TimeBlockRecord } from "./types";
 import type { SQLiteDatabase } from "expo-sqlite";
+
+type TimeBlockRow = {
+  id: number;
+  key: string;
+  label: string;
+  icon_key: string;
+  start_time: string | null;
+  identity: string | null;
+  routine_title: string;
+  routine_subtitle: string | null;
+  position: number;
+};
 
 const TIME_BLOCK_ICONS: readonly TimeBlockIcon[] = [
   "clock",
@@ -17,20 +30,39 @@ function toBlockIcon(value: string): TimeBlockIcon {
     : "clock";
 }
 
+/** Restores the default blocks; every day view is built out of them. */
+async function seedDefaultBlocks(db: SQLiteDatabase): Promise<void> {
+  for (const [position, block] of TIME_BLOCK_SEEDS.entries()) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO time_blocks
+         (key, label, icon_key, start_time, routine_title, position)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        block.key,
+        block.label,
+        block.iconKey,
+        block.startTime,
+        block.label,
+        position,
+      ],
+    );
+  }
+}
+
 /** All routine blocks in display order. */
 export async function getTimeBlocks(): Promise<TimeBlockRecord[]> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{
-    id: number;
-    key: string;
-    label: string;
-    icon_key: string;
-    start_time: string | null;
-    identity: string | null;
-    routine_title: string;
-    routine_subtitle: string | null;
-    position: number;
-  }>("SELECT * FROM time_blocks ORDER BY position");
+  const select = () =>
+    db.getAllAsync<TimeBlockRow>("SELECT * FROM time_blocks ORDER BY position");
+
+  let rows = await select();
+  // With no blocks there is nowhere to hang a quest or a habit: My Day would
+  // render an empty day and a 0 / 0 score no matter what is scheduled. Put the
+  // defaults back rather than leaving the screen stuck.
+  if (rows.length === 0) {
+    await seedDefaultBlocks(db);
+    rows = await select();
+  }
 
   return rows.map((row) => ({
     id: row.id,
@@ -141,9 +173,19 @@ export async function updateTimeBlock(
   await normalizeBlockPositions(db);
 }
 
-/** Removes a block; its routine actions and their completions cascade away. */
+/**
+ * Removes a block; its routine actions and their completions cascade away.
+ * The last block cannot go — the day has to keep somewhere to put a quest.
+ */
 export async function deleteTimeBlock(id: number): Promise<void> {
   const db = await getDatabase();
+  const others = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM time_blocks WHERE id <> ?",
+    [id],
+  );
+  if ((others?.count ?? 0) === 0) {
+    throw new Error("Keep at least one time block — your day is built from them.");
+  }
   await db.runAsync("DELETE FROM time_blocks WHERE id = ?", [id]);
   await normalizeBlockPositions(db);
 }

@@ -10,16 +10,19 @@ const PORTAL_ART_SOURCE = require("../../../assets/sprint-door-icon.png");
 
 interface TodayProgressCardProps {
   completedActions: number;
+  /** Heading over the bar — the open block's name on My Day. */
+  label?: string;
   totalActions: number;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * The day's scoreboard: portal art · "Today's progress" over a long gold
- * bar · the big "done / total" count with an ACTIONS label.
+ * The scoreboard for what is counted: portal art · the heading over a long
+ * gold bar · the big "done / total" count with an ACTIONS label.
  */
 export function TodayProgressCard({
   completedActions,
+  label = "Today's progress",
   totalActions,
   style,
 }: TodayProgressCardProps) {
@@ -35,8 +38,8 @@ export function TodayProgressCard({
         style={[styles.portalArt, phone && styles.portalArtPhone]}
       />
       <View style={styles.body}>
-        <AppText color={colors.textPrimary} variant="pill">
-          Today&apos;s progress
+        <AppText color={colors.textPrimary} numberOfLines={1} variant="pill">
+          {label}
         </AppText>
         <ProgressBar
           glow
