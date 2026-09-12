@@ -31,7 +31,11 @@ export default function Root({ children }: PropsWithChildren) {
         {/* iOS reads its own tags rather than the manifest's display mode. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Gemify" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Not "black-translucent": that lifts the web view under the status bar
+            without growing the window, so the viewport ends a status bar's
+            height short of the screen and the app background shows below the
+            tab bar. "black" keeps the dark status bar and a correct height. */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 
         {/* Disables body scrolling on web, which makes ScrollViews work. */}
@@ -39,6 +43,7 @@ export default function Root({ children }: PropsWithChildren) {
 
         <style dangerouslySetInnerHTML={{ __html: backgroundStyle }} />
         <script dangerouslySetInnerHTML={{ __html: registerServiceWorker }} />
+        <script dangerouslySetInnerHTML={{ __html: viewportProbe }} />
       </head>
       <body>{children}</body>
     </html>
@@ -50,6 +55,15 @@ const backgroundStyle = `
 body {
   background-color: ${colors.background};
 }
+
+/* In an installed iOS web app "100%" resolves short of the physical screen,
+   which leaves the absolutely positioned tab bar floating above the bottom
+   edge. dvh is the full visual viewport, so the bar lands on the edge. */
+html,
+body,
+#root {
+  height: 100dvh;
+}
 `;
 
 const registerServiceWorker = `
@@ -58,4 +72,32 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(function () {});
   });
 }
+`;
+
+
+/** TEMPORARY: confirms the status-bar-style change squared the viewport up. */
+const viewportProbe = `
+window.addEventListener('load', function () {
+  var probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);';
+  document.body.appendChild(probe);
+  var inset = probe.getBoundingClientRect().height;
+  probe.remove();
+
+  var box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;margin:0;padding:8px;'
+    + 'background:#fff;color:#000;font:11px/1.35 monospace;';
+  var bar = document.querySelector('[role="tablist"]');
+  var rect = bar ? bar.getBoundingClientRect() : null;
+  box.textContent = [
+    'innerHeight   : ' + window.innerHeight,
+    'screen.height : ' + screen.height,
+    'shortfall     : ' + (screen.height - window.innerHeight),
+    'inset-bottom  : ' + inset,
+    'tabbar bottom : ' + (rect ? Math.round(rect.bottom) : 'n/a'),
+    'tabbar height : ' + (rect ? Math.round(rect.height) : 'n/a'),
+  ].join(String.fromCharCode(10));
+  box.addEventListener('click', function () { box.remove(); });
+  document.body.appendChild(box);
+});
 `;

@@ -2,9 +2,9 @@ import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import { StyleSheet } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
+import { useBottomInset } from "@/hooks/useBottomInset";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { layout, tabBarHeightFor, typography } from "@/theme/theme";
@@ -92,7 +92,7 @@ function TabIcon({ focused, phone, tab }: TabIconProps) {
 }
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   // Six tabs share 402 pt on a phone (~67 pt each), so the labels go and the
   // bar drops to 56 pt. Tablets keep the 72 pt bar with its labels.
   const { phone } = useLayoutSize();
@@ -110,8 +110,8 @@ export default function TabLayout() {
         tabBarStyle: [
           styles.tabBar,
           {
-            height: tabBarHeightFor(phone) + insets.bottom,
-            paddingBottom: insets.bottom,
+            height: tabBarHeightFor(phone) + bottomInset,
+            paddingBottom: bottomInset,
           },
         ],
         tabBarItemStyle: [

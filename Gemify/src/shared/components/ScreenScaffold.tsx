@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useBottomInset } from "@/hooks/useBottomInset";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
@@ -97,14 +98,15 @@ export function ScreenScaffold({
   topInset = false,
 }: ScreenScaffoldProps) {
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const { compact, phone } = useLayoutSize();
   // The clearance tracks the active bar: 88 pt over the tablet's 72 pt bar
   // (exactly layout.tabBarClearance), 72 pt over the phone's 56 pt one.
   const tabBarHeight = tabBarHeightFor(phone);
 
   const paddingBottom = tabClearance
-    ? insets.bottom + tabBarClearanceFor(tabBarHeight)
-    : Math.max(insets.bottom, spacing.lg);
+    ? bottomInset + tabBarClearanceFor(tabBarHeight)
+    : Math.max(bottomInset, spacing.lg);
   const paddingTop = topInset
     ? insets.top + (phone ? spacing.sm : spacing.lg)
     : undefined;

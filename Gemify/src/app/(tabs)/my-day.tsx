@@ -2,7 +2,6 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePickerModal";
 import { TodayProgressCard } from "@/components/home";
@@ -23,6 +22,7 @@ import {
   updateQuest,
   type QuestWithBreadcrumb,
 } from "@/db";
+import { useBottomInset } from "@/hooks/useBottomInset";
 import { habitIconForId, useDayHabits } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import {
@@ -59,7 +59,7 @@ const FOOTER_CLEARANCE_PHONE = 96;
 type DayQuestRef = { done: boolean; questId: number; title: string };
 
 export default function MyDayScreen() {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const { compact, height, phone } = useLayoutSize();
   const tabBarHeight = tabBarHeightFor(phone);
   // The copy and Add quest button overlay the artwork, so it can take most of
@@ -236,7 +236,7 @@ export default function MyDayScreen() {
       <ScreenScaffold
         contentStyle={{
           paddingBottom:
-            insets.bottom +
+            bottomInset +
             tabBarClearanceFor(tabBarHeight) +
             (phone
               ? FOOTER_CLEARANCE_PHONE
@@ -371,7 +371,7 @@ export default function MyDayScreen() {
         style={[
           styles.progressFooter,
           // Flush against the flat tab bar, spanning the full screen width.
-          { bottom: insets.bottom + tabBarHeight },
+          { bottom: bottomInset + tabBarHeight },
         ]}
       >
         <TodayProgressCard

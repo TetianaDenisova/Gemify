@@ -1,10 +1,11 @@
 // Offline shell for the installed web app. Bump CACHE to retire old assets.
-const CACHE = "gemify-v1";
+const CACHE = "gemify-v2";
 const PRECACHE = [
   "/",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/icon-maskable-512.png",
   "/icons/apple-touch-icon.png",
 ];
 
