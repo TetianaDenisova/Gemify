@@ -70,6 +70,7 @@ export {
 // Daily routine time blocks
 export {
   createTimeBlock,
+  DEFAULT_TIME_BLOCKS,
   deleteTimeBlock,
   getCurrentBlockKey,
   getTimeBlocks,

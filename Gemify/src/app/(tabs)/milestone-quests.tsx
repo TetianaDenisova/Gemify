@@ -25,6 +25,7 @@ import {
 } from "@/components/QuestActions";
 import {
   createQuest,
+  DEFAULT_TIME_BLOCKS,
   deleteQuest,
   getDreams,
   getMilestoneById,
@@ -431,7 +432,11 @@ export default function MilestoneQuestsScreen() {
   );
   const [milestone, setMilestone] = useState<Milestone | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([]);
+  // Seeded defaults until the stored blocks arrive, so the scheduler never
+  // renders an empty time-of-day list.
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([
+    ...DEFAULT_TIME_BLOCKS,
+  ]);
   /** The dream's full path — targets for "Move to another milestone". */
   const [dreamMilestones, setDreamMilestones] = useState<Milestone[]>([]);
   const [moveQuest, setMoveQuest] = useState<Quest | null>(null);

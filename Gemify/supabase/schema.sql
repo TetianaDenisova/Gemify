@@ -5,11 +5,18 @@
 -- table) to the local SQLite schema needs no change here. All it enforces is
 -- ownership (row level security) and last-write-wins ordering.
 --
--- Two more things have to be set in the dashboard:
+-- Three more things have to be set in the dashboard:
 --   * Authentication -> Providers -> Email: enabled, "Confirm email" on.
---   * Authentication -> Emails -> Magic Link: the template must contain
---     {{ .Token }}. The app asks for a typed six-digit code, and Supabase
---     only puts the code in the email when the template renders it.
+--   * Authentication -> Emails: BOTH the "Confirm signup" and "Magic Link"
+--     templates must contain {{ .Token }}. The app asks for a typed six-digit
+--     code, and Supabase only puts the code in the email when the template
+--     renders it. Both are needed because signInWithOtp with shouldCreateUser
+--     sends "Confirm signup" to an address it has not seen before and
+--     "Magic Link" to one it has -- so the signup template is the one every
+--     first-time account actually receives.
+--   * Authentication -> Emails -> SMTP: custom SMTP is not optional. The
+--     built-in mailer only delivers to project team members, so without it
+--     no real user can ever receive a code.
 
 -- ---------------------------------------------------------------------------
 -- Row store

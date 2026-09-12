@@ -8,6 +8,7 @@ import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   createHabit,
   createQuest,
+  DEFAULT_TIME_BLOCKS,
   deleteHabit,
   getDreams,
   getHabitById,
@@ -255,7 +256,11 @@ export default function CreateHabitScreen() {
   );
   /** Time-block key ("morning-focus", "anytime", …), null = Anytime. */
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([]);
+  // Seeded defaults until the stored blocks arrive, so the time-of-day
+  // picker always has options.
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([
+    ...DEFAULT_TIME_BLOCKS,
+  ]);
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [selectedDreamId, setSelectedDreamId] = useState<number | null>(() => {
     const parsed = Number(dreamIdParam);

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View, type TextInput } from "react-native";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
-import { getTimeBlocks, type TimeBlockRecord } from "@/db";
+import { DEFAULT_TIME_BLOCKS, getTimeBlocks, type TimeBlockRecord } from "@/db";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import type { BlockIcon } from "@/dto/timeBlocks";
 import {
@@ -364,7 +364,11 @@ export function AcceptQuestModal({
 }) {
   const { phone } = useLayoutSize();
   const [today] = useState(() => new Date());
-  const [blocks, setBlocks] = useState<TimeBlockRecord[]>([]);
+  // Seeded defaults until the stored blocks arrive, so the slot list is
+  // never empty on a first open.
+  const [blocks, setBlocks] = useState<TimeBlockRecord[]>([
+    ...DEFAULT_TIME_BLOCKS,
+  ]);
   // Day chips cover today + 6; a farther initial date lands on the ⋯ chip.
   const initialOffset: number | "custom" = (() => {
     if (!initialDate) return 0;

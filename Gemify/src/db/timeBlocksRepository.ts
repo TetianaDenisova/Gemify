@@ -30,6 +30,25 @@ function toBlockIcon(value: string): TimeBlockIcon {
     : "clock";
 }
 
+/**
+ * The seeded blocks as plain records, for the moments the database cannot
+ * supply them: a brand-new install whose migrations have not landed yet, or
+ * an open that failed outright. Ids are negative so nothing mistakes them for
+ * stored rows — they exist only so the day views have their frames to draw.
+ */
+export const DEFAULT_TIME_BLOCKS: readonly TimeBlockRecord[] =
+  TIME_BLOCK_SEEDS.map((block, position) => ({
+    id: -(position + 1),
+    key: block.key,
+    label: block.label,
+    iconKey: toBlockIcon(block.iconKey),
+    startTime: block.startTime,
+    identity: null,
+    routineTitle: block.label,
+    routineSubtitle: null,
+    position,
+  }));
+
 /** Restores the default blocks; every day view is built out of them. */
 async function seedDefaultBlocks(db: SQLiteDatabase): Promise<void> {
   for (const [position, block] of TIME_BLOCK_SEEDS.entries()) {
@@ -49,20 +68,33 @@ async function seedDefaultBlocks(db: SQLiteDatabase): Promise<void> {
   }
 }
 
-/** All routine blocks in display order. */
+/**
+ * All routine blocks in display order, never empty: an empty table is
+ * re-seeded, and a database that cannot be opened at all still yields the
+ * built-in defaults so the day views keep their Anytime / After wake-up /
+ * Before work / Day / Evening frames.
+ */
 export async function getTimeBlocks(): Promise<TimeBlockRecord[]> {
-  const db = await getDatabase();
-  const select = () =>
-    db.getAllAsync<TimeBlockRow>("SELECT * FROM time_blocks ORDER BY position");
+  let rows: TimeBlockRow[];
+  try {
+    const db = await getDatabase();
+    const select = () =>
+      db.getAllAsync<TimeBlockRow>("SELECT * FROM time_blocks ORDER BY position");
 
-  let rows = await select();
-  // With no blocks there is nowhere to hang a quest or a habit: My Day would
-  // render an empty day and a 0 / 0 score no matter what is scheduled. Put the
-  // defaults back rather than leaving the screen stuck.
-  if (rows.length === 0) {
-    await seedDefaultBlocks(db);
     rows = await select();
+    // With no blocks there is nowhere to hang a quest or a habit: My Day would
+    // render an empty day and a 0 / 0 score no matter what is scheduled. Put the
+    // defaults back rather than leaving the screen stuck.
+    if (rows.length === 0) {
+      await seedDefaultBlocks(db);
+      rows = await select();
+    }
+  } catch (cause) {
+    console.error("Failed to read the time blocks; using the defaults", cause);
+    return [...DEFAULT_TIME_BLOCKS];
   }
+
+  if (rows.length === 0) return [...DEFAULT_TIME_BLOCKS];
 
   return rows.map((row) => ({
     id: row.id,
@@ -195,23 +227,18 @@ export async function deleteTimeBlock(id: number): Promise<void> {
  * first flexible block.
  */
 export async function getCurrentBlockKey(now: Date): Promise<string> {
-  const db = await getDatabase();
+  const blocks = await getTimeBlocks();
   const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
     now.getMinutes(),
   ).padStart(2, "0")}`;
 
-  const timed = await db.getFirstAsync<{ key: string }>(
-    `SELECT key FROM time_blocks
-     WHERE start_time IS NOT NULL AND start_time <= ?
-     ORDER BY start_time DESC LIMIT 1`,
-    [clock],
-  );
-  if (timed) {
-    return timed.key;
+  let timed: TimeBlockRecord | null = null;
+  for (const block of blocks) {
+    if (block.startTime === null || block.startTime > clock) continue;
+    if (timed === null || block.startTime > timed.startTime!) timed = block;
   }
+  if (timed) return timed.key;
 
-  const flexible = await db.getFirstAsync<{ key: string }>(
-    "SELECT key FROM time_blocks WHERE start_time IS NULL ORDER BY position LIMIT 1",
-  );
-  return flexible?.key ?? "anytime";
+  const flexible = blocks.find((block) => block.startTime === null);
+  return flexible?.key ?? DEFAULT_TIME_BLOCKS[0].key;
 }

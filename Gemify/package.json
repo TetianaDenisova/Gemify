@@ -40,7 +40,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web",
+    "build:web": "expo export --platform web && node scripts/prepare-web-deploy.mjs",
     "deploy": "npm run build:web && npx wrangler pages deploy dist --project-name gemify",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"

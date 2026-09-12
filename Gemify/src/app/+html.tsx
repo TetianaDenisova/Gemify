@@ -43,7 +43,6 @@ export default function Root({ children }: PropsWithChildren) {
 
         <style dangerouslySetInnerHTML={{ __html: backgroundStyle }} />
         <script dangerouslySetInnerHTML={{ __html: registerServiceWorker }} />
-        <script dangerouslySetInnerHTML={{ __html: viewportProbe }} />
       </head>
       <body>{children}</body>
     </html>
@@ -72,32 +71,4 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(function () {});
   });
 }
-`;
-
-
-/** TEMPORARY: confirms the status-bar-style change squared the viewport up. */
-const viewportProbe = `
-window.addEventListener('load', function () {
-  var probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom,0px);';
-  document.body.appendChild(probe);
-  var inset = probe.getBoundingClientRect().height;
-  probe.remove();
-
-  var box = document.createElement('pre');
-  box.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;margin:0;padding:8px;'
-    + 'background:#fff;color:#000;font:11px/1.35 monospace;';
-  var bar = document.querySelector('[role="tablist"]');
-  var rect = bar ? bar.getBoundingClientRect() : null;
-  box.textContent = [
-    'innerHeight   : ' + window.innerHeight,
-    'screen.height : ' + screen.height,
-    'shortfall     : ' + (screen.height - window.innerHeight),
-    'inset-bottom  : ' + inset,
-    'tabbar bottom : ' + (rect ? Math.round(rect.bottom) : 'n/a'),
-    'tabbar height : ' + (rect ? Math.round(rect.height) : 'n/a'),
-  ].join(String.fromCharCode(10));
-  box.addEventListener('click', function () { box.remove(); });
-  document.body.appendChild(box);
-});
 `;
