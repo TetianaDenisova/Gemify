@@ -4,10 +4,15 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { JourneyMilestoneLabel } from "@/components/JourneyMilestoneLabel";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
+
+export type JourneyMilestoneLabelSide = "left" | "right";
 
 export type JourneyMilestoneProps = {
   imageHeight: number;
   imageWidth: number;
+  /** Which side of the ring the label sits on; defaults to alternating by id. */
+  labelSide?: JourneyMilestoneLabelSide;
   milestone: JourneyMilestoneData;
   onPress: (milestone: JourneyMilestoneData) => void;
   position?: JourneyMilestonePosition;
@@ -28,6 +33,14 @@ type JourneyMilestoneLayout = {
 };
 
 const BASE_PHONE_WIDTH = 390;
+/**
+ * Phone-tier ring size: about a sixth of the map width, so the path reads as
+ * a trail of stepping stones and the labels keep room for full titles. The
+ * minimum still clears a 44 pt tap target together with the hit slop.
+ */
+const PHONE_RING_WIDTH_RATIO = 0.18;
+const PHONE_RING_MIN_WIDTH = 58;
+const PHONE_RING_MAX_WIDTH = 78;
 const MAP_EDGE_PADDING = 6;
 const CIRCLE_ASPECT_RATIO = 1536 / 1024;
 const CIRCLE_SOURCE = require("../../assets/journey-top/circle.png");
@@ -43,15 +56,22 @@ function getJourneyMilestoneLayout(
   imageHeight: number,
   imageWidth: number,
   milestone: JourneyMilestoneData,
+  phone: boolean,
   position: JourneyMilestonePosition = milestone,
 ): JourneyMilestoneLayout {
   const responsiveScale = clamp(imageWidth / BASE_PHONE_WIDTH, 0.72, 1.22);
   const responsiveRingWidth = clamp(imageWidth * 0.32, 96, 136);
-  const ringWidth = clamp(
-    Math.max(milestone.size * responsiveScale, responsiveRingWidth),
-    96,
-    136,
-  );
+  const ringWidth = phone
+    ? clamp(
+        imageWidth * PHONE_RING_WIDTH_RATIO,
+        PHONE_RING_MIN_WIDTH,
+        PHONE_RING_MAX_WIDTH,
+      )
+    : clamp(
+        Math.max(milestone.size * responsiveScale, responsiveRingWidth),
+        96,
+        136,
+      );
   const ringHeight = ringWidth / CIRCLE_ASPECT_RATIO;
   const groupWidth = ringWidth;
   const groupHeight = ringHeight;
@@ -90,10 +110,12 @@ function getJourneyMilestoneLayout(
 export const JourneyMilestone = memo(function JourneyMilestone({
   imageHeight,
   imageWidth,
+  labelSide: labelSideProp,
   milestone,
   onPress,
   position,
 }: JourneyMilestoneProps) {
+  const { phone } = useLayoutSize();
   const {
     groupHeight,
     groupWidth,
@@ -102,11 +124,19 @@ export const JourneyMilestone = memo(function JourneyMilestone({
     ringWidth,
     top,
   } = useMemo(
-    () => getJourneyMilestoneLayout(imageHeight, imageWidth, milestone, position),
-    [imageHeight, imageWidth, milestone, position],
+    () =>
+      getJourneyMilestoneLayout(
+        imageHeight,
+        imageWidth,
+        milestone,
+        phone,
+        position,
+      ),
+    [imageHeight, imageWidth, milestone, phone, position],
   );
 
-  const labelSide = milestone.id % 2 === 0 ? "left" : "right";
+  const labelSide =
+    labelSideProp ?? (milestone.id % 2 === 0 ? "left" : "right");
   const labelPosition =
     labelSide === "left"
       ? { right: groupWidth - LABEL_RING_OVERLAP }
@@ -117,7 +147,11 @@ export const JourneyMilestone = memo(function JourneyMilestone({
     labelSide === "left"
       ? left + LABEL_RING_OVERLAP - MAP_EDGE_PADDING
       : imageWidth - (left + groupWidth) + LABEL_RING_OVERLAP - MAP_EDGE_PADDING;
-  const labelWidth = Math.max(LABEL_WIDTH, availableLabelWidth);
+  // A phone label wraps instead, so it takes exactly the room up to the map
+  // edge and never runs past it.
+  const labelWidth = phone
+    ? availableLabelWidth
+    : Math.max(LABEL_WIDTH, availableLabelWidth);
 
   return (
     <View
@@ -136,9 +170,10 @@ export const JourneyMilestone = memo(function JourneyMilestone({
       <JourneyMilestoneLabel
         muted={milestone.completed}
         number={milestone.id}
+        phone={phone}
         side={labelSide}
         style={[
-          styles.label,
+          phone ? styles.labelPhone : styles.label,
           labelPosition,
           { width: labelWidth },
         ]}
@@ -188,6 +223,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "50%",
     marginTop: -20,
+  },
+  /**
+   * Phone labels wrap to any height: the label spans the ring's height and
+   * centres its content, so extra lines overflow evenly above and below.
+   */
+  labelPhone: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
   },
   pressable: {
     alignItems: "center",

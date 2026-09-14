@@ -1,3 +1,4 @@
+import type { HabitVisuals } from "@/data/habitVisuals";
 import type { TimeBlockIcon } from "@/db/types";
 
 /**
@@ -23,6 +24,12 @@ export type BlockIcon = TimeBlockIcon;
 /** View-model for a single action rendered inside a time block. */
 export type DayAction = {
   done: boolean;
+  /** Set on habit rows: phones render them as the shared habit card. */
+  habit?: {
+    cue: string | null;
+    streakDays: number;
+    visuals: HabitVisuals;
+  };
   /** Dream the quest belongs to; with milestoneTitle it renders a breadcrumb instead of the plain subtitle. */
   dreamTitle?: string;
   icon: ActionIcon;

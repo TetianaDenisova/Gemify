@@ -547,6 +547,9 @@ export function JourneyMapControls({
     <>
       <ScreenHeader
         asStackHeader
+        // The map is opened from Home, Milestone Quests and the end of goal
+        // creation; leaving it always lands on Home.
+        onBack={() => router.dismissTo("/")}
         rightAction={
           editMode
             ? undefined

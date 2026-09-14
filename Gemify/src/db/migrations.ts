@@ -479,6 +479,22 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    // The v17 update trigger re-fires on the row it has just stamped whenever
+    // "now" equals the stamp already there — an edit landing in the same
+    // millisecond as the previous one, such as the two-step sequence shuffle
+    // in milestonesRepository — and SQLite aborts the write with "too many
+    // levels of trigger recursion". The replacement always moves the clock
+    // forward: to now, or 1 ms past the stored stamp when now is not later.
+    // That also keeps a local edit newer than a stamp pulled from a device
+    // whose clock runs ahead, so last-write-wins still ranks it latest.
+    toVersion: 18,
+    up: async (db) => {
+      for (const table of SYNC_V17_TABLES) {
+        await db.execAsync(syncUpdateTriggerV18(table.name));
+      }
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */
@@ -620,6 +636,33 @@ function syncTriggersV17(table: SyncTableV17): string {
     BEGIN
       INSERT OR REPLACE INTO sync_tombstones (table_name, uid, deleted_at)
         VALUES ('${name}', OLD.uid, ${SYNC_V17_NOW});
+    END;
+  `;
+}
+
+/**
+ * Migration 18's update trigger: the v17 one, except the stamp it writes is
+ * always later than the stamp it replaces, so it can never re-fire on its own
+ * write. Frozen like the v17 SQL above.
+ */
+function syncUpdateTriggerV18(name: string): string {
+  const idle = "NOT EXISTS (SELECT 1 FROM sync_state WHERE key = 'applying')";
+  const later =
+    `CASE WHEN OLD.updated_at IS NULL OR ${SYNC_V17_NOW} > OLD.updated_at ` +
+    `THEN ${SYNC_V17_NOW} ` +
+    `ELSE COALESCE(STRFTIME('%Y-%m-%dT%H:%M:%fZ', OLD.updated_at, '+0.001 seconds'), ${SYNC_V17_NOW}) ` +
+    `END`;
+
+  return `
+    DROP TRIGGER IF EXISTS trg_${name}_sync_update;
+
+    CREATE TRIGGER trg_${name}_sync_update
+    AFTER UPDATE ON ${name}
+    WHEN NEW.updated_at IS OLD.updated_at AND ${idle}
+    BEGIN
+      UPDATE ${name}
+        SET updated_at = ${later}, sync_dirty = 1
+        WHERE rowid = NEW.rowid;
     END;
   `;
 }

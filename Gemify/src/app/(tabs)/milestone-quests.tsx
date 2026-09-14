@@ -40,6 +40,7 @@ import {
   type TimeBlockRecord,
 } from "@/db";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import {
   AppButton,
   AppModal,
@@ -486,6 +487,9 @@ export default function MilestoneQuestsScreen() {
       loadScreen();
     }, [loadScreen]),
   );
+  // A sync can delete or rewrite this milestone on another device's behalf;
+  // reload so new quests never target a milestone id that is gone.
+  useRefreshOnSync(loadScreen);
 
   const boardHabits = habits.map((view, index) =>
     toBoardHabit(view, index, HABIT_ACCENT_CYCLE[index % HABIT_ACCENT_CYCLE.length]),
@@ -778,7 +782,14 @@ export default function MilestoneQuestsScreen() {
 
       {activeTab === "quests" ? (
         <>
-          {quests.map((quest) => (
+          {/* On a phone, completed quests sink below the open ones. */}
+          {(phone
+            ? [
+                ...quests.filter((quest) => !quest.isDone),
+                ...quests.filter((quest) => quest.isDone),
+              ]
+            : quests
+          ).map((quest) => (
             <QuestRow
               compact={isNarrow}
               key={quest.id}

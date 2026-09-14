@@ -2,7 +2,9 @@ import {
   deleteDatabaseAsync,
   openDatabaseAsync,
   type SQLiteDatabase,
+  type SQLiteStatement,
 } from "expo-sqlite";
+import { Platform } from "react-native";
 
 import { migrations } from "./migrations";
 
@@ -34,8 +36,61 @@ export async function initDatabase(): Promise<void> {
   await getDatabase();
 }
 
+/**
+ * Runs `task` on a prepared statement and finalizes it, without letting a
+ * failed finalize hide the error that caused it.
+ */
+async function withStatement<T>(
+  db: SQLiteDatabase,
+  source: string,
+  task: (statement: SQLiteStatement) => Promise<T>,
+): Promise<T> {
+  const statement = await db.prepareAsync(source);
+  let result: T;
+  try {
+    result = await task(statement);
+  } catch (error) {
+    await statement.finalizeAsync().catch(() => undefined);
+    throw error;
+  }
+  await statement.finalizeAsync();
+  return result;
+}
+
+/**
+ * expo-sqlite finalizes statements in a `finally`. On web, finalizing a
+ * statement whose step failed throws as well, and that second error replaces
+ * the real one — a "FOREIGN KEY constraint failed" reaches the app as a bare
+ * "Error finalizing statement". These replacements keep the original error.
+ */
+function preserveStatementErrors(db: SQLiteDatabase): void {
+  // Variadic bind params, exactly as the replaced methods accept them.
+  type Params = Parameters<SQLiteStatement["executeAsync"]>;
+  const target = db as unknown as {
+    getAllAsync: (source: string, ...params: Params) => Promise<unknown[]>;
+    getFirstAsync: (source: string, ...params: Params) => Promise<unknown>;
+    runAsync: (source: string, ...params: Params) => Promise<unknown>;
+  };
+
+  target.runAsync = (source, ...params) =>
+    withStatement(db, source, (statement) =>
+      statement.executeAsync(...params),
+    );
+  target.getFirstAsync = (source, ...params) =>
+    withStatement(db, source, async (statement) =>
+      (await statement.executeAsync(...params)).getFirstAsync(),
+    );
+  target.getAllAsync = (source, ...params) =>
+    withStatement(db, source, async (statement) =>
+      (await statement.executeAsync(...params)).getAllAsync(),
+    );
+}
+
 async function openAndMigrate(): Promise<SQLiteDatabase> {
   const db = await openDatabaseAsync(DATABASE_NAME);
+  if (Platform.OS === "web") {
+    preserveStatementErrors(db);
+  }
   await db.execAsync("PRAGMA journal_mode = WAL;");
   await db.execAsync("PRAGMA foreign_keys = ON;");
   // Cloud sync leans on triggers to stamp rows; recursive triggers make ON

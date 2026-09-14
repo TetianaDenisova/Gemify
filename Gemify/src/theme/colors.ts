@@ -16,6 +16,9 @@ export const colors = {
   accentVioletStrong: "#B46AFF",
   accentVioletGlow: "rgba(183, 140, 255, 0.45)",
   accentPink: "#EF6FAF",
+  /** Habit accents (water, meditation) — see src/data/habitVisuals.ts. */
+  accentBlue: "#5AA9F5",
+  accentGreen: "#3DBE8B",
 
   secondary: "#1B2F4A",
   secondaryDark: "#08111F",

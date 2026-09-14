@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  Pressable,
   StyleSheet,
   View,
   type StyleProp,
@@ -8,20 +7,18 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import {
+  DayActionBreadcrumb,
+  DayActionCard,
+  DayActionRow,
+} from "@/components/DayActionCard";
+import { HabitCard } from "@/components/HabitCard";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { ActionIcon, DayAction, TimeBlock } from "@/dto/timeBlocks";
-import {
-  AppText,
-  Card,
-  Checkbox,
-  ChevronIcon,
-  DreamIcon,
-  MilestoneIcon,
-  SparkIcon,
-} from "@/shared/components";
+import { AppText, Card, SparkIcon } from "@/shared/components";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { fontSizes, lineHeights, pressed, spacing } from "@/theme/theme";
+import { fontSizes, lineHeights, spacing } from "@/theme/theme";
 
 const ACTION_ICON_COLOR: Record<ActionIcon, string> = {
   meditate: colors.accentViolet,
@@ -202,104 +199,39 @@ export function ActionIconArt({ icon, size = 36 }: { icon: ActionIcon; size?: nu
 
 function ActionRow({
   action,
-  compact,
   last,
   onPress,
   onToggle,
-  phone,
 }: {
   action: DayAction;
-  compact: boolean;
   last: boolean;
   onPress?: () => void;
   onToggle: () => void;
-  phone: boolean;
 }) {
   return (
-    <View style={[styles.actionRow, compact && styles.actionRowCompact, last && styles.actionRowLast]}>
-      <Pressable
-        accessibilityLabel={`Options for ${action.title}`}
-        accessibilityRole="button"
-        disabled={!onPress}
-        onPress={onPress}
-        style={({ pressed: isPressed }) => [
-          styles.actionBody,
-          compact && styles.actionBodyCompact,
-          phone && styles.actionBodyPhone,
-          isPressed && pressed,
-        ]}
-      >
-      <View
-        style={[
-          styles.actionIcon,
-          compact && styles.actionIconCompact,
-          phone && styles.actionIconPhone,
-        ]}
-      >
-        <ActionIconArt icon={action.icon} size={phone ? 24 : compact ? 28 : 36} />
-      </View>
-      <View style={styles.actionCopy}>
-        <AppText
-          color={colors.textPrimary}
-          style={compact && styles.actionTitleCompact}
-          variant="pill"
-        >
-          {action.title}
-        </AppText>
-        {action.dreamTitle && action.milestoneTitle ? (
-          <View style={[styles.actionBreadcrumb, compact && styles.actionBreadcrumbCompact]}>
-            <View style={styles.breadcrumbPart}>
-              <DreamIcon size={compact ? 14 : 16} />
-              <AppText
-                color={colors.textSecondary}
-                numberOfLines={1}
-                style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
-                variant="subtitle"
-              >
-                {action.dreamTitle}
-              </AppText>
-            </View>
-            {/* Same rule as Home: the phone keeps the dream, not the
-                milestone the row already belongs to. */}
-            {phone ? null : (
-              <>
-                <ChevronIcon color={colors.textMuted} direction="right" size={compact ? 11 : 13} />
-                <View style={styles.breadcrumbPart}>
-                  <MilestoneIcon size={compact ? 14 : 16} />
-                  <AppText
-                    color={colors.textSecondary}
-                    numberOfLines={1}
-                    style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
-                    variant="subtitle"
-                  >
-                    {action.milestoneTitle}
-                  </AppText>
-                </View>
-              </>
-            )}
-          </View>
+    <DayActionRow
+      checkLabel={
+        action.done
+          ? `Mark ${action.title} incomplete`
+          : `Mark ${action.title} complete`
+      }
+      done={action.done}
+      icon={(size) => <ActionIconArt icon={action.icon} size={size} />}
+      last={last}
+      onPress={onPress}
+      onToggle={onToggle}
+      subtitle={
+        action.dreamTitle && action.milestoneTitle ? (
+          <DayActionBreadcrumb
+            dreamTitle={action.dreamTitle}
+            milestoneTitle={action.milestoneTitle}
+          />
         ) : (
-          <AppText
-            style={[styles.actionSubtitle, compact && styles.actionSubtitleCompact]}
-            variant="subtitle"
-          >
-            {action.subtitle}
-          </AppText>
-        )}
-      </View>
-      </Pressable>
-      <Checkbox
-        accessibilityLabel={
-          action.done
-            ? `Mark ${action.title} incomplete`
-            : `Mark ${action.title} complete`
-        }
-        checked={action.done}
-        onPress={onToggle}
-        shape="circle"
-        size={phone ? 30 : compact ? 32 : 38}
-      />
-    </View>
+          action.subtitle
+        )
+      }
+      title={action.title}
+    />
   );
 }
 
@@ -330,6 +262,18 @@ export function TimeBlockCard({
 }: TimeBlockCardProps) {
   const { compact, phone } = useLayoutSize();
   const done = block.actions.filter((action) => action.done).length;
+  // On a phone, checked-off rows sink below the open ones. Each row keeps its
+  // original index, so the index-based callbacks still hit the right action.
+  const indexedActions = block.actions.map((action, index) => ({
+    action,
+    index,
+  }));
+  const orderedActions = phone
+    ? [
+        ...indexedActions.filter((entry) => !entry.action.done),
+        ...indexedActions.filter((entry) => entry.action.done),
+      ]
+    : indexedActions;
 
   return (
     <View style={style}>
@@ -369,22 +313,29 @@ export function TimeBlockCard({
         emptySlot
       ) : separated ? (
         <View style={[styles.separatedList, compact && styles.separatedListCompact]}>
-          {block.actions.map((action, index) => (
-            <Card
-              key={action.title}
-              style={[styles.separatedCard, compact && styles.separatedCardCompact]}
-              variant="default"
-            >
-              <ActionRow
-                action={action}
-                compact={compact}
-                last
-                onPress={onPressAction ? () => onPressAction(index) : undefined}
-                onToggle={() => onToggleAction(index)}
-                phone={phone}
+          {orderedActions.map(({ action, index }) =>
+            // A phone shows habits as the same habit card as every screen.
+            phone && action.habit ? (
+              <HabitCard
+                done={action.done}
+                key={action.title}
+                onToggleDone={() => onToggleAction(index)}
+                streakDays={action.habit.streakDays}
+                subtitle={action.habit.cue}
+                title={action.title}
+                visuals={action.habit.visuals}
               />
-            </Card>
-          ))}
+            ) : (
+              <DayActionCard key={action.title}>
+                <ActionRow
+                  action={action}
+                  last
+                  onPress={onPressAction ? () => onPressAction(index) : undefined}
+                  onToggle={() => onToggleAction(index)}
+                />
+              </DayActionCard>
+            ),
+          )}
         </View>
       ) : (
       <Card
@@ -424,15 +375,13 @@ export function TimeBlockCard({
         ) : null}
 
         <View style={[styles.actionList, compact && styles.actionListCompact, !showIntro && styles.actionListBare]}>
-          {block.actions.map((action, index) => (
+          {orderedActions.map(({ action, index }, position) => (
             <ActionRow
               action={action}
-              compact={compact}
               key={action.title}
-              last={index === block.actions.length - 1}
+              last={position === orderedActions.length - 1}
               onPress={onPressAction ? () => onPressAction(index) : undefined}
               onToggle={() => onToggleAction(index)}
-              phone={phone}
             />
           ))}
         </View>
@@ -443,46 +392,6 @@ export function TimeBlockCard({
 }
 
 const styles = StyleSheet.create({
-  actionBody: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 18,
-    minWidth: 0,
-  },
-  actionBodyCompact: {
-    gap: 14,
-  },
-  actionBodyPhone: {
-    gap: 10,
-  },
-  actionBreadcrumb: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: 3,
-  },
-  actionBreadcrumbCompact: {
-    marginTop: 2,
-  },
-  actionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  actionIcon: {
-    alignItems: "center",
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  actionIconCompact: {
-    height: 32,
-    width: 32,
-  },
-  actionIconPhone: {
-    height: 28,
-    width: 28,
-  },
   actionList: {
     marginTop: 20,
   },
@@ -491,45 +400,6 @@ const styles = StyleSheet.create({
   },
   actionListCompact: {
     marginTop: 14,
-  },
-  actionRow: {
-    alignItems: "center",
-    borderBottomColor: colors.divider,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: 18,
-    minHeight: 74,
-    paddingVertical: 14,
-  },
-  actionRowCompact: {
-    gap: 14,
-    minHeight: 60,
-    paddingVertical: 10,
-  },
-  actionRowLast: {
-    borderBottomWidth: 0,
-  },
-  actionSubtitle: {
-    marginTop: 3,
-  },
-  actionSubtitleCompact: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-    marginTop: 2,
-  },
-  actionTitleCompact: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
-  },
-  breadcrumbLabel: {
-    flexShrink: 1,
-  },
-  breadcrumbPart: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexShrink: 1,
-    gap: spacing.xs,
-    minWidth: 0,
   },
   card: {
     borderColor: colors.accentVioletGlow,
@@ -610,13 +480,6 @@ const styles = StyleSheet.create({
   sectionTimeCompact: {
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
-  },
-  separatedCard: {
-    borderColor: colors.accentVioletGlow,
-    paddingVertical: spacing.xs,
-  },
-  separatedCardCompact: {
-    paddingVertical: 2,
   },
   separatedList: {
     gap: spacing.md,

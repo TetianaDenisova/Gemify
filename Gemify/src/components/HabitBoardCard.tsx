@@ -8,7 +8,13 @@ import {
 } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { HabitItemRow, type HabitCompletion } from "@/components/HabitItem";
+import { HabitCard } from "@/components/HabitCard";
+import {
+  HabitItemRow,
+  HabitProgress,
+  type HabitCompletion,
+} from "@/components/HabitItem";
+import { habitVisualsFor, type HabitVisuals } from "@/data/habitVisuals";
 import type { HabitDetailSection as DbHabitDetailSection } from "@/db";
 import type { HabitWeekView } from "@/hooks/useHabitWeek";
 import { AppText, Checkbox } from "@/shared/components";
@@ -38,8 +44,12 @@ export type BoardHabit = {
   icon: "workout" | "water" | "book" | "meditate";
   id: number;
   progress: readonly HabitCompletion[];
+  /** Consecutive practiced days up to today (phone card 🔥 line). */
+  streakDays: number;
   time: string;
   title: string;
+  /** The icon/accent the habit keeps on every phone screen. */
+  visuals: HabitVisuals;
 };
 
 const HABIT_ICON_CYCLE = ["workout", "water", "book", "meditate"] as const;
@@ -91,8 +101,10 @@ export function toBoardHabit(
     icon: HABIT_ICON_CYCLE[index % HABIT_ICON_CYCLE.length],
     id: view.habit.id,
     progress: view.weekProgress,
+    streakDays: view.streakDays,
     time: view.habit.cue || view.timeLabel,
     title: view.habit.title,
+    visuals: habitVisualsFor(view.habit),
   };
 }
 
@@ -262,6 +274,57 @@ export function HabitBoardRow({
   phone?: boolean;
   trailing?: ReactNode;
 }) {
+  // Phone: the shared habit card. Its check toggles today (the same write as
+  // tapping today's day cell), and the week strip, "Day N / goal" and the
+  // detail panels move inside the expanded card.
+  if (phone) {
+    return (
+      <HabitCard
+        done={habit.progress[activeDayIndex] === "done"}
+        expanded={expanded}
+        menu={trailing}
+        onPress={onPress}
+        onToggleDone={() => onDayPress?.(activeDayIndex)}
+        streakDays={habit.streakDays}
+        style={styles.phoneCard}
+        subtitle={habit.time}
+        title={habit.title}
+        visuals={habit.visuals}
+      >
+        {expanded ? (
+          <View style={styles.phoneExpanded}>
+            <View style={styles.phoneDayCount}>
+              <AppText color={colors.primary} variant="labelStrong">
+                Day {habit.day}
+              </AppText>
+              <AppText color={colors.textMuted} variant="labelStrong">
+                {" "}/ {habit.goal}
+              </AppText>
+            </View>
+            <HabitProgress
+              activeDayIndex={activeDayIndex}
+              compact
+              onDayPress={onDayPress}
+              phone
+              progress={habit.progress}
+            />
+            {habit.details.map((section) => (
+              <HabitDetailSectionView
+                checked={checkedSections?.includes(section.key) ?? false}
+                compact
+                key={section.key}
+                onToggleRow={() => onDetailToggle?.(section.key)}
+                phone
+                section={section}
+              />
+            ))}
+            {footer}
+          </View>
+        ) : null}
+      </HabitCard>
+    );
+  }
+
   return (
     // No accessibilityRole="button": on web that renders a <button>, and the
     // nested day-cell/menu/footer buttons would be invalid HTML inside it.
@@ -352,5 +415,18 @@ const styles = StyleSheet.create({
   detailTitleCompact: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
+  },
+  phoneCard: {
+    marginBottom: spacing.sm,
+  },
+  phoneDayCount: {
+    alignItems: "baseline",
+    flexDirection: "row",
+  },
+  phoneExpanded: {
+    borderTopColor: colors.borderSoft,
+    borderTopWidth: 1,
+    paddingBottom: spacing.sm,
+    paddingTop: spacing.md,
   },
 });

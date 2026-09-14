@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from "expo-sqlite";
+import { Platform } from "react-native";
 
 import { SYNC_TABLES, type SyncTableSpec } from "./tables";
 
@@ -63,21 +64,36 @@ export async function getSyncedColumns(
  * timestamp; letting the triggers restamp them would turn every pulled row
  * into a local edit and bounce it straight back. The exclusive transaction
  * also keeps a screen from slipping an untracked write in between.
+ *
+ * Web takes the plain transaction instead: expo-sqlite implements
+ * `withExclusiveTransactionAsync` by opening a second connection, which the
+ * wasm build has no way to do, so it throws outright there. Nothing is lost —
+ * the exclusive variant exists to fence off *other connections*, and on web
+ * there is only ever the one, driven by a single JavaScript thread.
  */
 export async function withSyncApply(
   db: SQLiteDatabase,
   task: (txn: SQLiteDatabase) => Promise<void>,
 ): Promise<void> {
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  const apply = async (txn: SQLiteDatabase) => {
     await txn.runAsync(
       "INSERT OR REPLACE INTO sync_state (key, value) VALUES ('applying', '1')",
     );
     try {
-      await task(txn as unknown as SQLiteDatabase);
+      await task(txn);
     } finally {
       await txn.runAsync("DELETE FROM sync_state WHERE key = 'applying'");
     }
-  });
+  };
+
+  if (Platform.OS === "web") {
+    await db.withTransactionAsync(() => apply(db));
+    return;
+  }
+
+  await db.withExclusiveTransactionAsync((txn) =>
+    apply(txn as unknown as SQLiteDatabase),
+  );
 }
 
 export async function getSyncValue(

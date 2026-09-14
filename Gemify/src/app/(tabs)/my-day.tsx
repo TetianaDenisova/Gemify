@@ -15,6 +15,7 @@ import { QuestPickerSheet } from "@/components/QuestPickerSheet";
 import { TimeBlockCard } from "@/components/TimeBlockCard";
 import { TimeBlockSettingsModal } from "@/components/TimeBlockSettingsModal";
 import { TimeBlockTabs } from "@/components/TimeBlockTabs";
+import { habitVisualsFor } from "@/data/habitVisuals";
 import {
   deleteQuest,
   getSchedulableQuests,
@@ -113,6 +114,11 @@ export default function MyDayScreen() {
         ...activeBlock.actions,
         ...blockHabits.map((view) => ({
           done: view.done,
+          habit: {
+            cue: view.habit.cue,
+            streakDays: view.streakDays,
+            visuals: habitVisualsFor(view.habit),
+          },
           icon: habitIconForId(view.habit.id),
           subtitle: "Daily habit",
           title: view.habit.title,

@@ -719,3 +719,119 @@ export function StepIcon({
     </Svg>
   );
 }
+
+/** Water drop — the water habit glyph. */
+export function DropIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 1.8,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M12 3.2c3.6 4.6 5.8 7.7 5.8 10.9A5.8 5.8 0 0 1 12 20a5.8 5.8 0 0 1-5.8-5.9c0-3.2 2.2-6.3 5.8-10.9Z"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M9.2 14.5a2.9 2.9 0 0 0 2.5 2.8"
+        opacity={0.7}
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Sneaker — the movement habit glyph. */
+export function ShoeIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M2.8 17.2V8.6c0-.5.4-.9.9-.8l2.9.5c.5.1.8.4.9.9.3 1.5 1.5 2.5 3 2.5h.8l4.6 2.4c1.1.6 2.3.9 3.5 1.1 1.2.2 2 1.2 2 2.4v.1c0 .5-.4.9-.9.9H3.7a.9.9 0 0 1-.9-.9Z"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M2.8 15.4h18.6M10.2 11.5l1.3-1.6M12.9 12.8l1.3-1.6"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Open book — the reading habit glyph. */
+export function BookIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M3 5.5c3.4-.4 6.4.3 9 2.3 2.6-2 5.6-2.7 9-2.3v12.8c-3.4-.4-6.4.3-9 2.3-2.6-2-5.6-2.7-9-2.3V5.5Z"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M12 7.8v12.8"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Seated meditating figure — the meditation habit glyph. */
+export function MeditateIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 1.7,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Circle cx={12} cy={5} r={2.2} stroke={color} strokeWidth={strokeWidth} />
+      <Path
+        d="M8.8 14.6l.6-3.6c.3-1.4 1.3-2.4 2.6-2.4s2.3 1 2.6 2.4l.6 3.6M9.4 11.4 5.6 14.2M14.6 11.4l3.8 2.8"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M4.2 18.6c1.7-1.6 4.4-2.4 7.8-2.4s6.1.8 7.8 2.4c-2.2 1-4.8 1.4-7.8 1.4s-5.6-.4-7.8-1.4Z"
+        stroke={color}
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
+/** Filled flame — the habit streak marker. */
+export function FlameIcon({ color = colors.primary, size = 16 }: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Path
+        d="M12 2.8c.6 3-1 4.6-2.5 6.3C8 10.8 6.5 12.6 6.5 15.2A5.5 5.5 0 0 0 12 21a5.5 5.5 0 0 0 5.5-5.8c0-2.6-1.3-4.3-2.3-5.6-.3 1.3-1 2.2-2 2.6.4-3.2-.1-6.3-1.2-8.4Z"
+        fill={color}
+      />
+      <Path
+        d="M12 21a2.6 2.6 0 0 1-2.6-2.7c0-1.6 1.3-2.5 2.2-3.8.3 1.1 1 1.6 1.7 1.9.8.4 1.3 1.1 1.3 2A2.6 2.6 0 0 1 12 21Z"
+        fill={colors.background}
+        opacity={0.45}
+      />
+    </Svg>
+  );
+}

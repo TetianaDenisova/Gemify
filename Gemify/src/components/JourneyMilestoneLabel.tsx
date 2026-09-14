@@ -5,12 +5,21 @@ import Svg, { Line } from "react-native-svg";
 
 import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { fonts, shadows, textGlow } from "@/theme/theme";
+import {
+  fonts,
+  radius,
+  shadows,
+  spacing,
+  textGlow,
+  withOpacity,
+} from "@/theme/theme";
 
 export type JourneyMilestoneLabelProps = {
   /** Fades the whole label — used for completed milestones on the map. */
   muted?: boolean;
   number: number;
+  /** Phone tier: full wrapping title on a dark backing, no empty subtitle. */
+  phone?: boolean;
   side?: "left" | "right";
   style?: StyleProp<ViewStyle>;
   subtitle: string;
@@ -57,6 +66,7 @@ const goldenConnector = (
 export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
   muted = false,
   number,
+  phone = false,
   side = "right",
   style,
   subtitle,
@@ -64,6 +74,8 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
 }: JourneyMilestoneLabelProps) {
   const displayNumber = Math.min(Math.max(Math.round(number), 1), 99);
   const isLeft = side === "left";
+  // A phone shows the whole title (wrapping) and skips an empty subtitle line.
+  const showSubtitle = !phone || subtitle.length > 0;
 
   return (
     <View
@@ -71,9 +83,10 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
       importantForAccessibility="no-hide-descendants"
       style={[
         styles.container,
+        phone ? styles.containerPhone : styles.containerFixed,
         { pointerEvents: "none" },
         isLeft && styles.containerLeft,
-        muted && styles.containerMuted,
+        muted && (phone ? styles.containerMutedPhone : styles.containerMuted),
         style,
       ]}
     >
@@ -87,22 +100,25 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
       <View
         style={[
           styles.textBlock,
+          phone && styles.textBlockPhone,
           isLeft ? styles.textBlockLeft : styles.textBlockRight,
         ]}
       >
         <AppText
-          numberOfLines={1}
+          numberOfLines={phone ? undefined : 1}
           style={[styles.title, isLeft && styles.textAlignRight]}
         >
           {title}
         </AppText>
-        <AppText
-          numberOfLines={1}
-          style={[styles.subtitle, isLeft && styles.textAlignRight]}
-          variant="caption"
-        >
-          {subtitle}
-        </AppText>
+        {showSubtitle ? (
+          <AppText
+            numberOfLines={phone ? undefined : 1}
+            style={[styles.subtitle, isLeft && styles.textAlignRight]}
+            variant="caption"
+          >
+            {subtitle}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );
@@ -111,9 +127,19 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
 const styles = StyleSheet.create({
   container: {
     width: 148,
-    height: 40,
     flexDirection: "row",
     alignItems: "center",
+  },
+  containerFixed: {
+    height: 40,
+  },
+  /** Height comes from the positioning style; wrapped lines overflow evenly. */
+  containerPhone: {
+    minHeight: 40,
+  },
+  /** Readable over the map art while still receding behind open steps. */
+  containerMutedPhone: {
+    opacity: 0.8,
   },
   containerLeft: {
     flexDirection: "row-reverse",
@@ -159,6 +185,21 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     justifyContent: "center",
+  },
+  /**
+   * Hugs the text and backs it with a dark pill so it reads over the art.
+   * `flexBasis: "auto"` undoes the 0 basis `flex: 1` sets in `textBlock` —
+   * without it the column starts at zero width and never grows, so the title
+   * wraps one letter per line.
+   */
+  textBlockPhone: {
+    backgroundColor: withOpacity(colors.background, 0.62),
+    borderRadius: radius.sm,
+    flexBasis: "auto",
+    flexGrow: 0,
+    flexShrink: 1,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 3,
   },
   /** Left-side labels grow toward the map edge; keep text hugging the badge. */
   textAlignRight: {

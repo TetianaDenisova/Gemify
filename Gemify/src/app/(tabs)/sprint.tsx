@@ -894,7 +894,6 @@ export default function SprintScreen() {
         {addTarget ? (
           <AcceptQuestModal
             initialDate={new Date(`${selectedDate}T12:00:00`)}
-            initialSlot="anytime"
             key={addTarget.id}
             onAccept={handleAddQuestAccept}
             onClose={() => {

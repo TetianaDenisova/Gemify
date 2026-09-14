@@ -10,6 +10,7 @@ import {
 } from "@/db";
 import type { ActionIcon } from "@/dto/timeBlocks";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
+import { habitStreakDays, streakLookbackStart } from "@/utils/habitStreak";
 
 /** A habit due on the viewed day, with that day's done state. */
 export type DayHabitView = {
@@ -17,6 +18,8 @@ export type DayHabitView = {
   blockKey: string | null;
   done: boolean;
   habit: Habit;
+  /** Consecutive practiced days up to the viewed day (🔥 streak). */
+  streakDays: number;
 };
 
 export type UseDayHabitsResult = {
@@ -68,14 +71,18 @@ export function useDayHabits(date: string): UseDayHabitsResult {
         list.map(async (habit) => {
           const [scheduleDays, completions] = await Promise.all([
             getHabitScheduleDays(habit.id),
-            getHabitCompletions(habit.id, date, date),
+            getHabitCompletions(habit.id, streakLookbackStart(date), date),
           ]);
+          const statusByDate = new Map(
+            completions.map((record) => [record.date, record.status]),
+          );
           return {
             due: scheduleDays.length === 0 || scheduleDays.includes(weekday),
             view: {
               blockKey: habit.timeOfDay,
-              done: completions[0]?.status === "done",
+              done: statusByDate.get(date) === "done",
               habit,
+              streakDays: habitStreakDays(statusByDate, scheduleDays, date),
             },
           };
         }),
@@ -115,7 +122,10 @@ export function useDayHabits(date: string): UseDayHabitsResult {
         ),
       );
       return setHabitCompletion(habitId, date, done ? "done" : null).then(
-        () => undefined,
+        // Reload so the streak reflects the change.
+        () => {
+          if (mounted.current) refresh();
+        },
         (cause: unknown) => {
           console.error("Failed to save the habit completion", cause);
           if (mounted.current) refresh();

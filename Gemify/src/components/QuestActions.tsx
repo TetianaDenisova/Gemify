@@ -385,10 +385,14 @@ export function AcceptQuestModal({
     initialOffset === "custom" ? (initialDate ?? null) : null,
   );
   const [calendarOpen, setCalendarOpen] = useState(false);
-  // null until the time blocks load (unless the caller pre-selected one).
+  // A time of day is always pre-selected: the caller's pick, or the block
+  // matching the current moment (from the seeded blocks until the stored ones
+  // load). The user can still choose any other slot or an exact time.
   const [slotKey, setSlotKey] = useState<string | "customHour" | null>(
-    initialSlot ?? null,
+    () => initialSlot ?? suggestSlotKey(DEFAULT_TIME_BLOCKS, new Date()),
   );
+  /** Set once the caller or the user chose a slot, so loading never overrides it. */
+  const slotChosen = useRef(initialSlot !== undefined);
   const [hourText, setHourText] = useState("");
   const [minuteText, setMinuteText] = useState("");
   const hourRef = useRef<TextInput>(null);
@@ -402,7 +406,14 @@ export function AcceptQuestModal({
       .then((list) => {
         if (cancelled) return;
         setBlocks(list);
-        setSlotKey((current) => current ?? suggestSlotKey(list, new Date()));
+        // Re-suggest against the stored blocks (their times may differ from
+        // the seeds) unless a slot was chosen deliberately.
+        const keepChosen = slotChosen.current;
+        setSlotKey((current) =>
+          keepChosen && current !== null
+            ? current
+            : suggestSlotKey(list, new Date()),
+        );
       })
       .catch((cause: unknown) => {
         console.error("Failed to load the time blocks", cause);
@@ -576,7 +587,10 @@ export function AcceptQuestModal({
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                onPress={() => setSlotKey(entry.key)}
+                onPress={() => {
+                  slotChosen.current = true;
+                  setSlotKey(entry.key);
+                }}
                 style={[
                   styles.timeChip,
                   phone && styles.chipPhone,
@@ -605,7 +619,10 @@ export function AcceptQuestModal({
             accessibilityLabel="Set a specific time"
             accessibilityRole="button"
             accessibilityState={{ selected: customHourSelected }}
-            onPress={() => setSlotKey("customHour")}
+            onPress={() => {
+              slotChosen.current = true;
+              setSlotKey("customHour");
+            }}
             style={[
               styles.timeChip,
               phone && styles.chipPhone,

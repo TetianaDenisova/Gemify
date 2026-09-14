@@ -4,8 +4,16 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
+import {
+  DayActionBreadcrumb,
+  DayActionCard,
+  DayActionRow,
+} from "@/components/DayActionCard";
+import { HabitCard } from "@/components/HabitCard";
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
+import { ActionIconArt } from "@/components/TimeBlockCard";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
+import { habitVisualsFor } from "@/data/habitVisuals";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
 import { rolloverOverdueQuests, type DreamSummary } from "@/db";
 import { useCloudSync } from "@/hooks/useCloudSync";
@@ -183,6 +191,7 @@ export default function HomeScreen() {
         view.scheduleDays.includes(habitDayIndex),
     );
     const toHabitAction = (view: (typeof habitViews)[number]) => ({
+      cue: view.habit.cue,
       done: view.weekProgress[habitDayIndex] === "done",
       habitId: view.habit.id,
       icon: habitIconForId(view.habit.id),
@@ -190,7 +199,9 @@ export default function HomeScreen() {
       // show their dream › milestone breadcrumb.
       subtitle:
         dreams.find((dream) => dream.id === view.habit.dreamId)?.title ?? "",
+      streakDays: view.streakDays,
       title: view.habit.title,
+      visuals: habitVisualsFor(view.habit),
     });
     // Every habit scheduled today, for the day's completion math.
     const habitActions = todaysHabitViews.map(toHabitAction);
@@ -302,6 +313,13 @@ export default function HomeScreen() {
   // it: while the current focus has something open, the rest of the day waits.
   const showLater = !hasFocus && laterBlocks.length > 0;
 
+  // On a phone, every focus action gets its own card in one shared design —
+  // quests as the My Day quest card (+%), habits as the habit card (🔥 tag).
+  // Wider layouts keep them as rows of a single focus card.
+  const focusActions = currentBlock?.actions ?? [];
+  const focusCardActions = phone ? [] : focusActions;
+  const focusPhoneCards = phone ? focusActions : [];
+
   return (
     <ScreenScaffold tabClearance topInset>
       <HomeHeader
@@ -385,13 +403,23 @@ export default function HomeScreen() {
 
       {hasFocus && currentBlock ? (
         <View style={styles.currentBlock}>
+          {focusCardActions.length > 0 ? (
           <Card padded={false} style={styles.focusCard}>
-            {currentBlock.actions.map((action, index) => (
+            {focusCardActions.map((action, index) => (
               <View
                 key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
-                style={[styles.focusRow, index > 0 && styles.focusRowDivider]}
+                style={[
+                  styles.focusRow,
+                  phone && styles.focusRowPhone,
+                  index > 0 && styles.focusRowDivider,
+                ]}
               >
-                <View style={styles.focusMedallion}>
+                <View
+                  style={[
+                    styles.focusMedallion,
+                    phone && styles.focusMedallionPhone,
+                  ]}
+                >
                   {"questId" in action ? (
                     <SparkIcon color={colors.primary} size={phone ? 18 : 22} />
                   ) : (
@@ -401,7 +429,8 @@ export default function HomeScreen() {
                 <View style={styles.focusCopy}>
                   <View style={styles.focusTitleRow}>
                     <AppText
-                      numberOfLines={2}
+                      // The phone row has room to show the whole title.
+                      numberOfLines={phone ? undefined : 2}
                       style={styles.focusTitleText}
                       variant="pill"
                     >
@@ -419,7 +448,7 @@ export default function HomeScreen() {
                     <View style={styles.focusBreadcrumb}>
                       <DreamIcon size={16} />
                       <AppText
-                        color={LATER_COLORS.label}
+                        color={phone ? colors.textSecondary : LATER_COLORS.label}
                         numberOfLines={1}
                         style={styles.laterCrumbLabel}
                         variant="subtitle"
@@ -500,6 +529,58 @@ export default function HomeScreen() {
               </View>
             ))}
           </Card>
+          ) : null}
+          {focusPhoneCards.map((action) =>
+            "questId" in action ? (
+              <DayActionCard
+                key={`q${action.questId}`}
+                style={styles.habitCardSpacing}
+              >
+                <DayActionRow
+                  checkLabel={`Mark ${action.title} done`}
+                  done={action.done}
+                  icon={(size) => <ActionIconArt icon={action.icon} size={size} />}
+                  last
+                  onToggle={() => {
+                    // The dream's card percentage reflects the change the
+                    // moment the write lands — no refocus needed.
+                    toggleQuest(action.questId, !action.done).then(
+                      refreshDreams,
+                    );
+                  }}
+                  subtitle={
+                    <DayActionBreadcrumb
+                      dreamTitle={action.dreamTitle}
+                      milestoneTitle={action.milestoneTitle}
+                    />
+                  }
+                  title={action.title}
+                  trailing={
+                    <AppText color={colors.primary} variant="pill">
+                      +{Math.max(1, Math.round(action.progressPercent))}%
+                    </AppText>
+                  }
+                />
+              </DayActionCard>
+            ) : (
+              <HabitCard
+                done={action.done}
+                key={`h${action.habitId}`}
+                onToggleDone={() =>
+                  setCompletion(
+                    action.habitId,
+                    today,
+                    action.done ? null : "done",
+                  )
+                }
+                streakDays={action.streakDays}
+                style={styles.habitCardSpacing}
+                subtitle={action.cue || action.subtitle}
+                title={action.title}
+                visuals={action.visuals}
+              />
+            ),
+          )}
         </View>
       ) : null}
 
@@ -523,11 +604,19 @@ export default function HomeScreen() {
               />
             </>
           ) : null}
-          {laterBlocks.map((block) => (
-            <View
-              key={block.key}
-              style={[styles.currentBlock, styles.laterRow]}
-            >
+          {laterBlocks.map((block) => {
+            // Phone: the block's habits wait below it as habit cards.
+            const rowActions = phone
+              ? block.actions.filter((action) => "questId" in action)
+              : block.actions;
+            const habitCards = phone
+              ? block.actions.flatMap((action) =>
+                  "questId" in action ? [] : [action],
+                )
+              : [];
+            return (
+            <View key={block.key}>
+            <View style={[styles.currentBlock, styles.laterRow]}>
               <View style={styles.laterBadge}>
                 <BlockIconArt
                   color={LATER_COLORS.icon}
@@ -547,7 +636,7 @@ export default function HomeScreen() {
                     {block.time}
                   </AppText>
                 </View>
-                {block.actions.map((action, index) => (
+                {rowActions.map((action, index) => (
                   <View
                     key={
                       "questId" in action
@@ -559,7 +648,7 @@ export default function HomeScreen() {
                     <View style={styles.laterActionTitleRow}>
                       <AppText
                         color={LATER_COLORS.title}
-                        numberOfLines={2}
+                        numberOfLines={phone ? undefined : 2}
                         style={[
                           styles.laterQuestTitle,
                           styles.laterActionTitleText,
@@ -580,7 +669,7 @@ export default function HomeScreen() {
                     <View style={styles.laterBreadcrumb}>
                       <DreamIcon color={LATER_COLORS.icon} size={16} />
                       <AppText
-                        color={LATER_COLORS.crumb}
+                        color={phone ? colors.textSecondary : LATER_COLORS.crumb}
                         numberOfLines={1}
                         style={styles.laterCrumbLabel}
                         variant="subtitle"
@@ -624,7 +713,27 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-          ))}
+            {habitCards.map((action) => (
+              <HabitCard
+                done={action.done}
+                key={`h${action.habitId}`}
+                onToggleDone={() =>
+                  setCompletion(
+                    action.habitId,
+                    today,
+                    action.done ? null : "done",
+                  )
+                }
+                streakDays={action.streakDays}
+                style={styles.habitCardSpacing}
+                subtitle={action.cue || action.subtitle}
+                title={action.title}
+                visuals={action.visuals}
+              />
+            ))}
+            </View>
+            );
+          })}
         </>
       ) : null}
 
@@ -676,12 +785,24 @@ const styles = StyleSheet.create({
       radius: 9,
     }),
   },
+  focusMedallionPhone: {
+    height: 36,
+    width: 36,
+  },
   focusRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  /** Tighter phone row so the title column gets the width. */
+  focusRowPhone: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  habitCardSpacing: {
+    marginBottom: spacing.sm,
   },
   focusRowDivider: {
     borderTopColor: colors.borderFaint,

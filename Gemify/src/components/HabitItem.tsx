@@ -1,10 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { useMemo, type ReactNode } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { AppText, ChevronIcon, ClockIcon } from "@/shared/components";
@@ -166,36 +161,14 @@ function HabitArt({
 }
 
 /**
- * Renders the habit title on a single line, or nothing at all when the available
- * width would force it to be ellipsized — a clipped title reads worse than none.
+ * The habit title. It wraps onto a second line when space is tight — it is
+ * never hidden, so a long name can't vanish from its own row.
  */
 function HabitTitle({ compact, title }: { compact: boolean; title: string }) {
-  const { width } = useWindowDimensions();
-  const [truncated, setTruncated] = useState(false);
-
-  // A new width (or a new title) may well fit, so measure again from scratch.
-  const measureKey = `${compact}|${width}|${title}`;
-  const [lastMeasureKey, setLastMeasureKey] = useState(measureKey);
-  if (measureKey !== lastMeasureKey) {
-    setLastMeasureKey(measureKey);
-    setTruncated(false);
-  }
-
-  if (truncated) {
-    return null;
-  }
-
   return (
     <AppText
       color={colors.textPrimary}
-      numberOfLines={1}
-      onTextLayout={(event) => {
-        const [line] = event.nativeEvent.lines;
-
-        if (line && line.text.trim() !== title) {
-          setTruncated(true);
-        }
-      }}
+      numberOfLines={2}
       style={compact && styles.habitTitleCompact}
       variant="pill"
     >

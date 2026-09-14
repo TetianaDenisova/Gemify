@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -282,20 +283,20 @@ type MilestoneDetailField = {
 
 const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
   {
-    description:
-      "",
-    icon: "artifact",
-    key: "artifact",
-    label: "ARTIFACT",
-    placeholder: "What will show that your goal has been achieved?",
-  },
-  {
     description: "",
     icon: "state",
     key: "state",
     label: "STATE",
     placeholder: "How do you want to feel at this stage?",
     required: true,
+  },
+  {
+    description:
+      "",
+    icon: "artifact",
+    key: "artifact",
+    label: "ARTIFACT",
+    placeholder: "What will show that your goal has been achieved?",
   },
   {
     description: "",
@@ -1194,9 +1195,39 @@ export function GoalJourneyMapScreen() {
     }, [loadJourney]),
   );
 
+  // Android's hardware back matches the header arrow: leaving the map lands
+  // on Home, whichever screen opened it.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          router.dismissTo("/");
+          return true;
+        },
+      );
+      return () => subscription.remove();
+    }, [router]),
+  );
+
+  const { phone } = useLayoutSize();
   const milestones = useMemo(
     () => dbMilestones.map(toJourneyData),
     [dbMilestones],
+  );
+  // On a phone, completed steps settle at the bottom of the path and the open
+  // ones climb toward the castle. Only the drawing order changes — ids, badge
+  // numbers and "STEP n OF m" keep the real sequence. Edit mode keeps pure
+  // sequence order so every "+" sits between the milestones it inserts into.
+  const displayMilestones = useMemo(
+    () =>
+      phone && !isEditMode
+        ? [
+            ...milestones.filter((milestone) => milestone.completed),
+            ...milestones.filter((milestone) => !milestone.completed),
+          ]
+        : milestones,
+    [isEditMode, milestones, phone],
   );
   /** Board display id (sequence + 1) → DB row id, for mutations. */
   const dbIdByDisplayId = useMemo(
@@ -1392,7 +1423,7 @@ export function GoalJourneyMapScreen() {
       if (photos.length > 0) {
         await deleteMemoryPhotos(photos);
       }
-      router.back();
+      router.dismissTo("/");
     } catch (cause) {
       console.error("Failed to delete the dream", cause);
     }
@@ -1407,11 +1438,13 @@ export function GoalJourneyMapScreen() {
       >
         {({ imageHeight, imageWidth }) => (
           <>
-            {milestones.map((milestone, index) => (
+            {displayMilestones.map((milestone, index) => (
               <JourneyMilestone
                 imageHeight={imageHeight}
                 imageWidth={imageWidth}
                 key={milestone.id}
+                // Alternate by drawn position, so a sorted path still zigzags.
+                labelSide={index % 2 === 0 ? "right" : "left"}
                 milestone={milestone}
                 onPress={handleMilestonePress}
                 position={positions[index]}

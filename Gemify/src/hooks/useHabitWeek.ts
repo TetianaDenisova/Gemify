@@ -20,6 +20,7 @@ import {
 } from "@/db";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
+import { habitStreakDays, streakLookbackStart } from "@/utils/habitStreak";
 
 export type HabitWeekView = {
   habit: Habit;
@@ -27,6 +28,8 @@ export type HabitWeekView = {
   scheduleDays: number[];
   /** Total days ever recorded as done ("Day N" counter). */
   doneCount: number;
+  /** Consecutive practiced days up to today (🔥 streak). */
+  streakDays: number;
   /** Status per current-week day, Monday first; no record = "open". */
   weekProgress: HabitCompletion[];
   details: HabitDetailEntry[];
@@ -76,15 +79,22 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
         getTimeBlocks(),
       ]);
 
+      const today = todayKey();
       const views = await Promise.all(
         list.map(async (habit): Promise<HabitWeekView> => {
+          // One read covers both the streak lookback and this week's strip
+          // (the lookback always starts before Monday).
           const [scheduleDays, completions, doneCount, details, todayChecks] =
             await Promise.all([
               getHabitScheduleDays(habit.id),
-              getHabitCompletions(habit.id, weekDates[0], weekDates[6]),
+              getHabitCompletions(
+                habit.id,
+                streakLookbackStart(today),
+                weekDates[6],
+              ),
               getHabitDoneCount(habit.id),
               getHabitDetails(habit.id),
-              getHabitDetailChecks(habit.id, todayKey()),
+              getHabitDetailChecks(habit.id, today),
             ]);
           const statusByDate = new Map(
             completions.map((record) => [record.date, record.status]),
@@ -93,6 +103,7 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
             habit,
             scheduleDays,
             doneCount,
+            streakDays: habitStreakDays(statusByDate, scheduleDays, today),
             details,
             timeLabel: habitTimeLabel(habit.timeOfDay, timeBlocks),
             todayDetailChecks: todayChecks,

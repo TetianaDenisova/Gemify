@@ -262,6 +262,17 @@ const backupUpgrades: BackupUpgrade[] = [
       }
     },
   },
+  {
+    // v17 added the sync columns (uid, updated_at, sync_dirty). Older rows
+    // simply lack them; the sync triggers stamp them as the rows are restored.
+    toVersion: 17,
+    up: () => {},
+  },
+  {
+    // v18 only replaced the sync update triggers; the data is unchanged.
+    toVersion: 18,
+    up: () => {},
+  },
 ];
 
 // ---------------------------------------------------------------------------
