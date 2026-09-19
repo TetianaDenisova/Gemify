@@ -311,12 +311,14 @@ export function TextPromptModal({
       {hint ? <HintRow style={styles.promptHint} text={hint} /> : null}
       <View style={styles.promptActions}>
         <AppButton
+          density="compact"
           label="Cancel"
           onPress={onClose}
           style={styles.promptButton}
           variant="secondary"
         />
         <AppButton
+          density="compact"
           disabled={!value.trim()}
           label={submitLabel}
           onPress={() => onSubmit(value.trim())}
@@ -828,9 +830,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.lg,
   },
+  /** The pair splits the row; their label inset comes from `density`. */
   promptButton: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   promptHint: {
     marginTop: spacing.lg,

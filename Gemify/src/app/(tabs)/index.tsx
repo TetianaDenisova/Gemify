@@ -604,19 +604,8 @@ export default function HomeScreen() {
               />
             </>
           ) : null}
-          {laterBlocks.map((block) => {
-            // Phone: the block's habits wait below it as habit cards.
-            const rowActions = phone
-              ? block.actions.filter((action) => "questId" in action)
-              : block.actions;
-            const habitCards = phone
-              ? block.actions.flatMap((action) =>
-                  "questId" in action ? [] : [action],
-                )
-              : [];
-            return (
-            <View key={block.key}>
-            <View style={[styles.currentBlock, styles.laterRow]}>
+          {laterBlocks.map((block) => (
+            <View key={block.key} style={[styles.currentBlock, styles.laterRow]}>
               <View style={styles.laterBadge}>
                 <BlockIconArt
                   color={LATER_COLORS.icon}
@@ -636,7 +625,9 @@ export default function HomeScreen() {
                     {block.time}
                   </AppText>
                 </View>
-                {rowActions.map((action, index) => (
+                {/* Quests and habits share one muted row: nothing here is
+                    actionable yet, so nothing gets an active treatment. */}
+                {block.actions.map((action, index) => (
                   <View
                     key={
                       "questId" in action
@@ -669,7 +660,7 @@ export default function HomeScreen() {
                     <View style={styles.laterBreadcrumb}>
                       <DreamIcon color={LATER_COLORS.icon} size={16} />
                       <AppText
-                        color={phone ? colors.textSecondary : LATER_COLORS.crumb}
+                        color={LATER_COLORS.crumb}
                         numberOfLines={1}
                         style={styles.laterCrumbLabel}
                         variant="subtitle"
@@ -713,27 +704,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-            {habitCards.map((action) => (
-              <HabitCard
-                done={action.done}
-                key={`h${action.habitId}`}
-                onToggleDone={() =>
-                  setCompletion(
-                    action.habitId,
-                    today,
-                    action.done ? null : "done",
-                  )
-                }
-                streakDays={action.streakDays}
-                style={styles.habitCardSpacing}
-                subtitle={action.cue || action.subtitle}
-                title={action.title}
-                visuals={action.visuals}
-              />
-            ))}
-            </View>
-            );
-          })}
+          ))}
         </>
       ) : null}
 

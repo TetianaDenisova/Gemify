@@ -324,12 +324,14 @@ export default function MilestoneIdeasScreen() {
         />
         <View style={styles.promptActions}>
           <AppButton
+            density="compact"
             label="Cancel"
             onPress={() => setPromptVisible(false)}
             style={styles.promptButton}
             variant="secondary"
           />
           <AppButton
+            density="compact"
             disabled={!draft.trim() || !scoreValid}
             label="Add"
             onPress={handleAddIdea}
@@ -421,7 +423,6 @@ const styles = StyleSheet.create({
   },
   promptButton: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   promptInput: {
     marginTop: spacing.lg,

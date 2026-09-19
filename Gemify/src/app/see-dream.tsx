@@ -173,17 +173,6 @@ export default function SeeDreamScreen() {
         {/* A full button row for a feature that does not exist yet. */}
         {phone ? null : (
           <>
-            <AppButton
-              label="✦  Create with AI  ✦"
-              onPress={() => setAiHint(true)}
-              variant="ghost"
-            />
-            {aiHint ? (
-              <AppText align="center" color={colors.textMuted} variant="caption">
-                AI images are coming soon.
-              </AppText>
-            ) : null}
-
             <HintRow
               style={styles.hint}
               text="Choose an image that makes your future feel real."

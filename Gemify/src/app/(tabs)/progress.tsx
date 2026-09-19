@@ -1,20 +1,11 @@
 import { Image } from "expo-image";
-import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import {
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  LinearGradient,
-  Path,
-  Rect,
-  Stop,
-} from "react-native-svg";
+import Svg, { Line, Rect } from "react-native-svg";
 
 import type { FulfillmentPoint } from "@/data/progressData";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
@@ -22,7 +13,6 @@ import { useProgressContent } from "@/hooks/useProgressContent";
 import {
   AppText,
   Card,
-  CheckIcon,
   ChevronIcon,
   ListItem,
   ScreenScaffold,
@@ -45,17 +35,10 @@ import {
 const CHART_PLOT_HEIGHT = 150;
 /** Shorter plot on the phone tier — the cards below still have to fit. */
 const CHART_PLOT_HEIGHT_PHONE = 120;
-/** Headroom above the line chart for the endpoint percent labels. */
-const LINE_TOP_PAD = 44;
-/** Gap between the lowest dot and the baseline, so dots never touch the axis. */
-const LINE_BOTTOM_INSET = 18;
 const BAR_TOP_PAD = 12;
 const CHART_Y_AXIS_WIDTH = 34;
 const CHART_Y_AXIS_WIDTH_PHONE = 26;
 const CHART_X_LABEL_HEIGHT = 26;
-/** Taller label band for the line chart so labels clear the pink baseline. */
-const LINE_X_LABEL_HEIGHT = 36;
-const CHART_POINT_INSET = 14;
 const CHART_Y_TICKS = [100, 75, 50, 25, 0] as const;
 /** Every other gridline on a phone: density, not removal. */
 const CHART_Y_TICKS_PHONE = [100, 50, 0] as const;
@@ -70,210 +53,7 @@ const SECTION_BORDER = "rgba(183, 140, 255, 0.58)";
 const SECTION_SURFACE = "rgba(5, 10, 25, 0.86)";
 
 const NO_PROGRESS_ART = require("../../data/images/no-progress.png");
-
-/** Catmull-Rom → cubic bezier, so the trend line flows instead of kinking. */
-function smoothLinePath(dots: readonly { x: number; y: number }[]) {
-  if (dots.length === 0) return "";
-  let path = `M ${dots[0].x} ${dots[0].y}`;
-  for (let i = 0; i < dots.length - 1; i += 1) {
-    const p0 = dots[i - 1] ?? dots[i];
-    const p1 = dots[i];
-    const p2 = dots[i + 1];
-    const p3 = dots[i + 2] ?? p2;
-    // Clamp control points to the segment's y-range so the curve never
-    // overshoots past a flat run (e.g. dipping under the baseline).
-    const yLo = Math.min(p1.y, p2.y);
-    const yHi = Math.max(p1.y, p2.y);
-    const clampY = (y: number) => Math.min(yHi, Math.max(yLo, y));
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = clampY(p1.y + (p2.y - p0.y) / 6);
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = clampY(p2.y - (p3.y - p1.y) / 6);
-    path += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
-  }
-  return path;
-}
-
-/** Keep the first/last labels inside the plot: left/right-align at the edges. */
-function labelLeftFor(x: number, index: number, count: number) {
-  if (index === 0) return x - 4;
-  if (index === count - 1) return x - 52;
-  return x - 28;
-}
-
-function labelAlignFor(index: number, count: number): "center" | "left" | "right" {
-  if (index === 0) return "left";
-  if (index === count - 1) return "right";
-  return "center";
-}
-
-function FulfillmentChart({
-  compact,
-  phone,
-  points,
-}: {
-  compact: boolean;
-  phone: boolean;
-  points: readonly FulfillmentPoint[];
-}) {
-  const [chartWidth, setChartWidth] = useState(0);
-
-  const plotHeight = phone ? CHART_PLOT_HEIGHT_PHONE : CHART_PLOT_HEIGHT;
-  const svgHeight = LINE_TOP_PAD + plotHeight + 8;
-
-  const values = points.map((point) => point.percent);
-  const maxValue = Math.max(...values);
-  const minValue = Math.min(...values);
-  // Zoom the y-domain to the data so the trend fills the plot: the lowest
-  // point sits just above the baseline, the highest just under the dotted
-  // guide — instead of squashing everything into a fixed 0–100 scale.
-  const span = Math.max(maxValue - minValue, 4);
-  const domainLo = Math.max(0, minValue - span * 0.3);
-  const domainHi = maxValue + span * 0.25;
-
-  const yFor = (percent: number) =>
-    LINE_TOP_PAD +
-    (1 - (percent - domainLo) / (domainHi - domainLo)) *
-      (plotHeight - LINE_BOTTOM_INSET);
-
-  const startX = CHART_POINT_INSET;
-  const endX = chartWidth - CHART_POINT_INSET;
-  const step = points.length > 1 ? (endX - startX) / (points.length - 1) : 0;
-
-  const dots = points.map((point, index) => ({
-    ...point,
-    x: startX + index * step,
-    y: yFor(point.percent),
-  }));
-  const firstDot = dots[0];
-  const lastDot = dots[dots.length - 1];
-
-  const baselineY = LINE_TOP_PAD + plotHeight;
-  const guideY = yFor(maxValue) - 12;
-  const linePath = dots.length > 1 ? smoothLinePath(dots) : "";
-  const areaPath =
-    linePath
-      ? `${linePath} L ${lastDot.x} ${baselineY} L ${firstDot.x} ${baselineY} Z`
-      : "";
-
-  return (
-    <View
-      onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-      style={[
-        styles.chartCanvas,
-        styles.lineCanvas,
-        phone && styles.lineCanvasPhone,
-      ]}
-    >
-      {chartWidth > 0 ? (
-        <>
-          <Svg height={svgHeight} width={chartWidth}>
-            <Defs>
-              <LinearGradient id="fulfillmentArea" x1="0" x2="0" y1="0" y2="1">
-                <Stop offset="0" stopColor={colors.accentViolet} stopOpacity={0.4} />
-                <Stop offset="1" stopColor={colors.accentViolet} stopOpacity={0.04} />
-              </LinearGradient>
-            </Defs>
-            <Line
-              stroke={CHART_GRID_STROKE}
-              strokeDasharray="2 6"
-              strokeLinecap="round"
-              strokeWidth={1}
-              x1={4}
-              x2={chartWidth - 4}
-              y1={guideY}
-              y2={guideY}
-            />
-            {areaPath ? <Path d={areaPath} fill="url(#fulfillmentArea)" /> : null}
-            <Line
-              stroke={colors.accentPink}
-              strokeOpacity={0.55}
-              strokeWidth={1.6}
-              x1={0}
-              x2={chartWidth}
-              y1={baselineY}
-              y2={baselineY}
-            />
-            {linePath ? (
-              <Path
-                d={linePath}
-                fill="none"
-                opacity={0.25}
-                stroke={colors.accentPink}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={7}
-              />
-            ) : null}
-            {linePath ? (
-              <Path
-                d={linePath}
-                fill="none"
-                stroke={colors.accentPink}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.6}
-              />
-            ) : null}
-            {dots.map((dot) => (
-              <Circle
-                cx={dot.x}
-                cy={dot.y}
-                fill={colors.accentViolet}
-                key={`glow-${dot.key}`}
-                opacity={0.4}
-                r={8}
-              />
-            ))}
-            {dots.map((dot) => (
-              <Circle
-                cx={dot.x}
-                cy={dot.y}
-                fill={colors.textPrimary}
-                key={`dot-${dot.key}`}
-                r={3.4}
-              />
-            ))}
-          </Svg>
-          {[firstDot, ...(dots.length > 1 ? [lastDot] : [])].map((dot, i) => {
-            const index = i === 0 ? 0 : dots.length - 1;
-            return (
-              <AppText
-                align={labelAlignFor(index, dots.length)}
-                color={index === 0 ? colors.textPrimary : colors.accentPink}
-                key={`percent-${dot.key}`}
-                style={[
-                  styles.chartPointLabel,
-                  compact && styles.chartPointLabelCompact,
-                  {
-                    left: labelLeftFor(dot.x, index, dots.length),
-                    top: dot.y - 34,
-                  },
-                ]}
-              >
-                {Math.round(dot.percent)}%
-              </AppText>
-            );
-          })}
-          {dots.map((dot, index) => (
-            <AppText
-              align={labelAlignFor(index, dots.length)}
-              color={colors.textSecondary}
-              key={`label-${dot.key}`}
-              style={[
-                styles.lineAxisLabel,
-                phone && styles.lineAxisLabelPhone,
-                { left: labelLeftFor(dot.x, index, dots.length) },
-              ]}
-            >
-              {dot.label}
-            </AppText>
-          ))}
-        </>
-      ) : null}
-    </View>
-  );
-}
+const WILL_ACHIEVE_ART = require("../../../assets/will-achieve.png");
 
 function QuestBarsChart({
   compact,
@@ -446,23 +226,17 @@ export default function ProgressScreen() {
   const [goalKey, setGoalKey] = useState("");
   const { content: progressContent } = useProgressContent(goalKey);
   const { fulfillmentTabs } = progressContent;
-  const lineTab =
-    fulfillmentTabs.find((tab) => tab.chart === "line") ?? fulfillmentTabs[0];
-  const barsTab = fulfillmentTabs.find((tab) => tab.chart === "bars");
+  const barsTab =
+    fulfillmentTabs.find((tab) => tab.chart === "bars") ?? fulfillmentTabs[0];
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
-  const [rangeKey, setRangeKey] = useState(lineTab.ranges[0].key);
+  const [rangeKey, setRangeKey] = useState(barsTab.ranges[0].key);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
 
   const selectedGoal =
     progressContent.goals.find((goal) => goal.key === goalKey) ??
     progressContent.goals[0];
-  const lineRange =
-    lineTab.ranges.find((range) => range.key === rangeKey) ?? lineTab.ranges[0];
   const barsRange =
-    barsTab?.ranges.find((range) => range.key === rangeKey) ??
-    barsTab?.ranges[0];
-  const currentPercent =
-    lineRange.points[lineRange.points.length - 1].percent;
+    barsTab.ranges.find((range) => range.key === rangeKey) ?? barsTab.ranges[0];
 
   const goalPicker = (
     <Card
@@ -530,7 +304,7 @@ export default function ProgressScreen() {
             style={[styles.rangeLabel, phone && styles.rangeLabelPhone]}
             variant="pill"
           >
-            {lineRange.label}
+            {barsRange.label}
           </AppText>
           <View style={rangePickerOpen ? styles.chevronOpen : null}>
             <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
@@ -538,8 +312,8 @@ export default function ProgressScreen() {
         </Pressable>
         {rangePickerOpen ? (
           <View style={styles.rangeMenu}>
-            {lineTab.ranges
-              .filter((range) => range.key !== lineRange.key)
+            {barsTab.ranges
+              .filter((range) => range.key !== barsRange.key)
               .map((range, index) => (
                 <Pressable
                   key={range.key}
@@ -633,131 +407,101 @@ export default function ProgressScreen() {
         </Card>
       ) : (
         <>
-          <Card style={styles.sectionCard} variant="glass">
-            <AppText style={styles.cardTitle} variant="title">{lineTab.label}</AppText>
-            {lineRange.highlight ? (
-              <View style={styles.highlightRow}>
-                <View style={styles.highlightMain}>
-                  <AppText color={colors.accentPink} variant="eyebrow">
-                    {lineRange.highlight.eyebrow}
-                  </AppText>
-                  <AppText color={colors.accentPink} variant="labelStrong">
-                    {`${lineRange.highlight.delta > 0 ? "+" : ""}${lineRange.highlight.delta}%`}
-                  </AppText>
-                  {/* The eyebrow and the delta beside it carry the fact. */}
-                  {phone ? null : (
-                    <AppText color={colors.textSecondary} variant="caption">
-                      {lineRange.highlight.caption}
-                    </AppText>
-                  )}
-                </View>
-                <View style={styles.highlightTasks}>
-                  <View style={styles.checkBubble}>
-                    <CheckIcon
-                      color={colors.accentViolet}
-                      size={13}
-                      strokeWidth={2.2}
-                    />
-                  </View>
-                  <AppText color={colors.textPrimary} style={styles.tasksLabel} variant="caption">
-                    {lineRange.highlight.tasksLabel}
-                  </AppText>
-                </View>
-              </View>
-            ) : null}
-            <FulfillmentChart
-              compact={compact}
-              phone={phone}
-              points={lineRange.points}
+          {/* The finish date the current pace points at, over the
+              destination art — the reason the charts below matter. */}
+          <Card padded={false} style={styles.forecastCard} variant="glass">
+            <View
+              style={[styles.forecastCopy, phone && styles.forecastCopyPhone]}
+            >
+              <AppText variant={phone ? "pill" : "titleSm"}>
+                {progressContent.forecast.headline}
+              </AppText>
+              <AppText
+                color={colors.primary}
+                style={styles.forecastDate}
+                variant={phone ? "titleSm" : "cardTitle"}
+              >
+                {progressContent.forecast.date}
+              </AppText>
+            </View>
+            <Image
+              contentFit="cover"
+              source={WILL_ACHIEVE_ART}
+              style={[styles.forecastArt, phone && styles.forecastArtPhone]}
             />
-            <View style={styles.overallHeader}>
-              <AppText variant="eyebrow">{progressContent.overallLabel}</AppText>
-              <AppText style={styles.overallPercent} variant="title">{Math.round(currentPercent)}%</AppText>
-            </View>
-            <View style={styles.overallTrack}>
-              <ExpoLinearGradient
-                colors={[colors.accentVioletStrong, colors.accentViolet]}
-                end={{ x: 1, y: 0 }}
-                start={{ x: 0, y: 0 }}
-                style={[styles.overallFill, { width: `${currentPercent}%` }]}
-              />
-            </View>
           </Card>
 
-          {barsTab && barsRange ? (
-            <Card style={styles.sectionCard} variant="glass">
-              <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
-              <View
-                style={[
-                  styles.chartRow,
-                  compact && styles.chartRowCompact,
-                  phone && styles.chartRowPhone,
-                ]}
-              >
-                <QuestBarsChart
-                  compact={compact}
-                  phone={phone}
-                  points={barsRange.points}
-                />
-                {barsRange.summary ? (
-                  phone ? (
-                    // Stacked under the bars, the average reads as a footer
-                    // row — the same shape as the goal card's overall bar —
-                    // instead of a centered column of three lines.
-                    <View style={styles.summaryFooterPhone}>
-                      <View style={styles.summaryFooterRowPhone}>
-                        <AppText numberOfLines={1} style={styles.summaryEyebrowPhone} variant="eyebrow">
-                          {barsRange.summary.eyebrow}
-                        </AppText>
-                        <AppText
-                          color={colors.accentPink}
-                          style={styles.summaryPercentPhone}
-                          variant="title"
-                        >
-                          {barsRange.summary.percent}%
-                        </AppText>
-                      </View>
-                      <AppText color={colors.textSecondary} variant="bodySmall">
+          <Card style={styles.sectionCard} variant="glass">
+            <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
+            <View
+              style={[
+                styles.chartRow,
+                compact && styles.chartRowCompact,
+                phone && styles.chartRowPhone,
+              ]}
+            >
+              <QuestBarsChart
+                compact={compact}
+                phone={phone}
+                points={barsRange.points}
+              />
+              {barsRange.summary ? (
+                phone ? (
+                  // Stacked under the bars, the average reads as a footer
+                  // row instead of a centered column of three lines.
+                  <View style={styles.summaryFooterPhone}>
+                    <View style={styles.summaryFooterRowPhone}>
+                      <AppText numberOfLines={1} style={styles.summaryEyebrowPhone} variant="eyebrow">
+                        {barsRange.summary.eyebrow}
+                      </AppText>
+                      <AppText
+                        color={colors.accentPink}
+                        style={styles.summaryPercentPhone}
+                        variant="title"
+                      >
+                        {barsRange.summary.percent}%
+                      </AppText>
+                    </View>
+                    <AppText color={colors.textSecondary} variant="bodySmall">
+                      {barsRange.summary.caption}
+                    </AppText>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.panelDivider} />
+                    <View
+                      style={[
+                        styles.summaryPanel,
+                        compact && styles.summaryPanelCompact,
+                      ]}
+                    >
+                      <AppText align="center" variant="eyebrow">
+                        {barsRange.summary.eyebrow}
+                      </AppText>
+                      <AppText
+                        color={colors.accentPink}
+                        style={[
+                          styles.summaryValue,
+                          compact && styles.summaryValueCompact,
+                        ]}
+                        variant="stat"
+                      >
+                        {barsRange.summary.percent}%
+                      </AppText>
+                      <AppText
+                        align="center"
+                        color={colors.textPrimary}
+                        style={styles.summaryCaption}
+                        variant="body"
+                      >
                         {barsRange.summary.caption}
                       </AppText>
                     </View>
-                  ) : (
-                    <>
-                      <View style={styles.panelDivider} />
-                      <View
-                        style={[
-                          styles.summaryPanel,
-                          compact && styles.summaryPanelCompact,
-                        ]}
-                      >
-                        <AppText align="center" variant="eyebrow">
-                          {barsRange.summary.eyebrow}
-                        </AppText>
-                        <AppText
-                          color={colors.accentPink}
-                          style={[
-                            styles.summaryValue,
-                            compact && styles.summaryValueCompact,
-                          ]}
-                          variant="stat"
-                        >
-                          {barsRange.summary.percent}%
-                        </AppText>
-                        <AppText
-                          align="center"
-                          color={colors.textPrimary}
-                          style={styles.summaryCaption}
-                          variant="body"
-                        >
-                          {barsRange.summary.caption}
-                        </AppText>
-                      </View>
-                    </>
-                  )
-                ) : null}
-              </View>
-            </Card>
-          ) : null}
+                  </>
+                )
+              ) : null}
+            </View>
+          </Card>
         </>
       )}
     </ScreenScaffold>
@@ -811,17 +555,6 @@ const styles = StyleSheet.create({
   },
   // Chart axis/point labels are a data-viz exception: token-sized, but kept
   // as local styles because they are absolutely positioned over the SVG plot.
-  chartPointLabel: {
-    fontSize: fontSizes.lg,
-    fontWeight: "600",
-    lineHeight: lineHeights.lg,
-    position: "absolute",
-    width: 56,
-  },
-  chartPointLabelCompact: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
   chartTickLabel: {
     fontSize: fontSizes.xs,
     left: 0,
@@ -845,15 +578,6 @@ const styles = StyleSheet.create({
   /** 370 pt minus a 96 pt summary panel leaves the bars ~250 pt — stack. */
   chartRowPhone: {
     flexDirection: "column",
-  },
-  checkBubble: {
-    alignItems: "center",
-    borderColor: colors.accentViolet,
-    borderRadius: radius.round,
-    borderWidth: 1.4,
-    height: 26,
-    justifyContent: "center",
-    width: 26,
   },
   chevronOpen: {
     transform: [{ rotate: "180deg" }],
@@ -889,6 +613,38 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     marginTop: spacing.lg,
+    ...textGlow(colors.primaryGlow, 12),
+  },
+  /** Wide crop of the destination art (source is ~1.55:1) under the copy. */
+  forecastArt: {
+    aspectRatio: 1.7,
+    width: "100%",
+  },
+  /** Shallower crop on a phone, so the banner never eats the first chart. */
+  forecastArtPhone: {
+    aspectRatio: 1.9,
+  },
+  /**
+   * Opaque, art-matched ground: the artwork's dark sky dissolves into the
+   * copy above it, so the banner reads as one image with a headline.
+   */
+  forecastCard: {
+    backgroundColor: colors.background,
+    borderColor: SECTION_BORDER,
+    borderRadius: radius.md,
+    overflow: "hidden",
+  },
+  forecastCopy: {
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  forecastCopyPhone: {
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  forecastDate: {
     ...textGlow(colors.primaryGlow, 12),
   },
   goalOption: {
@@ -929,71 +685,6 @@ const styles = StyleSheet.create({
   /** The title is the only thing in this row — it needs no 72 pt band. */
   headerPhone: {
     minHeight: 52,
-  },
-  highlightMain: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexShrink: 1,
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  highlightRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    marginTop: spacing.md,
-  },
-  highlightTasks: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  lineAxisLabel: {
-    fontSize: fontSizes.md,
-    fontWeight: "600",
-    lineHeight: lineHeights.md,
-    position: "absolute",
-    // Anchored below the baseline from the top, so a collapsed canvas
-    // height can never push the labels up into the axis line.
-    top: LINE_TOP_PAD + CHART_PLOT_HEIGHT + 12,
-    width: 56,
-  },
-  lineAxisLabelPhone: {
-    top: LINE_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + 12,
-  },
-  lineCanvas: {
-    flexBasis: "auto",
-    flexGrow: 0,
-    flexShrink: 0,
-    height: LINE_TOP_PAD + CHART_PLOT_HEIGHT + LINE_X_LABEL_HEIGHT,
-    marginTop: spacing.md,
-  },
-  lineCanvasPhone: {
-    height: LINE_TOP_PAD + CHART_PLOT_HEIGHT_PHONE + LINE_X_LABEL_HEIGHT,
-  },
-  overallFill: {
-    borderRadius: radius.round,
-    height: "100%",
-  },
-  overallHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: spacing.md,
-  },
-  overallPercent: {
-    fontSize: fontSizes.xxxl,
-    lineHeight: lineHeights.xxxl,
-  },
-  overallTrack: {
-    backgroundColor: colors.surfaceDeep,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 10,
-    marginTop: spacing.sm,
-    overflow: "hidden",
   },
   overviewRow: {
     alignItems: "center",
@@ -1137,9 +828,5 @@ const styles = StyleSheet.create({
   titleCompact: {
     fontSize: fontSizes.cardTitle,
     lineHeight: lineHeights.cardTitle,
-  },
-  tasksLabel: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
   },
 });

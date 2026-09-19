@@ -10,11 +10,6 @@ import {
 import Svg, { Path } from "react-native-svg";
 
 import {
-  HabitBoardRow,
-  toBoardHabit,
-  type BoardHabit,
-} from "@/components/HabitBoardCard";
-import {
   AcceptQuestModal,
   ActionSheet,
   QuestActionSheet,
@@ -39,7 +34,6 @@ import {
   type Quest,
   type TimeBlockRecord,
 } from "@/db";
-import { useHabitWeek } from "@/hooks/useHabitWeek";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import {
   AppButton,
@@ -52,11 +46,8 @@ import {
   Card,
   CheckIcon,
   Checkbox,
-  CloseIcon,
-  DotsIcon,
   ImageIcon,
   MilestoneIcon,
-  PencilIcon,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -71,7 +62,6 @@ import {
   lineHeights,
   pressed,
   radius,
-  shadowStyle,
   spacing,
 } from "@/theme/theme";
 import { toDateKey } from "@/utils/dates";
@@ -79,14 +69,13 @@ import { toDateKey } from "@/utils/dates";
 const TREE_MILESTONE_HEADER_SOURCE = require("../../data/images/tree-milestone-header.png");
 const MILESTONE_DOOR_SOURCE = require("../../../assets/create-goal/milestone-door.png");
 
-const HABIT_ACCENT_CYCLE = [colors.primary, "#7F91FF", "#D986FF", "#4FC3F7"];
-
 type PromptState =
   | { kind: "quest" }
   | { kind: "editQuest"; questId: number; initialValue: string }
   | null;
 
-type ContentTab = "quests" | "habits";
+/** The list splits by state, not by kind: still open vs. finished. */
+type ContentTab = "active" | "done";
 
 /**
  * Human caption for an accepted quest's schedule, e.g. "Today · After work"
@@ -318,97 +307,58 @@ function QuestRow({
 }
 
 function ContentTabs({
+  activeCount,
   activeTab,
-  habitsCount,
+  doneCount,
   onChange,
-  questsCount,
 }: {
+  activeCount: number;
   activeTab: ContentTab;
-  habitsCount: number;
+  doneCount: number;
   onChange: (tab: ContentTab) => void;
-  questsCount: number;
 }) {
+  const tabs: readonly { count: number; key: ContentTab; label: string }[] = [
+    { count: activeCount, key: "active", label: "ACTIVE" },
+    { count: doneCount, key: "done", label: "DONE" },
+  ];
+
   return (
     <View style={styles.tabs}>
-      <Pressable
-        accessibilityRole="tab"
-        accessibilityState={{ selected: activeTab === "quests" }}
-        onPress={() => onChange("quests")}
-        style={({ pressed: isPressed }) => [
-          styles.tabButton,
-          activeTab === "quests" && styles.tabButtonActive,
-          isPressed && pressed,
-        ]}
-      >
-        <AppText
-          color={activeTab === "quests" ? colors.primary : colors.textMuted}
-          style={styles.tabLabel}
-          variant="captionStrong"
-        >
-          QUESTS
-        </AppText>
-        <AppText
-          color={activeTab === "quests" ? colors.primary : colors.textMuted}
-          style={styles.tabCount}
-          variant="pill"
-        >
-          {questsCount}
-        </AppText>
-      </Pressable>
-      <Pressable
-        accessibilityRole="tab"
-        accessibilityState={{ selected: activeTab === "habits" }}
-        onPress={() => onChange("habits")}
-        style={({ pressed: isPressed }) => [
-          styles.tabButton,
-          activeTab === "habits" && styles.tabButtonActive,
-          isPressed && pressed,
-        ]}
-      >
-        <AppText
-          color={activeTab === "habits" ? colors.primary : colors.textMuted}
-          style={styles.tabLabel}
-          variant="captionStrong"
-        >
-          HABITS
-        </AppText>
-        <AppText
-          color={activeTab === "habits" ? colors.primary : colors.textMuted}
-          style={styles.tabCount}
-          variant="pill"
-        >
-          {habitsCount}
-        </AppText>
-      </Pressable>
+      {tabs.map((tab) => {
+        const selected = activeTab === tab.key;
+        return (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            key={tab.key}
+            onPress={() => onChange(tab.key)}
+            style={({ pressed: isPressed }) => [
+              styles.tabButton,
+              selected && styles.tabButtonActive,
+              isPressed && pressed,
+            ]}
+          >
+            <AppText
+              color={selected ? colors.primary : colors.textMuted}
+              style={styles.tabLabel}
+              variant="captionStrong"
+            >
+              {tab.label}
+            </AppText>
+            {/* An empty tab says so with its list; a "0" only adds noise. */}
+            {tab.count === 0 ? null : (
+              <AppText
+                color={selected ? colors.primary : colors.textMuted}
+                style={styles.tabCount}
+                variant="pill"
+              >
+                {tab.count}
+              </AppText>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
-  );
-}
-
-/** The same sheet for a habit: only Edit and Cancel (delete lives on the Habits tab). */
-function HabitActionSheet({
-  habit,
-  onClose,
-  onEdit,
-}: {
-  habit: BoardHabit | null;
-  onClose: () => void;
-  onEdit: () => void;
-}) {
-  return (
-    <ActionSheet onClose={onClose} title={habit?.title} visible={habit !== null}>
-      <SheetActionRow
-        icon={
-          <PencilIcon size={iconSizes.lg} strokeWidth={1.7} variant="detailed" />
-        }
-        label="Edit"
-        onPress={onEdit}
-      />
-      <SheetActionRow
-        icon={<CloseIcon color={colors.textSecondary} size={iconSizes.lg} />}
-        label="Cancel"
-        onPress={onClose}
-      />
-    </ActionSheet>
   );
 }
 
@@ -421,11 +371,7 @@ export default function MilestoneQuestsScreen() {
       dreamId?: string;
     }>();
 
-  const [activeTab, setActiveTab] = useState<ContentTab>("quests");
-  const [expandedHabitIds, setExpandedHabitIds] = useState<Set<number>>(
-    () => new Set(),
-  );
-  const [menuHabit, setMenuHabit] = useState<BoardHabit | null>(null);
+  const [activeTab, setActiveTab] = useState<ContentTab>("active");
   const [menuQuest, setMenuQuest] = useState<Quest | null>(null);
   const [acceptQuest, setAcceptQuest] = useState<Quest | null>(null);
   const [questDeleteTarget, setQuestDeleteTarget] = useState<Quest | null>(
@@ -443,9 +389,6 @@ export default function MilestoneQuestsScreen() {
   const [moveQuest, setMoveQuest] = useState<Quest | null>(null);
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
-  const { habits, setCompletion, weekDates } = useHabitWeek(
-    milestone?.dreamId,
-  );
 
   const loadScreen = useCallback(async () => {
     try {
@@ -491,20 +434,13 @@ export default function MilestoneQuestsScreen() {
   // reload so new quests never target a milestone id that is gone.
   useRefreshOnSync(loadScreen);
 
-  const boardHabits = habits.map((view, index) =>
-    toBoardHabit(view, index, HABIT_ACCENT_CYCLE[index % HABIT_ACCENT_CYCLE.length]),
-  );
-  // Monday-first index of today, matching the week strip's order.
-  const activeDayIndex = (new Date().getDay() + 6) % 7;
-
-  const toggleHabitExpanded = (id: number) => {
-    setExpandedHabitIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  // Accepted quests lead the Active tab — a scheduled step is the next thing
+  // to do; the rest still wait for a day.
+  const activeQuests = quests
+    .filter((quest) => !quest.isDone)
+    .sort((a, b) => Number(b.isPlanned) - Number(a.isPlanned));
+  const doneQuests = quests.filter((quest) => quest.isDone);
+  const visibleQuests = activeTab === "active" ? activeQuests : doneQuests;
 
   const goToJourneyMap = () => {
     const dreamId =
@@ -590,18 +526,14 @@ export default function MilestoneQuestsScreen() {
     }
   };
 
-  const handleDayPress = (habit: BoardHabit, dayIndex: number) => {
-    const date = weekDates[dayIndex];
-    const current = habit.progress[dayIndex];
-    // Tap cycles done ↔ open, same as the Habits tab.
-    setCompletion(habit.id, date, current === "done" ? null : "done");
-  };
-
   const handlePromptSubmit = async (value: string) => {
     if (!prompt) return;
     try {
       if (prompt.kind === "quest" && milestone) {
         await createQuest(milestone.id, value);
+        // A fresh quest lands in Active — show it there rather than leaving
+        // the Done tab looking as if nothing happened.
+        setActiveTab("active");
       } else if (prompt.kind === "editQuest") {
         await updateQuest(prompt.questId, { title: value });
       }
@@ -651,15 +583,8 @@ export default function MilestoneQuestsScreen() {
     }
   };
 
-  const visibleCount = activeTab === "quests" ? quests.length : habits.length;
-  const visibleLabel = `${visibleCount} ${
-    activeTab === "quests"
-      ? visibleCount === 1
-        ? "quest"
-        : "quests"
-      : visibleCount === 1
-        ? "habit"
-        : "habits"
+  const visibleLabel = `${visibleQuests.length} ${
+    visibleQuests.length === 1 ? "quest" : "quests"
   }`;
 
   return (
@@ -729,10 +654,10 @@ export default function MilestoneQuestsScreen() {
       </Card>
 
       <ContentTabs
+        activeCount={activeQuests.length}
         activeTab={activeTab}
-        habitsCount={habits.length}
+        doneCount={doneQuests.length}
         onChange={setActiveTab}
-        questsCount={quests.length}
       />
 
       <View style={styles.listToolbar}>
@@ -742,153 +667,78 @@ export default function MilestoneQuestsScreen() {
             {visibleLabel}
           </AppText>
         )}
-        {activeTab === "quests" ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setPrompt({ kind: "quest" })}
-            style={({ pressed: isPressed }) => [
-              styles.newButton,
-              isPressed && pressed,
-            ]}
-          >
-            <PlusIcon color={colors.primary} size={iconSizes.md} />
-            <AppText color={colors.primary} variant="button">
-              New quest
-            </AppText>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({
-                pathname: "/create-habit",
-                params: {
-                  dreamId: milestone ? String(milestone.dreamId) : "",
-                },
-              })
-            }
-            style={({ pressed: isPressed }) => [
-              styles.newButton,
-              isPressed && pressed,
-            ]}
-          >
-            <PlusIcon color={colors.primary} size={iconSizes.md} />
-            <AppText color={colors.primary} variant="button">
-              New habit
-            </AppText>
-          </Pressable>
-        )}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setPrompt({ kind: "quest" })}
+          style={({ pressed: isPressed }) => [
+            styles.newButton,
+            isPressed && pressed,
+          ]}
+        >
+          <PlusIcon color={colors.primary} size={iconSizes.md} />
+          <AppText color={colors.primary} variant="button">
+            New quest
+          </AppText>
+        </Pressable>
       </View>
 
-      {activeTab === "quests" ? (
-        <>
-          {/* On a phone, completed quests sink below the open ones. */}
-          {(phone
-            ? [
-                ...quests.filter((quest) => !quest.isDone),
-                ...quests.filter((quest) => quest.isDone),
-              ]
-            : quests
-          ).map((quest) => (
-            <QuestRow
-              compact={isNarrow}
-              key={quest.id}
-              onAccept={() => setAcceptQuest(quest)}
-              onOpenMenu={() => setMenuQuest(quest)}
-              onToggleQuest={() => handleToggleQuest(quest)}
-              phone={phone}
-              quest={quest}
-              timeBlocks={timeBlocks}
-            />
-          ))}
+      {visibleQuests.map((quest) => (
+        <QuestRow
+          compact={isNarrow}
+          key={quest.id}
+          onAccept={() => setAcceptQuest(quest)}
+          onOpenMenu={() => setMenuQuest(quest)}
+          onToggleQuest={() => handleToggleQuest(quest)}
+          phone={phone}
+          quest={quest}
+          timeBlocks={timeBlocks}
+        />
+      ))}
 
-          {quests.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <AppText align="center" variant="bodySmall">
-                No quests yet. Add the first one to break this milestone into doable steps.
-              </AppText>
-            </Card>
-          ) : null}
+      {visibleQuests.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <AppText align="center" variant="bodySmall">
+            {activeTab === "done"
+              ? "Nothing completed yet. Finished quests collect here."
+              : quests.length > 0
+                ? "Every quest is done. Add another one, or close the milestone below."
+                : "No quests yet. Add the first one to break this milestone into doable steps."}
+          </AppText>
+        </Card>
+      ) : null}
 
-          {milestone ? (
-            milestone.status === "completed" ? (
-              <View style={styles.completeRow}>
-                <CheckIcon color={colors.primary} size={iconSizes.md} />
-                <AppText color={colors.primary} variant="button">
-                  Milestone completed
-                </AppText>
-              </View>
-            ) : allQuestsComplete ? (
-              <AppButton
-                icon={
-                  <CheckIcon
-                    color={colors.textOnPrimary}
-                    size={iconSizes.md}
-                  />
-                }
-                iconPosition="before"
-                label="Milestone Complete"
-                onPress={handleCompleteMilestone}
-                size="lg"
-                style={styles.completeButton}
-              />
-            ) : (
-              // Instruction-only copy in the most common state.
-              phone ? null : (
-                <AppText
-                  align="center"
-                  color={colors.textMuted}
-                  style={styles.completeHint}
-                  variant="bodySmall"
-                >
-                  To complete this milestone, complete all of its quests.
-                </AppText>
-              )
-            )
-          ) : null}
-        </>
-      ) : (
-        <>
-          {boardHabits.map((habit) => (
-            <HabitBoardRow
-              activeDayIndex={activeDayIndex}
-              compact={isNarrow}
-              containerStyle={[
-                styles.habitCard,
-                isNarrow && styles.habitCardCompact,
-              ]}
-              phone={phone}
-              expanded={expandedHabitIds.has(habit.id)}
-              habit={habit}
-              key={habit.id}
-              onDayPress={(dayIndex) => handleDayPress(habit, dayIndex)}
-              onPress={() => toggleHabitExpanded(habit.id)}
-              trailing={
-                <Pressable
-                  accessibilityLabel="Habit options"
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={() => setMenuHabit(habit)}
-                  style={({ pressed: isPressed }) => [
-                    styles.menuButton,
-                    isPressed && pressed,
-                  ]}
-                >
-                  <DotsIcon color={colors.textSecondary} size={iconSizes.md} />
-                </Pressable>
-              }
-            />
-          ))}
-
-          {habits.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <AppText align="center" variant="bodySmall">
-                No habits linked to this dream yet.
-              </AppText>
-            </Card>
-          ) : null}
-        </>
-      )}
+      {/* About the milestone, not about a tab — shown under either list. */}
+      {milestone ? (
+        milestone.status === "completed" ? (
+          <View style={styles.completeRow}>
+            <CheckIcon color={colors.primary} size={iconSizes.md} />
+            <AppText color={colors.primary} variant="button">
+              Milestone completed
+            </AppText>
+          </View>
+        ) : allQuestsComplete ? (
+          <AppButton
+            icon={<CheckIcon color={colors.textOnPrimary} size={iconSizes.md} />}
+            iconPosition="before"
+            label="Milestone Complete"
+            onPress={handleCompleteMilestone}
+            size="lg"
+            style={styles.completeButton}
+          />
+        ) : (
+          // Instruction-only copy in the most common state.
+          phone ? null : (
+            <AppText
+              align="center"
+              color={colors.textMuted}
+              style={styles.completeHint}
+              variant="bodySmall"
+            >
+              To complete this milestone, complete all of its quests.
+            </AppText>
+          )
+        )
+      ) : null}
 
       <TextPromptModal
         initialValue={
@@ -1017,21 +867,6 @@ export default function MilestoneQuestsScreen() {
           variant="secondary"
         />
       </AppModal>
-
-      <HabitActionSheet
-        habit={menuHabit}
-        onClose={() => setMenuHabit(null)}
-        onEdit={() => {
-          const habitId = menuHabit?.id;
-          setMenuHabit(null);
-          if (habitId != null) {
-            router.push({
-              pathname: "/create-habit",
-              params: { habitId: String(habitId) },
-            });
-          }
-        }}
-      />
     </ScreenScaffold>
   );
 }
@@ -1101,22 +936,6 @@ const styles = StyleSheet.create({
   movePickerEmpty: {
     paddingVertical: spacing.md,
   },
-  habitCard: {
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    marginBottom: spacing.lg,
-    paddingBottom: 23,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.18, radius: 18 }),
-  },
-  habitCardCompact: {
-    paddingBottom: spacing.md,
-    paddingHorizontal: 10,
-    paddingTop: 14,
-  },
   header: {
     marginBottom: spacing.md,
     paddingHorizontal: 0,
@@ -1160,12 +979,6 @@ const styles = StyleSheet.create({
   /** The art is a backdrop — on 370 pt the title needs the extra width. */
   milestoneCopyPhone: {
     maxWidth: "76%",
-  },
-  menuButton: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    width: 34,
   },
   milestoneTitle: {
     marginTop: spacing.md,

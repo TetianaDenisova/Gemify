@@ -147,6 +147,7 @@ function JourneyOverviewModal({
           <View style={[styles.actionsRow, phone && styles.actionsRowPhone]}>
             <AppButton
               accessibilityLabel="Edit Path"
+              density="compact"
               icon={<PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />}
               iconPosition="before"
               label="Edit Path"
@@ -157,6 +158,7 @@ function JourneyOverviewModal({
             />
             <AppButton
               accessibilityLabel="Check What If Plan"
+              density="compact"
               icon={<SparklesIcon size={iconSizes.sm} />}
               iconPosition="before"
               label={'Check "What If" Plan'}
@@ -418,8 +420,15 @@ function DreamEditModal({
             </View>
 
             {showDelete ? (
-              <View style={styles.dreamActionsRow}>
+              <View
+                style={[
+                  styles.dreamActionsRow,
+                  // Two 17 pt labels do not share 370 pt — stack them.
+                  phone && styles.dreamActionsRowPhone,
+                ]}
+              >
                 <AppButton
+                  density="compact"
                   label="Delete Dream"
                   onPress={() => setConfirmDelete(true)}
                   style={[styles.dreamActionButton, styles.deleteButton]}
@@ -427,6 +436,7 @@ function DreamEditModal({
                   variant="secondary"
                 />
                 <AppButton
+                  density="compact"
                   disabled={!canSave}
                   label="Save Changes"
                   onPress={() =>
@@ -464,6 +474,7 @@ function DreamEditModal({
                 </AppText>
                 <View style={styles.confirmActionsRow}>
                   <AppButton
+                    density="compact"
                     label="Cancel"
                     onPress={() => setConfirmDelete(false)}
                     style={styles.dreamActionButton}
@@ -471,6 +482,7 @@ function DreamEditModal({
                     variant="secondary"
                   />
                   <AppButton
+                    density="compact"
                     label="Delete"
                     onPress={() => {
                       setConfirmDelete(false);
@@ -748,7 +760,6 @@ const styles = StyleSheet.create({
   },
   dreamActionButton: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   deleteButton: {
     borderColor: colors.danger,
@@ -760,6 +771,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     marginTop: spacing.lg,
+  },
+  dreamActionsRowPhone: {
+    flexDirection: "column",
   },
   confirmOverlay: {
     ...StyleSheet.absoluteFill,
@@ -831,7 +845,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   actionLabel: {
     fontSize: fontSizes.lg,

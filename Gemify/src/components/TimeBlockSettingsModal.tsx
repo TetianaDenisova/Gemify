@@ -288,12 +288,14 @@ export function TimeBlockSettingsModal({
           </View>
           <View style={styles.editorActions}>
             <AppButton
+              density="compact"
               label="Cancel"
               onPress={() => setEditor(null)}
               style={styles.editorButton}
               variant="secondary"
             />
             <AppButton
+              density="compact"
               disabled={!editor.label.trim()}
               label="Save"
               onPress={handleSave}
@@ -399,7 +401,6 @@ const styles = StyleSheet.create({
   },
   editorButton: {
     flex: 1,
-    paddingHorizontal: spacing.sm,
   },
   editorField: {
     marginTop: spacing.lg,

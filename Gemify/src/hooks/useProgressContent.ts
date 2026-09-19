@@ -256,13 +256,16 @@ function buildForecast(quests: Quest[]): ProgressContent["forecast"] {
       ? `In ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`
       : `In ${Math.round(daysLeft / 30)} months`;
 
+  // The year only earns its place once the finish date leaves this one.
+  const sameYear = finish.getFullYear() === new Date().getFullYear();
+
   return {
-    headline: "Stay consistent and you will finish by",
-    date: `${finish.toLocaleDateString("en-US", {
+    headline: "You’re on track to reach your goal",
+    date: `by ${finish.toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
-      year: "numeric",
-    })}.`,
+      ...(sameYear ? {} : { year: "numeric" }),
+    })}`,
     eta,
   };
 }

@@ -1,32 +1,20 @@
 import { Image } from "expo-image";
-import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { ActionIconArt } from "@/components/TimeBlockCard";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import type { WeekAscentEntry } from "@/db";
-import type { ActionIcon } from "@/dto/timeBlocks";
 import {
   AppText,
   Card,
   ChevronIcon,
   ProgressBar,
+  SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { pressed, radius, shadows, spacing } from "@/theme/theme";
+import { pressed, radius, spacing, textGlow } from "@/theme/theme";
 
 const ASCENT_ART = require("../../assets/images/road-progress.png");
-
-/** Dream-magic icon variety for the per-dream rows, stable per position. */
-const DREAM_ICONS: readonly ActionIcon[] = [
-  "star",
-  "crystal",
-  "wand",
-  "moon",
-  "key",
-  "feather",
-];
 
 function DiamondIcon({ color = colors.primary, size = 16 }: { color?: string; size?: number }) {
   return (
@@ -46,77 +34,33 @@ function formatDelta(percent: number): string {
   return `+${Math.round(percent)}%`;
 }
 
+/** The card's gold sparkle: one star with a smaller one at its heel. */
+function SparkCluster({
+  color = colors.primary,
+  size,
+}: {
+  color?: string;
+  size: number;
+}) {
+  return (
+    <View style={styles.sparkCluster}>
+      <SparkIcon color={color} size={size} />
+      <SparkIcon color={color} size={Math.max(6, Math.round(size * 0.42))} />
+    </View>
+  );
+}
+
 /** Share of the expected gain already earned, 0–100. */
 function earnedShare(expectedPercent: number, gainedPercent: number): number {
   return expectedPercent > 0 ? (gainedPercent / expectedPercent) * 100 : 0;
 }
 
 /**
- * Title with the gold "+N% expected" label on the right · flat progress bar
- * (how much of the expected gain is already earned) · "N% earned" beneath.
- */
-function AscentProgress({
-  completesMilestone,
-  expectedPercent,
-  gainedPercent,
-  title,
-  trailing,
-}: {
-  completesMilestone?: string | null;
-  expectedPercent: number;
-  gainedPercent: number;
-  title: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <View style={styles.progressCopy}>
-      <View style={styles.progressHeader}>
-        <AppText numberOfLines={2} style={styles.progressTitle} variant="titleSm">
-          {title}
-        </AppText>
-        <AppText color={colors.primary} variant="labelStrong">
-          {formatDelta(expectedPercent)} expected
-        </AppText>
-        {trailing}
-      </View>
-      <ProgressBar
-        height={6}
-        style={styles.progressTrack}
-        value={earnedShare(expectedPercent, gainedPercent)}
-      />
-      <AppText
-        color={colors.textSecondary}
-        style={styles.gainedLabel}
-        variant="labelStrong"
-      >
-        {Math.round(gainedPercent)}% earned
-      </AppText>
-      {completesMilestone ? (
-        <View style={styles.completesRow}>
-          <DiamondIcon />
-          <AppText color={colors.primary} variant="eyebrow">
-            Completes
-          </AppText>
-          <AppText
-            color={colors.textPrimary}
-            numberOfLines={1}
-            style={styles.completesTitle}
-            variant="body"
-          >
-            {completesMilestone}
-          </AppText>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-/**
  * Weekly Plan ascent card, pinned to the bottom of the screen: the progress
  * this week's scheduled quests promise across all dreams. Folded, it is a
  * slim one-line summary; expanded (controlled by the screen, which dims the
- * board behind it), it unwraps upward into the full art header and per-dream
- * breakdown. Hidden entirely while nothing is scheduled for the week.
+ * board behind it), it unwraps upward into the headline, the week's bar and
+ * the per-dream breakdown. Hidden entirely while nothing is scheduled.
  */
 export function WeekAscentCard({
   entries,
@@ -201,38 +145,73 @@ export function WeekAscentCard({
         onPress={onToggle}
         style={({ pressed: isPressed }) => [isPressed && pressed]}
       >
-        <View style={styles.row}>
-          {/* Decoration inside a card that is already covering the board. */}
-          {phone ? null : (
-            <View style={styles.artFrame}>
-              <Image contentFit="cover" source={ASCENT_ART} style={styles.art} />
-            </View>
-          )}
-          <AscentProgress
-            expectedPercent={expectedTotal}
-            gainedPercent={gainedTotal}
-            title="Expected progress this week"
-            trailing={
-              <ChevronIcon color={colors.primary} direction="up" size={16} />
-            }
-          />
+        <View style={styles.headlineRow}>
+          <SparkIcon color={colors.primarySoft} size={14} />
+          <AppText align="center" style={styles.headline} variant="title">
+            Your plan moves you{" "}
+            <AppText style={styles.headlineAccent} variant="title">
+              {Math.round(expectedTotal)}% closer
+            </AppText>{" "}
+            this week
+          </AppText>
+          <SparkCluster color={colors.primarySoft} size={16} />
         </View>
+        {/* The bar is the promise, not the tally: it fills to the share of the
+            dream this week's plan is worth. */}
+        <ProgressBar
+          glow
+          height={14}
+          style={styles.headlineTrack}
+          value={Math.min(100, expectedTotal)}
+        />
       </Pressable>
 
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <SparkIcon color={colors.primarySoft} size={12} />
+        <View style={styles.dividerLine} />
+      </View>
+
       {entries.map((entry, index) => (
-        <View key={entry.dreamId} style={styles.dreamRow}>
-          <View style={styles.dreamIcon}>
-            <ActionIconArt
-              icon={DREAM_ICONS[index % DREAM_ICONS.length]}
-              size={30}
-            />
+        <View
+          key={entry.dreamId}
+          style={[styles.dreamRow, index > 0 && styles.dreamRowDivided]}
+        >
+          <View style={styles.dreamHeader}>
+            <SparkCluster size={phone ? 24 : 28} />
+            <AppText
+              numberOfLines={1}
+              style={styles.dreamTitle}
+              variant="titleSm"
+            >
+              {entry.dreamTitle}
+            </AppText>
+            <AppText
+              color={colors.primary}
+              style={styles.dreamDelta}
+              variant="titleSm"
+            >
+              {formatDelta(entry.expectedPercent)}
+            </AppText>
           </View>
-          <AscentProgress
-            completesMilestone={entry.completesMilestone}
-            expectedPercent={entry.expectedPercent}
-            gainedPercent={entry.gainedPercent}
-            title={entry.dreamTitle}
-          />
+          {entry.completesMilestone ? (
+            <View style={styles.completesBlock}>
+              <View style={styles.completesRow}>
+                <DiamondIcon size={14} />
+                <AppText color={colors.primary} variant="eyebrow">
+                  Milestone you&rsquo;ll complete
+                </AppText>
+              </View>
+              <AppText
+                color={colors.textPrimary}
+                numberOfLines={2}
+                style={styles.completesTitle}
+                variant="body"
+              >
+                {entry.completesMilestone}
+              </AppText>
+            </View>
+          ) : null}
         </View>
       ))}
     </Card>
@@ -243,15 +222,6 @@ const styles = StyleSheet.create({
   art: {
     height: "100%",
     width: "100%",
-  },
-  artFrame: {
-    borderColor: colors.borderFaint,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    height: 88,
-    overflow: "hidden",
-    width: 88,
-    ...shadows.goldGlow,
   },
   // Full-bleed flat footer strip: square corners, solid surface, no border.
   card: {
@@ -289,51 +259,70 @@ const styles = StyleSheet.create({
   compactTrack: {
     marginTop: spacing.md,
   },
+  /** Indented under the dream title, clear of its sparkle column. */
+  completesBlock: {
+    marginTop: spacing.md,
+    paddingLeft: spacing.xl + spacing.sm,
+  },
   completesRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
-    marginTop: spacing.sm + spacing.xs,
   },
   completesTitle: {
-    flexShrink: 1,
-  },
-  dreamIcon: {
-    alignItems: "center",
     marginTop: spacing.xs,
-    width: 34,
   },
-  dreamRow: {
-    alignItems: "flex-start",
-    borderTopColor: colors.divider,
-    borderTopWidth: 1,
+  divider: {
+    alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
     marginTop: spacing.lg,
+  },
+  dividerLine: {
+    backgroundColor: colors.divider,
+    flex: 1,
+    height: 1,
+  },
+  dreamDelta: {
+    ...textGlow(colors.primary, 10),
+  },
+  dreamHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  dreamRow: {
+    marginTop: spacing.lg,
+  },
+  dreamRowDivided: {
+    borderTopColor: colors.divider,
+    borderTopWidth: 1,
     paddingTop: spacing.lg,
   },
-  gainedLabel: {
-    marginTop: spacing.sm,
-  },
-  progressCopy: {
+  dreamTitle: {
     flex: 1,
     minWidth: 0,
   },
-  progressHeader: {
+  headline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  headlineAccent: {
+    color: colors.primary,
+    fontWeight: "700",
+    ...textGlow(colors.primary, 14),
+  },
+  headlineRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
   },
-  progressTitle: {
-    flex: 1,
-    minWidth: 0,
+  headlineTrack: {
+    marginTop: spacing.lg,
   },
-  progressTrack: {
-    marginTop: spacing.md,
-  },
-  row: {
-    alignItems: "center",
+  sparkCluster: {
+    alignItems: "flex-end",
     flexDirection: "row",
-    gap: spacing.md,
+    gap: 2,
   },
 });

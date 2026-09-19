@@ -125,7 +125,13 @@ export default function MyDayScreen() {
         })),
       ]
     : [];
-  const completedActions = blockActions.filter((action) => action.done).length;
+  // The footer scores the whole day, not the open block: every block's quests
+  // plus every habit due today, however they are split across the tabs.
+  const dayQuests = blocks.flatMap((block) => block.actions);
+  const dayTotal = dayQuests.length + dayHabits.length;
+  const dayDone =
+    dayQuests.filter((action) => action.done).length +
+    dayHabits.filter((view) => view.done).length;
 
   const openQuestPicker = async () => {
     try {
@@ -381,9 +387,9 @@ export default function MyDayScreen() {
         ]}
       >
         <TodayProgressCard
-          completedActions={completedActions}
-          label={activeBlock ? `${activeBlock.label} progress` : "Today's progress"}
-          totalActions={blockActions.length}
+          completedActions={dayDone}
+          label="Day Progress"
+          totalActions={dayTotal}
         />
       </View>
 
