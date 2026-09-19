@@ -16,6 +16,13 @@ export {
   updateDream,
 } from "./dreamsRepository";
 export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";
+export { JOURNEY_MILESTONE_COUNT } from "./dreamsRepository";
+
+// Forecast cache (device-local: the completion date the banner last showed)
+export {
+  getForecastProjection,
+  saveForecastProjection,
+} from "./forecastCacheRepository";
 
 // Milestones
 export {

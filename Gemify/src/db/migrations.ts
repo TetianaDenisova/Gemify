@@ -495,6 +495,27 @@ export const migrations: Migration[] = [
       }
     },
   },
+  {
+    // Per-device cache of the completion date the Progress banner shows, so
+    // the projection stops jittering between openings (src/domain/forecast.ts
+    // keeps the previous date unless the new estimate drifts past a
+    // threshold). Deliberately NOT a synced table: it holds nothing the user
+    // wrote, it is recomputed from quests on every refresh, and two devices
+    // fighting last-write-wins over a derived date would only make the number
+    // jump — exactly what the cache exists to stop. Left out of BACKUP_TABLES
+    // for the same reason.
+    toVersion: 19,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS forecast_cache (
+          dream_id     INTEGER PRIMARY KEY
+                       REFERENCES dreams (id) ON DELETE CASCADE,
+          projected_on TEXT NOT NULL,
+          computed_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        );
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

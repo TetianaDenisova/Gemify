@@ -5,7 +5,13 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import Svg, { Line, Rect } from "react-native-svg";
+import Svg, {
+  Defs,
+  Line,
+  LinearGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import type { FulfillmentPoint } from "@/data/progressData";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
@@ -35,9 +41,9 @@ import {
 const CHART_PLOT_HEIGHT = 150;
 /** Shorter plot on the phone tier — the cards below still have to fit. */
 const CHART_PLOT_HEIGHT_PHONE = 120;
-const BAR_TOP_PAD = 12;
+const BAR_TOP_PAD = 26;
 const CHART_Y_AXIS_WIDTH = 34;
-const CHART_Y_AXIS_WIDTH_PHONE = 26;
+const CHART_Y_AXIS_WIDTH_PHONE = 32;
 const CHART_X_LABEL_HEIGHT = 26;
 const CHART_Y_TICKS = [100, 75, 50, 25, 0] as const;
 /** Every other gridline on a phone: density, not removal. */
@@ -49,8 +55,8 @@ const BAR_MAX_WIDTH_PHONE = 24;
 const BAR_TRACK_FILL = "rgba(133, 149, 199, 0.18)";
 const BAR_AXIS_STROKE = "rgba(246, 232, 200, 0.32)";
 const CHART_GRID_STROKE = "rgba(246, 232, 200, 0.13)";
-const SECTION_BORDER = "rgba(183, 140, 255, 0.58)";
-const SECTION_SURFACE = "rgba(5, 10, 25, 0.86)";
+/** Gradient id of the gold bar fill, defined inside the bars chart. */
+const BAR_FILL = "url(#questBarFill)";
 
 const NO_PROGRESS_ART = require("../../data/images/no-progress.png");
 const WILL_ACHIEVE_ART = require("../../../assets/will-achieve.png");
@@ -106,6 +112,13 @@ function QuestBarsChart({
       {chartWidth > 0 ? (
         <>
           <Svg height={svgHeight} width={chartWidth}>
+            <Defs>
+              <LinearGradient id="questBarFill" x1="0" x2="0" y1="0" y2="1">
+                <Stop offset="0" stopColor={colors.primaryBright} />
+                <Stop offset="0.55" stopColor={colors.primary} />
+                <Stop offset="1" stopColor={colors.primarySoft} />
+              </LinearGradient>
+            </Defs>
             <Line
               stroke={BAR_AXIS_STROKE}
               strokeWidth={1.2}
@@ -152,7 +165,7 @@ function QuestBarsChart({
               .filter((bar) => bar.fillHeight > 0)
               .map((bar) => (
                 <Rect
-                  fill={colors.accentPink}
+                  fill={BAR_FILL}
                   height={bar.fillHeight}
                   key={`fill-${bar.key}`}
                   rx={Math.min(barWidth / 2, bar.fillHeight / 2)}
@@ -164,31 +177,32 @@ function QuestBarsChart({
           </Svg>
           {bars
             .filter((bar) => bar.fillHeight > 0)
-            .map((bar) => {
-              const labelInside = bar.fillHeight >= 30;
-              return (
-                <AppText
-                  align="center"
-                  color={labelInside ? colors.textPrimary : colors.accentPink}
-                  key={`percent-${bar.key}`}
-                  style={[
-                    styles.barPercentLabel,
-                    compact && styles.barPercentLabelCompact,
-                    {
-                      left: bar.center - valueLabelWidth / 2,
-                      top: labelInside ? bar.top + 8 : bar.top - 20,
-                      width: valueLabelWidth,
-                    },
-                  ]}
-                >
-                  {Math.round(bar.percent)}%
-                </AppText>
-              );
-            })}
+            .map((bar) => (
+              // Above the bar, never inside it: the label is wider than the
+              // bar, so anything drawn on the fill spills onto the card.
+              <AppText
+                align="center"
+                color={colors.primary}
+                key={`percent-${bar.key}`}
+                numberOfLines={1}
+                style={[
+                  styles.barPercentLabel,
+                  compact && styles.barPercentLabelCompact,
+                  {
+                    left: bar.center - valueLabelWidth / 2,
+                    top: bar.top - 20,
+                    width: valueLabelWidth,
+                  },
+                ]}
+              >
+                {Math.round(bar.percent)}%
+              </AppText>
+            ))}
           {ticks.map((tick) => (
             <AppText
               color={colors.textMuted}
               key={`tick-${tick}`}
+              numberOfLines={1}
               style={[
                 styles.chartTickLabel,
                 phone && styles.chartTickLabelPhone,
@@ -221,7 +235,7 @@ function QuestBarsChart({
 }
 
 export default function ProgressScreen() {
-  const { compact, phone, width } = useLayoutSize();
+  const { compact, phone } = useLayoutSize();
 
   const [goalKey, setGoalKey] = useState("");
   const { content: progressContent } = useProgressContent(goalKey);
@@ -237,20 +251,17 @@ export default function ProgressScreen() {
     progressContent.goals[0];
   const barsRange =
     barsTab.ranges.find((range) => range.key === rangeKey) ?? barsTab.ranges[0];
+  const { forecast } = progressContent;
 
   const goalPicker = (
-    <Card
-      padded={false}
-      style={[styles.goalPicker, phone && styles.goalPickerPhone]}
-      variant="glass"
-    >
+    <Card padded={false} style={styles.goalPicker} variant="glass">
       <ListItem
         accessibilityLabel="Choose goal"
         last
         leading={<SparkleGlyphIcon size={18} />}
         minHeight={phone ? controlsPhone.button.section.minHeight : undefined}
         onPress={() => setGoalPickerOpen((open) => !open)}
-        style={[styles.goalPickerRow, phone && styles.goalPickerRowPhone]}
+        style={styles.goalPickerRow}
         title={selectedGoal.label}
         trailing={<ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />}
       />
@@ -268,7 +279,7 @@ export default function ProgressScreen() {
                   setGoalKey(goal.key);
                   setGoalPickerOpen(false);
                 }}
-                style={[styles.goalOption, phone && styles.goalPickerRowPhone]}
+                style={styles.goalOption}
                 title={goal.label}
                 titleColor={colors.textSecondary}
               />
@@ -278,63 +289,48 @@ export default function ProgressScreen() {
   );
 
   const rangePicker = (
-    <View style={[styles.overviewRow, phone && styles.overviewRowPhone]}>
-      {/* Each chart card below carries its own title; dropping this gives
-          the range picker a full-width row of its own. */}
-      {phone ? null : (
-        <AppText color={colors.accentViolet} variant="bodySerif">
-          Progress overview
+    <View style={styles.rangeRow}>
+      <Pressable
+        accessibilityLabel="Choose range"
+        accessibilityRole="button"
+        onPress={() => setRangePickerOpen((open) => !open)}
+        style={({ pressed: isPressed }) => [
+          styles.rangeTrigger,
+          phone && styles.rangeTriggerPhone,
+          isPressed && pressed,
+        ]}
+      >
+        <AppText numberOfLines={1} style={styles.rangeLabel} variant="pill">
+          {barsRange.label}
         </AppText>
-      )}
-      <View>
-        <Pressable
-          accessibilityLabel="Choose range"
-          accessibilityRole="button"
-          onPress={() => setRangePickerOpen((open) => !open)}
-          style={({ pressed: isPressed }) => [
-            styles.rangeTrigger,
-            compact && { width: Math.min(228, width * 0.45) },
-            phone && styles.rangeTriggerPhone,
-            phone && { width: Math.min(150, width * 0.42) },
-            isPressed && pressed,
-          ]}
-        >
-          <AppText
-            numberOfLines={1}
-            style={[styles.rangeLabel, phone && styles.rangeLabelPhone]}
-            variant="pill"
-          >
-            {barsRange.label}
-          </AppText>
-          <View style={rangePickerOpen ? styles.chevronOpen : null}>
-            <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
-          </View>
-        </Pressable>
-        {rangePickerOpen ? (
-          <View style={styles.rangeMenu}>
-            {barsTab.ranges
-              .filter((range) => range.key !== barsRange.key)
-              .map((range, index) => (
-                <Pressable
-                  key={range.key}
-                  onPress={() => {
-                    setRangeKey(range.key);
-                    setRangePickerOpen(false);
-                  }}
-                  style={({ pressed: isPressed }) => [
-                    styles.rangeOption,
-                    index === 0 && styles.rangeOptionFirst,
-                    isPressed && pressed,
-                  ]}
-                >
-                  <AppText color={colors.textSecondary} variant="pill">
-                    {range.label}
-                  </AppText>
-                </Pressable>
-              ))}
-          </View>
-        ) : null}
-      </View>
+        <View style={rangePickerOpen ? styles.chevronOpen : null}>
+          <ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />
+        </View>
+      </Pressable>
+      {rangePickerOpen ? (
+        <View style={styles.rangeMenu}>
+          {barsTab.ranges
+            .filter((range) => range.key !== barsRange.key)
+            .map((range, index) => (
+              <Pressable
+                key={range.key}
+                onPress={() => {
+                  setRangeKey(range.key);
+                  setRangePickerOpen(false);
+                }}
+                style={({ pressed: isPressed }) => [
+                  styles.rangeOption,
+                  index === 0 && styles.rangeOptionFirst,
+                  isPressed && pressed,
+                ]}
+              >
+                <AppText color={colors.textSecondary} variant="pill">
+                  {range.label}
+                </AppText>
+              </Pressable>
+            ))}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -360,22 +356,11 @@ export default function ProgressScreen() {
         </View>
       </View>
 
-      {/* Two full-width selector cards eat a third of a phone screen before
-          any data shows — side by side they cost one row. */}
-      {phone ? (
-        <View style={styles.selectorRowPhone}>
-          {goalPicker}
-          {rangePicker}
-        </View>
-      ) : (
-        <>
-          {goalPicker}
-          {rangePicker}
-        </>
-      )}
+      {goalPicker}
+
 
       {!progressContent.hasChartData ? (
-        <Card style={styles.sectionCard} variant="glass">
+        <Card variant="glass">
           <View
             style={[styles.emptyState, compact && styles.emptyStateCompact]}
           >
@@ -408,30 +393,38 @@ export default function ProgressScreen() {
       ) : (
         <>
           {/* The finish date the current pace points at, over the
-              destination art — the reason the charts below matter. */}
-          <Card padded={false} style={styles.forecastCard} variant="glass">
-            <View
-              style={[styles.forecastCopy, phone && styles.forecastCopyPhone]}
-            >
-              <AppText variant={phone ? "pill" : "titleSm"}>
-                {progressContent.forecast.headline}
-              </AppText>
-              <AppText
-                color={colors.primary}
-                style={styles.forecastDate}
-                variant={phone ? "titleSm" : "cardTitle"}
+              destination art — the reason the charts below matter. Absent
+              until the dream has a completed quest to predict from. */}
+          {forecast ? (
+            <Card padded={false} style={styles.forecastCard} variant="glass">
+              <View
+                style={[
+                  styles.forecastCopy,
+                  phone && styles.forecastCopyPhone,
+                ]}
               >
-                {progressContent.forecast.date}
-              </AppText>
-            </View>
-            <Image
-              contentFit="cover"
-              source={WILL_ACHIEVE_ART}
-              style={[styles.forecastArt, phone && styles.forecastArtPhone]}
-            />
-          </Card>
+                <AppText variant={phone ? "pill" : "titleSm"}>
+                  {forecast.headline}
+                </AppText>
+                <AppText
+                  color={colors.primary}
+                  style={styles.forecastDate}
+                  variant={phone ? "titleSm" : "cardTitle"}
+                >
+                  {forecast.date}
+                </AppText>
+              </View>
+              <Image
+                contentFit="cover"
+                source={WILL_ACHIEVE_ART}
+                style={[styles.forecastArt, phone && styles.forecastArtPhone]}
+              />
+            </Card>
+          ) : null}
 
-          <Card style={styles.sectionCard} variant="glass">
+          {rangePicker}
+
+          <Card variant="glass">
             <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
             <View
               style={[
@@ -455,7 +448,7 @@ export default function ProgressScreen() {
                         {barsRange.summary.eyebrow}
                       </AppText>
                       <AppText
-                        color={colors.accentPink}
+                        color={colors.primary}
                         style={styles.summaryPercentPhone}
                         variant="title"
                       >
@@ -479,7 +472,7 @@ export default function ProgressScreen() {
                         {barsRange.summary.eyebrow}
                       </AppText>
                       <AppText
-                        color={colors.accentPink}
+                        color={colors.primary}
                         style={[
                           styles.summaryValue,
                           compact && styles.summaryValueCompact,
@@ -564,7 +557,7 @@ const styles = StyleSheet.create({
     width: CHART_Y_AXIS_WIDTH - 8,
   },
   chartTickLabelPhone: {
-    width: CHART_Y_AXIS_WIDTH_PHONE - 6,
+    width: CHART_Y_AXIS_WIDTH_PHONE - 2,
   },
   chartRow: {
     flexDirection: "row",
@@ -630,8 +623,6 @@ const styles = StyleSheet.create({
    */
   forecastCard: {
     backgroundColor: colors.background,
-    borderColor: SECTION_BORDER,
-    borderRadius: radius.md,
     overflow: "hidden",
   },
   forecastCopy: {
@@ -658,20 +649,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: "hidden",
   },
-  /** Half of a shared row, so the card sizes to what is left of the pill. */
-  goalPickerPhone: {
-    flex: 1,
-    minWidth: 0,
-  },
   goalPickerRow: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-  },
-  /** ~200 pt of row: the sparkle, chevron and gaps take all they can spare. */
-  goalPickerRowPhone: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
   },
   header: {
     alignItems: "center",
@@ -686,32 +666,17 @@ const styles = StyleSheet.create({
   headerPhone: {
     minHeight: 52,
   },
-  overviewRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    zIndex: 20,
-  },
-  overviewRowPhone: {
-    justifyContent: "flex-end",
-  },
   panelDivider: {
     alignSelf: "stretch",
     backgroundColor: "rgba(133, 149, 199, 0.46)",
     width: 1,
   },
   rangeLabel: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.lg,
-    fontWeight: "400",
-    lineHeight: lineHeights.lg,
-  },
-  /** "This week" has to fit beside a chevron in ~150 pt. */
-  rangeLabelPhone: {
     flexShrink: 1,
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.md,
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.xl,
+    fontWeight: "400",
+    lineHeight: lineHeights.xl,
   },
   rangeMenu: {
     ...shadows.softDark,
@@ -720,8 +685,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     elevation: 12,
+    left: 0,
     marginTop: spacing.xs,
-    minWidth: 148,
     overflow: "hidden",
     position: "absolute",
     right: 0,
@@ -737,40 +702,26 @@ const styles = StyleSheet.create({
   rangeOptionFirst: {
     borderTopWidth: 0,
   },
+  /** Its own stacking context, so the open menu covers the chart below. */
+  rangeRow: {
+    zIndex: 20,
+  },
+  /** Same shape as the goal picker above the banner: one full-width row. */
   rangeTrigger: {
     alignItems: "center",
     backgroundColor: colors.surfaceDeep,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.round,
+    borderColor: colors.borderFaint,
+    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "space-between",
-    minHeight: layout.minTouchTarget,
-    minWidth: 150,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
+    minHeight: layout.minTouchTarget + spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   rangeTriggerPhone: {
-    gap: spacing.xs,
     minHeight: controlsPhone.button.section.minHeight,
-    minWidth: 0,
-    paddingHorizontal: spacing.md,
-  },
-  sectionCard: {
-    backgroundColor: SECTION_SURFACE,
-    borderColor: SECTION_BORDER,
-    borderRadius: radius.md,
-  },
-  /**
-   * Goal card and range pill share one row. Top-aligned so the goal card can
-   * grow downward with its open option list without stretching the pill.
-   */
-  selectorRowPhone: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.sm,
-    zIndex: 20,
   },
   summaryCaption: {
     marginTop: spacing.sm,

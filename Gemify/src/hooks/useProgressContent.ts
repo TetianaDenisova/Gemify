@@ -10,14 +10,22 @@ import type {
 } from "@/data/progressData";
 import {
   getDreams,
+  getForecastProjection,
   getMilestones,
   getQuestsByDream,
   getTimelineMoments,
+  saveForecastProjection,
+  JOURNEY_MILESTONE_COUNT,
   type Dream,
   type Milestone,
   type Quest,
   type TimelineMoment,
 } from "@/db";
+import {
+  dreamWeights,
+  forecastCompletion,
+  type DreamForecast,
+} from "@/domain/forecast";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { addDays, startOfWeek, toDateKey } from "@/utils/dates";
 
@@ -82,35 +90,6 @@ function sixMonthBuckets(): Bucket[] {
 /** Date-only part of a quest's completion timestamp, or null. */
 function completedOn(quest: Quest): string | null {
   return quest.completedAt ? quest.completedAt.slice(0, 10) : null;
-}
-
-/**
- * Each quest's contribution to the overall goal, as a fraction of 1: 100% is
- * split equally across the dream's milestones, and each milestone's share
- * equally across its quests. Values stay exact (no rounding) so completing
- * everything sums to exactly 1 — round only when displaying.
- */
-function questWeights(
-  milestones: Milestone[],
-  quests: Quest[],
-): Map<number, number> {
-  const weights = new Map<number, number>();
-  if (milestones.length === 0) {
-    // No structure to weight by — fall back to equal quest shares.
-    quests.forEach((quest) => weights.set(quest.id, 1 / quests.length));
-    return weights;
-  }
-
-  const milestoneShare = 1 / milestones.length;
-  for (const milestone of milestones) {
-    const milestoneQuests = quests.filter(
-      (quest) => quest.milestoneId === milestone.id,
-    );
-    if (milestoneQuests.length === 0) continue;
-    const questShare = milestoneShare / milestoneQuests.length;
-    milestoneQuests.forEach((quest) => weights.set(quest.id, questShare));
-  }
-  return weights;
 }
 
 /** Cumulative "% of the goal done by the end of each bucket", exact. */
@@ -216,58 +195,95 @@ function completionRange(
   };
 }
 
-function buildForecast(quests: Quest[]): ProgressContent["forecast"] {
-  const total = quests.length;
-  const done = quests.filter((quest) => quest.isDone).length;
 
-  if (total === 0) {
-    return {
-      headline: "Add quests to your milestones to unlock the forecast.",
-      date: "Your journey starts now.",
-      eta: "No data yet",
-    };
+/** "December 14" — the year only earns its place outside the current one. */
+function formatDay(dateKey: string, today: Date): string {
+  const date = new Date(`${dateKey}T12:00:00`);
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    ...(date.getFullYear() === today.getFullYear()
+      ? {}
+      : { year: "numeric" }),
+  });
+}
+
+function etaLabel(daysLeft: number): string {
+  return daysLeft < 60
+    ? `In ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`
+    : `In ${Math.round(daysLeft / 30)} months`;
+}
+
+/**
+ * The banner copy for a projection — null when the dream has not earned a
+ * forecast yet: no quests, or none ever completed. Nothing to predict from,
+ * so the section stays off the screen entirely rather than guessing.
+ */
+function forecastCopy(
+  projection: DreamForecast,
+  today: Date,
+): ProgressContent["forecast"] {
+  switch (projection.reason) {
+    case "no-quests":
+    case "never-started":
+      return null;
+    case "undated":
+      return {
+        headline: "Complete a few quests and the forecast will appear.",
+        date: "Keep going.",
+        eta: "No recent data",
+      };
+    case "out-of-range":
+      return {
+        headline: "This pace puts your goal years away —",
+        date: "plan a few more quests each week.",
+        eta: "Out of range",
+      };
+    case "complete":
+      return {
+        headline: "Every quest is complete —",
+        // Completions that predate the timestamp column cannot name a day.
+        date:
+          projection.date === null
+            ? "you made it real."
+            : `on ${formatDay(projection.date, today)}`,
+        eta: "Done",
+      };
+    case "projected":
+      return {
+        headline: "You’re on track to reach your goal",
+        date: `by ${formatDay(projection.date ?? "", today)}`,
+        eta: etaLabel(projection.daysLeft ?? 1),
+      };
   }
-  if (done >= total) {
-    return {
-      headline: "Every quest is complete —",
-      date: "you made it real.",
-      eta: "Done",
-    };
-  }
+}
 
-  const cutoff = toDateKey(addDays(new Date(), -30));
-  const recentDone = quests.filter((quest) => {
-    const date = completedOn(quest);
-    return date !== null && date >= cutoff;
-  }).length;
+/**
+ * Projects the dream, remembers the day it showed, and returns the copy.
+ * The remembered day is what keeps the banner still: the projection only
+ * moves the date when the estimate drifts past the threshold in
+ * src/domain/forecast.ts, and the cache is per-device (nothing synced,
+ * nothing backed up — it is derived from the quests themselves).
+ */
+async function projectForecast(
+  dreamId: number,
+  quests: Quest[],
+  milestones: Milestone[],
+): Promise<ProgressContent["forecast"]> {
+  const today = new Date();
+  const previous = await getForecastProjection(dreamId);
+  const projection = forecastCompletion({
+    quests,
+    milestones,
+    journeySlices: JOURNEY_MILESTONE_COUNT,
+    previous,
+    today,
+  });
 
-  if (recentDone === 0) {
-    return {
-      headline: "Complete a few quests and the forecast will appear.",
-      date: "Keep going.",
-      eta: "No recent data",
-    };
-  }
+  const shown = projection.reason === "projected" ? projection.date : null;
+  if (shown !== previous) await saveForecastProjection(dreamId, shown);
 
-  const daysLeft = Math.ceil((total - done) / (recentDone / 30));
-  const finish = addDays(new Date(), daysLeft);
-  const eta =
-    daysLeft < 60
-      ? `In ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`
-      : `In ${Math.round(daysLeft / 30)} months`;
-
-  // The year only earns its place once the finish date leaves this one.
-  const sameYear = finish.getFullYear() === new Date().getFullYear();
-
-  return {
-    headline: "You’re on track to reach your goal",
-    date: `by ${finish.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "long",
-      ...(sameYear ? {} : { year: "numeric" }),
-    })}`,
-    eta,
-  };
+  return forecastCopy(projection, today);
 }
 
 function toProgressMoment(
@@ -310,6 +326,10 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [moments, setMoments] = useState<ProgressTimelineMoment[]>([]);
+  // Built in refresh(), not in the memo below: projecting reads and writes
+  // the remembered date, and neither belongs in a render.
+  const [forecast, setForecast] =
+    useState<ProgressContent["forecast"]>(null);
   const [loading, setLoading] = useState(true);
 
   const parsedKey = Number(goalKey);
@@ -328,6 +348,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
         setMilestones([]);
         setQuests([]);
         setMoments([]);
+        setForecast(null);
         return;
       }
       const [milestoneList, questList, momentList] = await Promise.all([
@@ -338,6 +359,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       setMilestones(milestoneList);
       setQuests(questList);
       setMoments(momentList.map(toProgressMoment));
+      setForecast(await projectForecast(resolved.id, questList, milestoneList));
     } catch (cause) {
       console.error("Failed to load progress data", cause);
     } finally {
@@ -354,9 +376,10 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
   );
 
   // `milestones` only feeds the weight table — isolate it so a milestone-array
-  // identity change doesn't rebuild the whole content object below.
+  // identity change doesn't rebuild the whole content object below. The same
+  // split the home card shows, so the charts and the card agree.
   const weights = useMemo(
-    () => questWeights(milestones, quests),
+    () => dreamWeights(quests, milestones, JOURNEY_MILESTONE_COUNT).shares,
     [milestones, quests],
   );
 
@@ -375,7 +398,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
               label: dream.title,
             }))
           : [{ key: "none", label: "No dreams yet" }],
-      forecast: buildForecast(quests),
+      forecast,
       moments,
       fulfillmentTabs: [
         {
@@ -415,7 +438,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
       overallLabel: "Overall Goal Progress",
       hasChartData: quests.some((quest) => quest.isDone),
     };
-  }, [dreams, moments, quests, weights]);
+  }, [dreams, forecast, moments, quests, weights]);
 
   return { content, dreamId, loading, refresh };
 }

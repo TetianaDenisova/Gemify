@@ -80,7 +80,11 @@ export interface ProgressContent {
   title: string;
   subtitle: string;
   goals: readonly ProgressGoalOption[];
-  forecast: AchievementForecast;
+  /**
+   * Null until the dream has a completed quest to predict from — the
+   * banner is left off the screen rather than guessing a date.
+   */
+  forecast: AchievementForecast | null;
   moments: readonly TimelineMoment[];
   fulfillmentTabs: readonly FulfillmentTab[];
   /** Label above the overall progress bar under the goal line chart. */
