@@ -470,14 +470,6 @@ export default function HomeScreen() {
                         textStyle={styles.habitBadgeText}
                       />
                     )}
-                    {action.overdue ? (
-                      <Badge
-                        color={colors.danger}
-                        label="OVERDUE"
-                        style={styles.habitBadge}
-                        textStyle={styles.habitBadgeText}
-                      />
-                    ) : null}
                   </View>
                   {"questId" in action ? (
                     <View style={styles.focusBreadcrumb}>
@@ -590,16 +582,6 @@ export default function HomeScreen() {
                     />
                   }
                   title={action.title}
-                  titleAccessory={
-                    action.overdue ? (
-                      <Badge
-                        color={colors.danger}
-                        label="OVERDUE"
-                        style={styles.habitBadge}
-                        textStyle={styles.habitBadgeText}
-                      />
-                    ) : undefined
-                  }
                   trailing={
                     <AppText color={colors.primary} variant="pill">
                       +{Math.max(1, Math.round(action.progressPercent))}%
@@ -622,16 +604,6 @@ export default function HomeScreen() {
                 style={styles.habitCardSpacing}
                 subtitle={action.cue || action.subtitle}
                 title={action.title}
-                titleAccessory={
-                  action.overdue ? (
-                    <Badge
-                      color={colors.danger}
-                      label="OVERDUE"
-                      style={styles.habitBadge}
-                      textStyle={styles.habitBadgeText}
-                    />
-                  ) : undefined
-                }
                 visuals={action.visuals}
               />
             ),
