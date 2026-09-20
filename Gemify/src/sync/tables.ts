@@ -39,6 +39,10 @@ export const SYNC_TABLES: readonly SyncTableSpec[] = [
     name: "dream_feeling_states",
   },
   { foreignKeys: { dream_id: "dreams" }, name: "milestones", photos: PHOTO },
+  {
+    foreignKeys: { dream_id: "dreams", milestone_id: "milestones" },
+    name: "milestone_rewards",
+  },
   { foreignKeys: { milestone_id: "milestones" }, name: "quests" },
   { foreignKeys: { milestone_id: "milestones" }, name: "ideas" },
   { foreignKeys: { dream_id: "dreams" }, name: "habits" },

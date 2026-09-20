@@ -22,6 +22,7 @@ import {
 } from "@/components/QuestActions";
 import {
   addTimelineMoment,
+  completeMilestone,
   createQuest,
   DEFAULT_TIME_BLOCKS,
   deleteQuest,
@@ -31,7 +32,6 @@ import {
   getQuests,
   getTimeBlocks,
   setQuestDone,
-  updateMilestone,
   updateQuest,
   type Milestone,
   type Quest,
@@ -473,7 +473,7 @@ export default function MilestoneQuestsScreen() {
   const handleCompleteMilestone = async () => {
     if (!milestone) return;
     try {
-      await updateMilestone(milestone.id, { status: "completed" });
+      await completeMilestone(milestone.id);
       setMilestone({ ...milestone, status: "completed" });
       setCelebrationVisible(true);
     } catch (cause) {

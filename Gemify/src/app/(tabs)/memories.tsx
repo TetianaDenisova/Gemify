@@ -12,13 +12,17 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
+import { RewardCard } from "@/components/RewardCard";
 import type { TimelineIconKey, TimelineMoment } from "@/data/progressData";
 import {
   addTimelineMoment,
+  collectReward,
   deleteTimelineMoment,
   getCompletedDreams,
+  getRewardsByDream,
   updateTimelineMoment,
   type Dream,
+  type MilestoneReward,
 } from "@/db";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useProgressContent } from "@/hooks/useProgressContent";
@@ -272,6 +276,10 @@ export default function MemoriesScreen() {
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(0);
   const [rowTops, setRowTops] = useState<Record<number, number>>({});
+  const [rewards, setRewards] = useState<MilestoneReward[]>([]);
+  const [collectingRewardId, setCollectingRewardId] = useState<number | null>(
+    null,
+  );
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -313,6 +321,39 @@ export default function MemoriesScreen() {
         );
     }, []),
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (dreamId === null) {
+        setRewards([]);
+        return;
+      }
+      getRewardsByDream(dreamId)
+        .then(setRewards)
+        .catch((cause: unknown) =>
+          console.error("Failed to load milestone rewards", cause),
+        );
+    }, [dreamId]),
+  );
+
+  const handleCollectReward = async (rewardId: number) => {
+    if (collectingRewardId !== null) return;
+    setCollectingRewardId(rewardId);
+    try {
+      const collected = await collectReward(rewardId);
+      if (collected) {
+        setRewards((current) =>
+          current.map((reward) =>
+            reward.id === rewardId ? collected : reward,
+          ),
+        );
+      }
+    } catch (cause) {
+      console.error("Failed to collect the reward", cause);
+    } finally {
+      setCollectingRewardId(null);
+    }
+  };
 
   const openAddForm = (prefillName = "") => {
     setEditingKey(null);
@@ -713,6 +754,28 @@ export default function MemoriesScreen() {
           />
         </View>
       </Card>
+
+      {rewards.length > 0 ? (
+        <View style={styles.rewardsSection}>
+          <AppText color={colors.primary} variant="sectionTitle">
+            Rewards Earned
+          </AppText>
+          <View style={styles.rewardsGrid}>
+            {rewards.map((reward) => (
+              <View
+                key={reward.id}
+                style={[styles.rewardCell, phone && styles.rewardCellPhone]}
+              >
+                <RewardCard
+                  collecting={collectingRewardId === reward.id}
+                  onCollect={() => handleCollectReward(reward.id)}
+                  reward={reward}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <AppModal onClose={closeForm} visible={formOpen}>
         <AppText align="center" variant="titleSm">
@@ -1281,6 +1344,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.sm,
     marginTop: spacing.lg,
+  },
+  rewardCell: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    minWidth: 280,
+  },
+  rewardCellPhone: {
+    flexBasis: "100%",
+    minWidth: 0,
+  },
+  rewardsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  rewardsSection: {
+    gap: spacing.md,
   },
   /** Serif pill/badge label, matching the pre-migration ETA/range pills. */
   serifPillLabel: {

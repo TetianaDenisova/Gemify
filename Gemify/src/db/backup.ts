@@ -22,6 +22,7 @@ const BACKUP_TABLES = [
   "feeling_states",
   "dream_feeling_states",
   "milestones",
+  "milestone_rewards",
   "quests",
   "ideas",
   "habits",
@@ -271,6 +272,15 @@ const backupUpgrades: BackupUpgrade[] = [
   {
     // v18 only replaced the sync update triggers; the data is unchanged.
     toVersion: 18,
+    up: () => {},
+  },
+  { toVersion: 19, up: () => {} },
+  { toVersion: 20, up: () => {} },
+  { toVersion: 21, up: () => {} },
+  {
+    // v22 adds earned rewards. Existing completed milestones are backfilled by
+    // the SQL migration, so older backup documents need no JSON-side rows.
+    toVersion: 22,
     up: () => {},
   },
 ];

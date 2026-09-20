@@ -98,6 +98,16 @@ export type MilestonePatch = {
   photoScale?: number;
 };
 
+export type MilestoneReward = {
+  id: number;
+  milestoneId: number;
+  dreamId: number;
+  milestoneTitle: string;
+  rewardName: string;
+  awardedAt: string;
+  collectedAt: string | null;
+};
+
 // ---------------------------------------------------------------------------
 // Quests & ideas
 // ---------------------------------------------------------------------------

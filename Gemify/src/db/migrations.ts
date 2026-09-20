@@ -616,6 +616,55 @@ export const migrations: Migration[] = [
       await db.execAsync(syncUpdateTriggerV18(timelinePhotos.name));
     },
   },
+  {
+    // A milestone's configured reward becomes a durable earned item when the
+    // milestone is completed. Snapshot the display copy so later milestone
+    // edits do not rewrite the user's reward history.
+    toVersion: 22,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE milestone_rewards (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          milestone_id    INTEGER NOT NULL UNIQUE
+                          REFERENCES milestones(id) ON DELETE CASCADE,
+          dream_id        INTEGER NOT NULL
+                          REFERENCES dreams(id) ON DELETE CASCADE,
+          milestone_title TEXT NOT NULL,
+          reward_name     TEXT NOT NULL CHECK (length(trim(reward_name)) > 0),
+          awarded_at      TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          collected_at    TEXT,
+          uid             TEXT,
+          updated_at      TEXT,
+          sync_dirty      INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE INDEX idx_milestone_rewards_dream
+          ON milestone_rewards (dream_id, awarded_at);
+        CREATE UNIQUE INDEX idx_milestone_rewards_uid
+          ON milestone_rewards (uid);
+
+        INSERT INTO milestone_rewards
+          (milestone_id, dream_id, milestone_title, reward_name)
+        SELECT id, dream_id, title, trim(reward)
+        FROM milestones
+        WHERE status = 'completed'
+          AND reward IS NOT NULL
+          AND length(trim(reward)) > 0;
+      `);
+
+      const rewards: SyncTableV17 = {
+        name: "milestone_rewards",
+        uid: (ref) =>
+          `(SELECT uid FROM milestones WHERE milestones.id = ${ref}.milestone_id) || '/reward'`,
+      };
+      await db.execAsync(`
+        UPDATE milestone_rewards
+          SET uid = ${rewards.uid("milestone_rewards")},
+              updated_at = ${SYNC_V17_NOW};
+      `);
+      await db.execAsync(syncTriggersV17(rewards));
+      await db.execAsync(syncUpdateTriggerV18(rewards.name));
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

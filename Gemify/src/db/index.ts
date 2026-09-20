@@ -39,6 +39,13 @@ export {
 } from "./milestonesRepository";
 export type { MilestoneQuestProgress } from "./milestonesRepository";
 
+// Rewards earned by completing milestones
+export {
+  collectReward,
+  completeMilestone,
+  getRewardsByDream,
+} from "./rewardsRepository";
+
 // Quests & ideas
 export {
   approveIdea,
@@ -121,6 +128,7 @@ export type {
   HabitTimeOfDay,
   Idea,
   Milestone,
+  MilestoneReward,
   MilestonePatch,
   MilestoneStatus,
   NewDream,
