@@ -20,6 +20,7 @@ import {
   deleteTimelineMoment,
   getCompletedDreams,
   getRewardsByDream,
+  markAllRewardsSeen,
   updateTimelineMoment,
   type Dream,
   type MilestoneReward,
@@ -324,6 +325,9 @@ export default function MemoriesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      markAllRewardsSeen().catch((cause: unknown) =>
+        console.error("Failed to mark milestone rewards as seen", cause),
+      );
       if (dreamId === null) {
         setRewards([]);
         return;

@@ -1,11 +1,17 @@
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
+import {
+  getUnseenRewardCount,
+  subscribeToRewardCountChanges,
+} from "@/db";
 import { useBottomInset } from "@/hooks/useBottomInset";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { colors } from "@/theme/colors";
 import { layout, tabBarHeightFor, typography } from "@/theme/theme";
 
@@ -96,6 +102,21 @@ export default function TabLayout() {
   // Six tabs share 402 pt on a phone (~67 pt each), so the labels go and the
   // bar drops to 56 pt. Tablets keep the 72 pt bar with its labels.
   const { phone } = useLayoutSize();
+  const [unseenRewards, setUnseenRewards] = useState(0);
+
+  const refreshRewardBadge = useCallback(() => {
+    getUnseenRewardCount()
+      .then(setUnseenRewards)
+      .catch((cause: unknown) =>
+        console.error("Failed to load unseen reward count", cause),
+      );
+  }, []);
+
+  useEffect(() => {
+    refreshRewardBadge();
+    return subscribeToRewardCountChanges(refreshRewardBadge);
+  }, [refreshRewardBadge]);
+  useRefreshOnSync(refreshRewardBadge);
 
   return (
     <Tabs
@@ -195,6 +216,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarAccessibilityLabel: "Memories",
           tabBarLabel: "Memories",
+          tabBarBadge:
+            unseenRewards > 0
+              ? unseenRewards > 99
+                ? "99+"
+                : unseenRewards
+              : undefined,
+          tabBarBadgeStyle: styles.rewardBadge,
           title: "Memories",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} phone={phone} tab="memories" />
@@ -233,6 +261,13 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     ...typography.micro,
     marginTop: 0,
+  },
+
+  rewardBadge: {
+    backgroundColor: colors.primary,
+    color: colors.textOnPrimary,
+    fontSize: 11,
+    fontWeight: "700",
   },
 
   tabIcon: {

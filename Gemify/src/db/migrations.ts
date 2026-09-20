@@ -665,6 +665,16 @@ export const migrations: Migration[] = [
       await db.execAsync(syncUpdateTriggerV18(rewards.name));
     },
   },
+  {
+    // Rewards stay unread until the user opens Memories, which drives the
+    // count badge on that tab across app launches and synced devices.
+    toVersion: 23,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE milestone_rewards ADD COLUMN seen_at TEXT;
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

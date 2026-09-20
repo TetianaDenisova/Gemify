@@ -1,6 +1,20 @@
 import { getDatabase } from "./database";
 import type { MilestoneReward } from "./types";
 
+type RewardCountListener = () => void;
+const rewardCountListeners = new Set<RewardCountListener>();
+
+function notifyRewardCountChanged(): void {
+  for (const listener of rewardCountListeners) listener();
+}
+
+export function subscribeToRewardCountChanges(
+  listener: RewardCountListener,
+): () => void {
+  rewardCountListeners.add(listener);
+  return () => rewardCountListeners.delete(listener);
+}
+
 type RewardRow = {
   id: number;
   milestone_id: number;
@@ -26,9 +40,10 @@ function toReward(row: RewardRow): MilestoneReward {
 /** Completes a milestone and records its configured reward exactly once. */
 export async function completeMilestone(id: number): Promise<void> {
   const db = await getDatabase();
+  let rewardCreated = false;
   await db.withTransactionAsync(async () => {
     await db.runAsync("UPDATE milestones SET status = 'completed' WHERE id = ?", [id]);
-    await db.runAsync(
+    const inserted = await db.runAsync(
       `INSERT OR IGNORE INTO milestone_rewards
          (milestone_id, dream_id, milestone_title, reward_name)
        SELECT id, dream_id, title, trim(reward)
@@ -36,7 +51,27 @@ export async function completeMilestone(id: number): Promise<void> {
        WHERE id = ? AND reward IS NOT NULL AND length(trim(reward)) > 0`,
       [id],
     );
+    rewardCreated = inserted.changes > 0;
   });
+  if (rewardCreated) notifyRewardCountChanged();
+}
+
+export async function getUnseenRewardCount(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM milestone_rewards WHERE seen_at IS NULL",
+  );
+  return row?.count ?? 0;
+}
+
+export async function markAllRewardsSeen(): Promise<void> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `UPDATE milestone_rewards
+     SET seen_at = STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')
+     WHERE seen_at IS NULL`,
+  );
+  if (result.changes > 0) notifyRewardCountChanged();
 }
 
 export async function getRewardsByDream(

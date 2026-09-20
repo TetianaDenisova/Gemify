@@ -283,6 +283,11 @@ const backupUpgrades: BackupUpgrade[] = [
     toVersion: 22,
     up: () => {},
   },
+  {
+    // v23 added the reward seen marker; absent values restore as unread.
+    toVersion: 23,
+    up: () => {},
+  },
 ];
 
 // ---------------------------------------------------------------------------

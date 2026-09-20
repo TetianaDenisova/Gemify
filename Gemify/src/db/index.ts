@@ -44,6 +44,9 @@ export {
   collectReward,
   completeMilestone,
   getRewardsByDream,
+  getUnseenRewardCount,
+  markAllRewardsSeen,
+  subscribeToRewardCountChanges,
 } from "./rewardsRepository";
 
 // Quests & ideas
