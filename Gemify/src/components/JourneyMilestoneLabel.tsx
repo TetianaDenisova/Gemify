@@ -8,6 +8,7 @@ import { colors } from "@/theme/colors";
 import {
   fonts,
   radius,
+  shadowStyle,
   shadows,
   spacing,
   textGlow,
@@ -15,8 +16,8 @@ import {
 } from "@/theme/theme";
 
 export type JourneyMilestoneLabelProps = {
-  /** Fades the whole label — used for completed milestones on the map. */
-  muted?: boolean;
+  /** Visual hierarchy on the path without changing label geometry. */
+  emphasis?: "completed" | "open";
   number: number;
   /** Phone tier: full wrapping title on a dark backing, no empty subtitle. */
   phone?: boolean;
@@ -31,6 +32,8 @@ export type JourneyMilestoneLabelProps = {
 // badge) rather than the app type scale — an intentional exception.
 const BADGE_SIZE = 36;
 const CONNECTOR_WIDTH = 14;
+const COMPLETED_BRONZE = "#9A7E48";
+const COMPLETED_BRONZE_BORDER = "rgba(154, 126, 72, 0.62)";
 
 // Static SVG shared by every label — built once, never reconciled per render.
 const goldenConnector = (
@@ -64,7 +67,7 @@ const goldenConnector = (
 );
 
 export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
-  muted = false,
+  emphasis = "open",
   number,
   phone = false,
   side = "right",
@@ -74,6 +77,7 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
 }: JourneyMilestoneLabelProps) {
   const displayNumber = Math.min(Math.max(Math.round(number), 1), 99);
   const isLeft = side === "left";
+  const completed = emphasis === "completed";
   // A phone shows the whole title (wrapping) and skips an empty subtitle line.
   const showSubtitle = !phone || subtitle.length > 0;
 
@@ -86,15 +90,39 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
         phone ? styles.containerPhone : styles.containerFixed,
         { pointerEvents: "none" },
         isLeft && styles.containerLeft,
-        muted && (phone ? styles.containerMutedPhone : styles.containerMuted),
         style,
       ]}
     >
-      <View style={styles.connector}>{goldenConnector}</View>
+      <View
+        style={[
+          styles.connector,
+          completed && styles.connectorCompleted,
+        ]}
+      >
+        {goldenConnector}
+      </View>
 
-      <View style={styles.badge}>
-        <View style={[styles.badgeInnerRing, { pointerEvents: "none" }]} />
-        <AppText style={styles.badgeText}>{displayNumber}</AppText>
+      <View
+        style={[
+          styles.badge,
+          completed && styles.badgeCompleted,
+        ]}
+      >
+        <View
+          style={[
+            styles.badgeInnerRing,
+            completed && styles.badgeInnerRingCompleted,
+            { pointerEvents: "none" },
+          ]}
+        />
+        <AppText
+          style={[
+            styles.badgeText,
+            completed && styles.badgeTextCompleted,
+          ]}
+        >
+          {displayNumber}
+        </AppText>
       </View>
 
       <View
@@ -106,14 +134,22 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
       >
         <AppText
           numberOfLines={phone ? undefined : 1}
-          style={[styles.title, isLeft && styles.textAlignRight]}
+          style={[
+            styles.title,
+            completed && styles.titleCompleted,
+            isLeft && styles.textAlignRight,
+          ]}
         >
           {title}
         </AppText>
         {showSubtitle ? (
           <AppText
             numberOfLines={phone ? undefined : 1}
-            style={[styles.subtitle, isLeft && styles.textAlignRight]}
+            style={[
+              styles.subtitle,
+              completed && styles.subtitleCompleted,
+              isLeft && styles.textAlignRight,
+            ]}
             variant="caption"
           >
             {subtitle}
@@ -137,22 +173,17 @@ const styles = StyleSheet.create({
   containerPhone: {
     minHeight: 40,
   },
-  /** Readable over the map art while still receding behind open steps. */
-  containerMutedPhone: {
-    opacity: 0.8,
-  },
   containerLeft: {
     flexDirection: "row-reverse",
-  },
-  /** Completed milestones: the label recedes so upcoming steps stand out. */
-  containerMuted: {
-    opacity: 0.55,
   },
   connector: {
     width: CONNECTOR_WIDTH,
     height: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  connectorCompleted: {
+    opacity: 0.8,
   },
   badge: {
     width: BADGE_SIZE,
@@ -165,12 +196,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadows.goldGlow,
   },
+  badgeCompleted: {
+    backgroundColor: "rgba(8, 10, 14, 0.82)",
+    borderColor: COMPLETED_BRONZE_BORDER,
+    opacity: 0.8,
+    ...shadowStyle({
+      color: COMPLETED_BRONZE,
+      elevation: 0,
+      opacity: 0.01,
+      radius: 1,
+    }),
+  },
   badgeInnerRing: {
     position: "absolute",
     inset: 3,
     borderRadius: (BADGE_SIZE - 6) / 2,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderSoft,
+  },
+  badgeInnerRingCompleted: {
+    borderColor: "rgba(154, 126, 72, 0.42)",
   },
   badgeText: {
     color: colors.primary,
@@ -180,6 +225,10 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     textAlign: "center",
     ...textGlow(colors.primaryGlow, 5),
+  },
+  badgeTextCompleted: {
+    color: COMPLETED_BRONZE,
+    ...textGlow(colors.transparent, 0),
   },
   textBlock: {
     flex: 1,
@@ -221,6 +270,11 @@ const styles = StyleSheet.create({
     textAlign: "left",
     ...textGlow(colors.primaryGlow, 4),
   },
+  titleCompleted: {
+    color: COMPLETED_BRONZE,
+    opacity: 0.8,
+    ...textGlow(colors.transparent, 0),
+  },
   subtitle: {
     marginTop: 1,
     fontSize: 11,
@@ -228,5 +282,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
     lineHeight: 14,
     textAlign: "left",
+  },
+  subtitleCompleted: {
+    color: COMPLETED_BRONZE,
+    opacity: 0.8,
   },
 });

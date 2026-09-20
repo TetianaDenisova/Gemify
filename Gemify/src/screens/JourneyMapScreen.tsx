@@ -1475,6 +1475,7 @@ export function GoalJourneyMapScreen() {
           <>
             {displayMilestones.map((milestone, index) => (
               <JourneyMilestone
+                emphasis={milestone.completed ? "completed" : "open"}
                 imageHeight={imageHeight}
                 imageWidth={imageWidth}
                 key={milestone.id}

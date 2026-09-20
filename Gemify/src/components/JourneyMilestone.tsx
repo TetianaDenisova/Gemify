@@ -9,6 +9,7 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 export type JourneyMilestoneLabelSide = "left" | "right";
 
 export type JourneyMilestoneProps = {
+  emphasis?: "completed" | "open";
   imageHeight: number;
   imageWidth: number;
   /** Which side of the ring the label sits on; defaults to alternating by id. */
@@ -108,6 +109,7 @@ function getJourneyMilestoneLayout(
  * the ring image and label subtree.
  */
 export const JourneyMilestone = memo(function JourneyMilestone({
+  emphasis = "open",
   imageHeight,
   imageWidth,
   labelSide: labelSideProp,
@@ -168,7 +170,7 @@ export const JourneyMilestone = memo(function JourneyMilestone({
       ]}
     >
       <JourneyMilestoneLabel
-        muted={milestone.completed}
+        emphasis={emphasis}
         number={milestone.id}
         phone={phone}
         side={labelSide}
@@ -193,19 +195,17 @@ export const JourneyMilestone = memo(function JourneyMilestone({
           {
             width: groupWidth,
             height: groupHeight,
-            opacity: pressed ? milestone.opacity * 0.78 : milestone.opacity,
+            opacity:
+              (emphasis === "completed" ? 0.8 : 1) * (pressed ? 0.78 : 1),
             transform: [{ scale: pressed ? 0.988 : 1 }],
           },
         ]}
       >
         <Image
           contentFit="contain"
-          // Completed milestones fall back to the quiet ring, like inactive
-          // ones — only the steps still ahead glow gold.
+          // Every open step stays fully illuminated; completed ones recede.
           source={
-            milestone.active && !milestone.completed
-              ? CIRCLE_SOURCE
-              : CIRCLE_INACTIVE_SOURCE
+            emphasis === "completed" ? CIRCLE_INACTIVE_SOURCE : CIRCLE_SOURCE
           }
           style={{ width: ringWidth, height: ringHeight }}
         />
