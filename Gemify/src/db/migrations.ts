@@ -516,6 +516,19 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // A dream can now be finished, which is not the same as archived: a
+    // completed dream keeps its memories and stays selectable on the
+    // Memories screen, while leaving Home and the other pickers. Sync picks
+    // the column up on its own (the engine reads columns from
+    // PRAGMA table_info), so SYNC_TABLES needs no change.
+    toVersion: 20,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE dreams ADD COLUMN is_completed INTEGER NOT NULL DEFAULT 0;
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

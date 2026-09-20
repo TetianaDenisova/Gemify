@@ -1,10 +1,11 @@
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -19,18 +20,23 @@ import {
   DreamPhotoAdjuster,
   type DreamPhotoTransform,
 } from "@/components/DreamPhotoFrame";
+import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import {
   AppButton,
   AppModal,
   AppText,
   CheckIcon,
+  DotsIcon,
   IconButton,
+  MilestoneIcon,
   MinusIcon,
   PencilIcon,
   PlusIcon,
   ScreenHeader,
   SparkIcon,
+  TrashIcon,
 } from "@/shared/components";
+import { useOncePerDay } from "@/hooks/useOncePerDay";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
@@ -48,19 +54,25 @@ import {
   withOpacity,
 } from "@/theme/theme";
 
-function SparklesIcon({ size = 27 }: { size?: number }) {
+function SparklesIcon({
+  color = colors.primary,
+  size = 27,
+}: {
+  color?: string;
+  size?: number;
+}) {
   return (
     <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
       <Path
         d="M12 2.8c.55 3.52 2.48 5.45 6 6-3.52.55-5.45 2.48-6 6-.55-3.52-2.48-5.45-6-6 3.52-.55 5.45-2.48 6-6Z"
-        stroke={colors.primary}
+        stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.8}
       />
       <Path
         d="M19.2 14.5c.25 1.78 1.27 2.8 3 3-1.73.2-2.75 1.22-3 3-.25-1.78-1.27-2.8-3-3 1.73-.2 2.75-1.22 3-3ZM5 3.2c.18 1.2.85 1.87 2 2-1.15.13-1.82.8-2 2-.18-1.2-.85-1.87-2-2 1.15-.13 1.82-.8 2-2Z"
-        stroke={colors.primary}
+        stroke={color}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.8}
@@ -72,8 +84,14 @@ function SparklesIcon({ size = 27 }: { size?: number }) {
 type JourneyOverviewModalProps = {
   dreamName: string;
   onClose: () => void;
-  onEditPath: () => void;
+  /** Opens the ⋯ sheet: edit the dream, edit the path, complete, delete. */
+  onOpenMenu: () => void;
   onOpenWhatIfPlan: () => void;
+  /**
+   * "intro" is the once-a-day greeting — the dream, and an OK button.
+   * "overview" is the ✨ sheet, with the menu and the What-If action.
+   */
+  variant: "intro" | "overview";
   photoTransform: DreamPhotoTransform;
   photoUri: string | null;
   visible: boolean;
@@ -83,15 +101,19 @@ type JourneyOverviewModalProps = {
 function JourneyOverviewModal({
   dreamName,
   onClose,
-  onEditPath,
+  onOpenMenu,
   onOpenWhatIfPlan,
   photoTransform,
   photoUri,
+  variant,
   visible,
   visionStatement,
 }: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
   const { height, phone } = useLayoutSize();
+  // The daily greeting has nothing to act on: it shows the dream and closes.
+  const isIntro = variant === "intro";
+  const description = visionStatement.trim();
 
   return (
     <AppModal
@@ -109,9 +131,29 @@ function JourneyOverviewModal({
           <AppText align="center" variant="eyebrow">
             THE LIFE I&apos;M CREATING
           </AppText>
-          <AppText align="center" style={styles.title} variant="title">
-            {dreamName}
-          </AppText>
+          <View style={styles.overviewTitleRow}>
+            <AppText
+              align="center"
+              style={[styles.title, styles.overviewTitle]}
+              variant="title"
+            >
+              {dreamName}
+            </AppText>
+            {isIntro ? null : (
+              <Pressable
+                accessibilityLabel="Dream options"
+                accessibilityRole="button"
+                hitSlop={10}
+                onPress={onOpenMenu}
+                style={({ pressed }) => [
+                  styles.overviewMenuButton,
+                  pressed && pressedStyle,
+                ]}
+              >
+                <DotsIcon color={colors.textSecondary} size={iconSizes.md} />
+              </Pressable>
+            )}
+          </View>
           {/* Pure ornament above a sheet that is already tight on a phone. */}
           {phone ? null : (
             <View style={styles.ornamentRow}>
@@ -136,44 +178,47 @@ function JourneyOverviewModal({
             </View>
           ) : null}
 
-          <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
-            <AppText style={styles.quoteMark}>{"“"}</AppText>
-            <AppText style={styles.visionText} variant="bodySerif">
-              {visionStatement}
-            </AppText>
-          </View>
+          {/* No description, no empty frame with a quote mark floating in it. */}
+          {description ? (
+            <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
+              <AppText style={styles.quoteMark}>{"“"}</AppText>
+              <ScrollView
+                nestedScrollEnabled
+                style={{ maxHeight: height * (phone ? 0.22 : 0.3) }}
+              >
+                <AppText style={styles.visionText}>{description}</AppText>
+              </ScrollView>
+            </View>
+          ) : null}
 
-          {/* "Edit Path" and 'Check "What If" Plan' cannot share 370 pt. */}
-          <View style={[styles.actionsRow, phone && styles.actionsRowPhone]}>
+          {isIntro ? (
             <AppButton
-              accessibilityLabel="Edit Path"
-              density="compact"
-              icon={<PencilIcon color={colors.textOnPrimary} size={iconSizes.sm} />}
-              iconPosition="before"
-              label="Edit Path"
-              onPress={onEditPath}
-              style={styles.actionButton}
-              textStyle={styles.actionLabel}
+              label="OK"
+              onPress={onClose}
+              style={styles.overviewAction}
               variant="primary"
             />
+          ) : (
             <AppButton
               accessibilityLabel="Check What If Plan"
-              density="compact"
-              icon={<SparklesIcon size={iconSizes.sm} />}
+              icon={
+                <SparklesIcon
+                  color={colors.textOnPrimary}
+                  size={iconSizes.sm}
+                />
+              }
               iconPosition="before"
               label={'Check "What If" Plan'}
               onPress={onOpenWhatIfPlan}
-              style={styles.actionButton}
-              textStyle={styles.actionLabel}
-              variant="secondary"
+              style={styles.overviewAction}
+              variant="primary"
             />
-          </View>
+          )}
         </View>
       </View>
     </AppModal>
   );
 }
-
 type DreamEditModalProps = {
   dreamName: string;
   onClose: () => void;
@@ -507,6 +552,8 @@ export type JourneyMapControlsProps = {
   dreamId?: number;
   dreamName: string;
   editMode: boolean;
+  /** Marks the dream finished; the screen celebrates and offers a memory. */
+  onCompleteDream: () => void;
   onDeleteDream: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
@@ -529,6 +576,7 @@ export function JourneyMapControls({
   dreamId,
   dreamName,
   editMode,
+  onCompleteDream,
   onDeleteDream,
   onEnterEditMode,
   onExitEditMode,
@@ -539,20 +587,59 @@ export function JourneyMapControls({
   visionStatement,
 }: JourneyMapControlsProps) {
   const router = useRouter();
-  const [overviewVisible, setOverviewVisible] = useState(false);
+  // One sheet, two faces: the ✨ overview and the once-a-day greeting.
+  const [overviewMode, setOverviewMode] = useState<
+    "intro" | "overview" | null
+  >(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [dreamEditVisible, setDreamEditVisible] = useState(false);
 
+  // The daily greeting, per dream. A dream with neither photo nor
+  // description has nothing to greet the user with, so it stays quiet.
+  const introKey = dreamId !== undefined ? `dream_intro:${dreamId}` : "";
+  const { due: introDue, markSeen: markIntroSeen } = useOncePerDay(introKey);
+  const hasIntroContent =
+    photoUri !== null || visionStatement.trim().length > 0;
+
+  // Render-time state adjustment (the documented "adjusting state when props
+  // change" pattern, as on the Memories screen): React re-runs this component
+  // immediately with the new state, so the greeting opens on the same frame
+  // the flag resolves — no effect round-trip, and one open per day.
+  const [introHandled, setIntroHandled] = useState(false);
+  if (
+    !introHandled &&
+    introKey !== "" &&
+    introDue &&
+    hasIntroContent &&
+    !editMode
+  ) {
+    setIntroHandled(true);
+    setOverviewMode("intro");
+  }
+
+  // Storing the flag is a write, so it waits for after the render.
+  useEffect(() => {
+    if (introHandled) void markIntroSeen();
+  }, [introHandled, markIntroSeen]);
+
   const openWhatIfPlan = () => {
-    setOverviewVisible(false);
+    setOverviewMode(null);
     router.push({
       pathname: "/what-if-plan",
       params: { dreamId: dreamId !== undefined ? String(dreamId) : "" },
     });
   };
 
-  const openEditPath = () => {
-    setOverviewVisible(false);
-    onEnterEditMode();
+  // The ⋯ sheet replaces the overview rather than stacking on it: two
+  // native modals at once do not reliably both appear on iOS.
+  const openMenu = () => {
+    setOverviewMode(null);
+    setMenuOpen(true);
+  };
+
+  const runFromMenu = (action: () => void) => {
+    setMenuOpen(false);
+    action();
   };
 
   return (
@@ -568,7 +655,7 @@ export function JourneyMapControls({
             : {
                 accessibilityLabel: "Open journey overview",
                 icon: <SparklesIcon />,
-                onPress: () => setOverviewVisible(true),
+                onPress: () => setOverviewMode("overview"),
               }
         }
         rightSlot={
@@ -595,14 +682,45 @@ export function JourneyMapControls({
 
       <JourneyOverviewModal
         dreamName={dreamName}
-        onClose={() => setOverviewVisible(false)}
-        onEditPath={openEditPath}
+        onClose={() => setOverviewMode(null)}
+        onOpenMenu={openMenu}
         onOpenWhatIfPlan={openWhatIfPlan}
         photoTransform={photoTransform}
         photoUri={photoUri}
-        visible={overviewVisible}
+        variant={overviewMode ?? "overview"}
+        visible={overviewMode !== null}
         visionStatement={visionStatement}
       />
+
+      <ActionSheet
+        onClose={() => setMenuOpen(false)}
+        title={dreamName}
+        visible={menuOpen}
+      >
+        <SheetActionRow
+          icon={<PencilIcon size={22} strokeWidth={1.7} variant="detailed" />}
+          label="Edit dream"
+          onPress={() => runFromMenu(() => setDreamEditVisible(true))}
+        />
+        <SheetActionRow
+          icon={<MilestoneIcon color={colors.primary} size={22} />}
+          label="Edit path"
+          onPress={() => runFromMenu(onEnterEditMode)}
+        />
+        <SheetActionRow
+          icon={<CheckIcon color={colors.primary} size={22} />}
+          label="Complete dream"
+          onPress={() => runFromMenu(onCompleteDream)}
+        />
+        {showDeleteDream ? (
+          <SheetActionRow
+            danger
+            icon={<TrashIcon size={22} />}
+            label="Delete"
+            onPress={() => runFromMenu(onDeleteDream)}
+          />
+        ) : null}
+      </ActionSheet>
 
       <DreamEditModal
         dreamName={dreamName}
@@ -749,6 +867,27 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.xl,
+  },
+  /** The name centred, with the ⋯ button riding its right edge. */
+  overviewTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  overviewTitle: {
+    flex: 1,
+  },
+  overviewMenuButton: {
+    alignItems: "center",
+    height: 36,
+    justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    width: 36,
+  },
+  overviewAction: {
+    alignSelf: "stretch",
+    marginTop: spacing.lg,
   },
   editActions: {
     alignItems: "center",

@@ -8,8 +8,10 @@ export type { ImportSummary } from "./backup";
 export {
   createDream,
   deleteDream,
+  getCompletedDreams,
   getDreamById,
   getDreams,
+  getDreamsWithCompleted,
   getDreamSummaries,
   getFeelingStates,
   getWeekAscent,
@@ -17,6 +19,9 @@ export {
 } from "./dreamsRepository";
 export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";
 export { JOURNEY_MILESTONE_COUNT } from "./dreamsRepository";
+
+// Settings (device-local key/value: "seen today" flags and the like)
+export { getSetting, setSetting } from "./settingsRepository";
 
 // Forecast cache (device-local: the completion date the banner last showed)
 export {
@@ -49,6 +54,8 @@ export {
   getScheduledQuestCounts,
   getScheduledQuests,
   getUnscheduledQuests,
+  getOverdueQuests,
+  rescheduleQuests,
   rolloverOverdueQuests,
   setQuestDone,
   updateQuest,

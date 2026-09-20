@@ -35,6 +35,8 @@ export type HabitWeekView = {
   details: HabitDetailEntry[];
   /** Display label of the habit's time-of-day block ("Anytime" when unset). */
   timeLabel: string;
+  /** Position of that block in the day (unscheduled blocks sort last). */
+  timeOrder: number;
   /** Detail sections ticked today ("Make It Easy" / "bad day" checkboxes). */
   todayDetailChecks: HabitDetailSection[];
 };
@@ -106,6 +108,7 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
             streakDays: habitStreakDays(statusByDate, scheduleDays, today),
             details,
             timeLabel: habitTimeLabel(habit.timeOfDay, timeBlocks),
+            timeOrder: habitTimeOrder(habit.timeOfDay, timeBlocks),
             todayDetailChecks: todayChecks,
             weekProgress: weekDates.map(
               (date) => statusByDate.get(date) ?? "open",
@@ -157,6 +160,34 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
   );
 
   return { habits, loading, error, weekDates, refresh, setCompletion };
+}
+
+export type HabitStatus = "today" | "other" | "done";
+
+/**
+ * Which section a habit belongs in: waiting for today, scheduled for another
+ * day, or already ticked off today. `todayIndex` is Monday-first, matching
+ * `scheduleDays` and `weekProgress`.
+ */
+export function habitStatus(
+  view: HabitWeekView,
+  todayIndex: number,
+): HabitStatus {
+  if (!view.scheduleDays.includes(todayIndex)) return "other";
+  return view.weekProgress[todayIndex] === "done" ? "done" : "today";
+}
+
+/**
+ * Where a habit sits in the day. `time_blocks` are stored in day order
+ * (ORDER BY position), so the block's index is the order; a habit with no
+ * block ("Anytime") sorts after every scheduled one.
+ */
+export function habitTimeOrder(
+  timeOfDay: Habit["timeOfDay"],
+  blocks: readonly TimeBlockRecord[],
+): number {
+  const index = blocks.findIndex((block) => block.key === timeOfDay);
+  return index >= 0 ? index : blocks.length;
 }
 
 /**

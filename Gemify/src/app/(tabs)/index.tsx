@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
 import {
@@ -15,7 +15,7 @@ import { ActionIconArt } from "@/components/TimeBlockCard";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import { habitVisualsFor } from "@/data/habitVisuals";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
-import { rolloverOverdueQuests, type DreamSummary } from "@/db";
+import type { DreamSummary } from "@/db";
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { habitIconForId } from "@/hooks/useDayHabits";
@@ -151,16 +151,6 @@ export default function HomeScreen() {
   const { habits: habitViews, setCompletion } = useHabitWeek();
   const cloudSync = useCloudSync();
 
-  // Quests scheduled before today that never got done roll back into the
-  // weekly backlog, so yesterday's leftovers wait under "Unscheduled this
-  // week" on the Weekly Plan instead of silently staying on past days.
-  useFocusEffect(
-    useCallback(() => {
-      rolloverOverdueQuests(today).catch((cause: unknown) => {
-        console.error("Failed to roll over overdue quests", cause);
-      });
-    }, [today]),
-  );
 
   // The whole focus/next-block derivation is pure computation over the loaded
   // data — memoized so it doesn't re-run (with fresh Dates and array churn)

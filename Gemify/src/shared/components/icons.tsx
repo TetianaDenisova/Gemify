@@ -518,7 +518,7 @@ export function ImageIcon({
 
 /** Filled sparkle with a small companion star — violet accent glyph. */
 export function SparkleGlyphIcon({
-  color = colors.accentViolet,
+  color = colors.primary,
   size = 22,
 }: IconProps) {
   return (

@@ -16,6 +16,7 @@ import {
   readTombstones,
   setSyncValue,
   toRemoteRow,
+  type ApplyStats,
   type RemoteRow,
 } from "./localStore";
 import { notifySyncApplied } from "./events";
@@ -41,6 +42,15 @@ export type SyncResult = {
   pulled: number;
   /** Local rows (and deletions) sent to the server. */
   pushed: number;
+  /**
+   * Rows read back but not written: this device's own echo (the pull starts
+   * at the cursor, so what was just pushed comes back), and rows an older
+   * local edit outranks. Nothing went wrong — it is here so the numbers
+   * above can be trusted to mean "changed something".
+   */
+  skipped: number;
+  /** Rows whose parent is missing locally; they wait for the parent. */
+  orphaned: number;
 };
 
 /** Cursor for the pull: the newest server timestamp already seen. */
@@ -75,13 +85,19 @@ async function syncOnce(): Promise<SyncResult> {
   await adoptAccount(db, userId);
 
   const pushed = await pushChanges(db, supabase, userId);
-  const pulled = await pullChanges(db, supabase, userId);
+  const stats = await pullChanges(db, supabase, userId);
   const downloaded = await downloadMissingPhotos(db);
 
   await setSyncValue(db, LAST_SYNC_KEY, nowIso());
-  if (pulled > 0 || downloaded > 0) notifySyncApplied();
+  if (stats.applied > 0 || downloaded > 0) notifySyncApplied();
 
-  return { downloaded, pulled, pushed };
+  return {
+    downloaded,
+    orphaned: stats.orphaned,
+    pulled: stats.applied,
+    pushed,
+    skipped: stats.skipped,
+  };
 }
 
 /** When this device last completed a sync, for the settings screen. */
@@ -195,7 +211,7 @@ async function pullChanges(
   db: SQLiteDatabase,
   supabase: SupabaseClient,
   userId: string,
-): Promise<number> {
+): Promise<ApplyStats> {
   const cursor = (await getSyncValue(db, CURSOR_KEY)) ?? EPOCH;
   const rows: RemoteRow[] = [];
 
@@ -246,7 +262,7 @@ async function pullChanges(
     unknown !== null && isBefore(unknown, newest) ? unknown : newest,
   );
 
-  return stats.applied;
+  return stats;
 }
 
 /** Timestamp order by value, not by string shape — offsets may differ. */

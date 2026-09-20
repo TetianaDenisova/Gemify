@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -16,7 +16,9 @@ import type { TimelineIconKey, TimelineMoment } from "@/data/progressData";
 import {
   addTimelineMoment,
   deleteTimelineMoment,
+  getCompletedDreams,
   updateTimelineMoment,
+  type Dream,
 } from "@/db";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useProgressContent } from "@/hooks/useProgressContent";
@@ -31,6 +33,7 @@ import {
   ChevronIcon,
   CloseIcon,
   DotsIcon,
+  HistoryIcon,
   IconButton,
   ListItem,
   PlusIcon,
@@ -42,6 +45,7 @@ import {
   fontSizes,
   fonts,
   lineHeights,
+  pressed,
   radius,
   shadowStyle,
   spacing,
@@ -235,8 +239,14 @@ export default function MemoriesScreen() {
   const { compact, height, phone } = useLayoutSize();
 
   const [goalKey, setGoalKey] = useState("");
-  const { content: progressContent, dreamId, refresh } =
-    useProgressContent(goalKey);
+  // `true`: a finished dream keeps its place in the dropdown here, so its
+  // memories stay one tap away after the journey ends.
+  const { content: progressContent, dreamId, refresh } = useProgressContent(
+    goalKey,
+    true,
+  );
+  const [completedOpen, setCompletedOpen] = useState(false);
+  const [completedDreams, setCompletedDreams] = useState<Dream[]>([]);
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(0);
   const [rowTops, setRowTops] = useState<Record<number, number>>({});
@@ -271,6 +281,16 @@ export default function MemoriesScreen() {
     detailPhoto !== null && detailMoment?.photoUris.includes(detailPhoto)
       ? detailPhoto
       : detailMoment?.photoUris[0];
+
+  useFocusEffect(
+    useCallback(() => {
+      getCompletedDreams()
+        .then(setCompletedDreams)
+        .catch((cause: unknown) =>
+          console.error("Failed to load finished dreams", cause),
+        );
+    }, []),
+  );
 
   const openAddForm = (prefillName = "") => {
     setEditingKey(null);
@@ -474,9 +494,12 @@ export default function MemoriesScreen() {
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
       <View style={[styles.header, compact && styles.headerCompact]}>
-        {/* Spacer with the add-button's footprint keeps the title centred. */}
-        <View
-          style={compact ? styles.headerSpacerCompact : styles.headerSpacer}
+        {/* Finished dreams live behind this, like finished habits do. */}
+        <IconButton
+          accessibilityLabel="Completed dreams"
+          icon={<HistoryIcon size={compact ? 20 : 22} />}
+          onPress={() => setCompletedOpen(true)}
+          size={compact ? "sm" : "md"}
         />
         <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
           <AppText
@@ -929,6 +952,48 @@ export default function MemoriesScreen() {
           </>
         ) : null}
       </AppModal>
+      <AppModal
+        onClose={() => setCompletedOpen(false)}
+        variant="sheet"
+        visible={completedOpen}
+      >
+        <AppText align="center" color={colors.primary} variant="titleSm">
+          Completed Dreams
+        </AppText>
+        {completedDreams.length === 0 ? (
+          <AppText
+            align="center"
+            style={styles.completedEmpty}
+            variant="bodySmall"
+          >
+            No dream has been completed yet. Finish one from its journey map.
+          </AppText>
+        ) : (
+          <View style={styles.completedList}>
+            {completedDreams.map((dream) => (
+              <Pressable
+                accessibilityLabel={`Show memories of ${dream.title}`}
+                accessibilityRole="button"
+                key={dream.id}
+                onPress={() => {
+                  setGoalKey(String(dream.id));
+                  setCompletedOpen(false);
+                }}
+                style={({ pressed: isPressed }) => [
+                  styles.completedRow,
+                  isPressed && pressed,
+                ]}
+              >
+                <SparkleGlyphIcon size={18} />
+                <AppText numberOfLines={1} style={styles.completedTitle} variant="button">
+                  {dream.title}
+                </AppText>
+                <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </AppModal>
     </ScreenScaffold>
   );
 }
@@ -1048,6 +1113,27 @@ const styles = StyleSheet.create({
   },
   /** Opaque, image-matched ground: the artwork's dark edges dissolve into
    * it, so the content below the hero image sits on a seamless background. */
+  completedEmpty: {
+    marginTop: spacing.lg,
+  },
+  completedList: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  completedRow: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceCard,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  completedTitle: {
+    flex: 1,
+  },
   forecastCard: {
     backgroundColor: colors.background,
     borderColor: colors.border,

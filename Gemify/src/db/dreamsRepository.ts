@@ -23,11 +23,12 @@ type DreamRow = {
   photo_focus_y: number;
   photo_scale: number;
   is_archived: number;
+  is_completed: number;
 };
 
 const SELECT_DREAM = `
   SELECT id, seed_key, title, vision_statement, photo_uri,
-         photo_focus_x, photo_focus_y, photo_scale, is_archived
+         photo_focus_x, photo_focus_y, photo_scale, is_archived, is_completed
   FROM dreams
 `;
 
@@ -42,6 +43,7 @@ function toDream(row: DreamRow): Dream {
     photoFocusY: row.photo_focus_y,
     photoScale: row.photo_scale,
     isArchived: row.is_archived === 1,
+    isCompleted: row.is_completed === 1,
   };
 }
 
@@ -78,13 +80,39 @@ export async function createDream(input: NewDream): Promise<Dream> {
   return dream;
 }
 
-/** Home-screen list: insertion order, archived dreams hidden by default. */
+/**
+ * The dreams still being walked: insertion order, with archived and
+ * completed ones left out. A finished dream is not gone — it keeps its
+ * memories and lives in `getCompletedDreams()` — it just stops appearing
+ * on the screens that are about what comes next.
+ */
 export async function getDreams(includeArchived = false): Promise<Dream[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<DreamRow>(
     includeArchived
       ? `${SELECT_DREAM} ORDER BY id`
-      : `${SELECT_DREAM} WHERE is_archived = 0 ORDER BY id`,
+      : `${SELECT_DREAM} WHERE is_archived = 0 AND is_completed = 0 ORDER BY id`,
+  );
+  return rows.map(toDream);
+}
+
+/** Finished dreams, newest first — the Memories history sheet. */
+export async function getCompletedDreams(): Promise<Dream[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<DreamRow>(
+    `${SELECT_DREAM} WHERE is_archived = 0 AND is_completed = 1 ORDER BY id DESC`,
+  );
+  return rows.map(toDream);
+}
+
+/**
+ * Active dreams *and* finished ones, active first. The Memories screen uses
+ * this so a finished dream stays selectable in its dropdown.
+ */
+export async function getDreamsWithCompleted(): Promise<Dream[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<DreamRow>(
+    `${SELECT_DREAM} WHERE is_archived = 0 ORDER BY is_completed, id`,
   );
   return rows.map(toDream);
 }
@@ -130,6 +158,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
      )
      SELECT d.id, d.seed_key, d.title, d.vision_statement, d.photo_uri,
             d.photo_focus_x, d.photo_focus_y, d.photo_scale, d.is_archived,
+            d.is_completed,
             COALESCE(
               (SELECT m.title FROM milestones m
                WHERE m.dream_id = d.id AND m.status = 'active'
@@ -152,7 +181,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
                     ${JOURNEY_MILESTONE_COUNT}),
               0) AS progress_fraction
      FROM dreams d
-     WHERE d.is_archived = 0
+     WHERE d.is_archived = 0 AND d.is_completed = 0
      ORDER BY d.id`,
   );
 
@@ -219,7 +248,7 @@ export async function getWeekAscent(
               AS gained_fraction
      FROM quest_weight qw
      JOIN dreams d ON d.id = qw.dream_id
-     WHERE d.is_archived = 0
+     WHERE d.is_archived = 0 AND d.is_completed = 0
      GROUP BY d.id
      ORDER BY d.id`,
     [fromDate, toDate],
@@ -307,6 +336,10 @@ export async function updateDream(
   if (patch.isArchived !== undefined) {
     assignments.push("is_archived = ?");
     params.push(patch.isArchived ? 1 : 0);
+  }
+  if (patch.isCompleted !== undefined) {
+    assignments.push("is_completed = ?");
+    params.push(patch.isCompleted ? 1 : 0);
   }
 
   if (assignments.length > 0) {

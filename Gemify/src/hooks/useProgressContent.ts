@@ -10,6 +10,7 @@ import type {
 } from "@/data/progressData";
 import {
   getDreams,
+  getDreamsWithCompleted,
   getForecastProjection,
   getMilestones,
   getQuestsByDream,
@@ -320,8 +321,14 @@ export type UseProgressContentResult = {
  * Builds the ProgressContent view-model the Progress screen renders, from
  * real dreams, quests and timeline moments. `goalKey` is the selected dream id
  * as a string ("" or unknown falls back to the first dream).
+ *
+ * `includeCompleted` keeps finished dreams in the list — the Memories screen
+ * wants them (their memories are the point), the Progress screen does not.
  */
-export function useProgressContent(goalKey: string): UseProgressContentResult {
+export function useProgressContent(
+  goalKey: string,
+  includeCompleted = false,
+): UseProgressContentResult {
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -339,7 +346,9 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
 
   const refresh = useCallback(async () => {
     try {
-      const dreamList = await getDreams();
+      const dreamList = includeCompleted
+        ? await getDreamsWithCompleted()
+        : await getDreams();
       setDreams(dreamList);
 
       const resolved =
@@ -365,7 +374,7 @@ export function useProgressContent(goalKey: string): UseProgressContentResult {
     } finally {
       setLoading(false);
     }
-  }, [parsedKey]);
+  }, [includeCompleted, parsedKey]);
 
   useRefreshOnSync(refresh);
 

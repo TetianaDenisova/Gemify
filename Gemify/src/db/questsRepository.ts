@@ -251,22 +251,52 @@ export async function deleteQuest(id: number): Promise<boolean> {
   return result.changes > 0;
 }
 
+/** Undone quests still sitting on a day before `beforeDate`. */
+export async function getOverdueQuests(
+  beforeDate: string,
+): Promise<QuestWithBreadcrumb[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<QuestBreadcrumbRow>(
+    `${SELECT_QUEST_WITH_BREADCRUMB}
+     WHERE q.is_done = 0 AND q.scheduled_date IS NOT NULL
+       AND q.scheduled_date < ?
+     ORDER BY q.scheduled_date, d.id, m.sequence_number, q.id`,
+    [beforeDate],
+  );
+  return rows.map(toQuestWithBreadcrumb);
+}
+
 /**
- * Rollover: quests scheduled before `beforeDate` (normally today, so
- * yesterday's undone quests are included) that were never done go back to the
- * unscheduled backlog, showing up under "Unscheduled this week" instead of
- * silently staying on past days. Returns how many quests were moved.
+ * Rollover: undone quests still dated before `beforeDate` lose that date
+ * *and* their acceptance — they are not "planned for this week, day to be
+ * decided", they are quests the user walked past. They go back to their
+ * milestone with the ACCEPT pill, where taking one on is a fresh decision
+ * with a fresh date. Returns how many quests were released.
  */
 export async function rolloverOverdueQuests(
   beforeDate: string,
 ): Promise<number> {
   const db = await getDatabase();
   const result = await db.runAsync(
-    `UPDATE quests SET scheduled_date = NULL, scheduled_time = NULL, is_planned = 1
+    `UPDATE quests SET scheduled_date = NULL, scheduled_time = NULL, is_planned = 0
      WHERE is_done = 0 AND scheduled_date IS NOT NULL AND scheduled_date < ?`,
     [beforeDate],
   );
   return result.changes;
+}
+
+/** Moves the given quests onto `date`, keeping them accepted. */
+export async function rescheduleQuests(
+  ids: readonly number[],
+  date: string,
+): Promise<void> {
+  if (ids.length === 0) return;
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE quests SET scheduled_date = ?, is_planned = 1
+     WHERE id IN (${ids.map(() => "?").join(", ")})`,
+    [date, ...ids],
+  );
 }
 
 // ---------------------------------------------------------------------------

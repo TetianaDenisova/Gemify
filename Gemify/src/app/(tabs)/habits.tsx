@@ -1,7 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useCallback, useMemo, useState } from "react";
-import Svg, { Path } from "react-native-svg";
 
 import {
   HabitBoardRow,
@@ -20,14 +19,13 @@ import {
   type Habit as DbHabit,
   type HabitDetailSection,
 } from "@/db";
-import { useHabitWeek, type HabitWeekView } from "@/hooks/useHabitWeek";
+import { habitStatus, useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
   AppModal,
   ConfirmDialog,
   AppText,
   CheckIcon,
-  ChevronIcon,
   DotsIcon,
   DreamIcon,
   HistoryIcon,
@@ -46,7 +44,6 @@ import {
   lineHeights,
   pressed as pressedStyle,
   radius,
-  shadowStyle,
   spacing,
   textGlow,
 } from "@/theme/theme";
@@ -61,18 +58,18 @@ const HABITS_BACKGROUND = [
 
 type Habit = BoardHabit;
 
-type HabitGroup = {
-  count: string;
-  icon: "book" | "heart";
-  tint: string;
-  title: string;
-  habits: readonly Habit[];
-};
-
-const GROUP_VISUAL_CYCLE = [
-  { icon: "book", tint: colors.accentVioletStrong },
-  { icon: "heart", tint: colors.primary },
+/**
+ * Sections in the order they matter: what is still waiting today leads, the
+ * other days follow, and what is already done rests at the bottom.
+ */
+const HABIT_SECTIONS = [
+  { key: "today", title: "Today" },
+  { key: "other", title: "Other days" },
+  { key: "done", title: "Done today" },
 ] as const;
+
+/** Each dream keeps one accent, so a row still reads as its dream's. */
+const DREAM_TINT_CYCLE = [colors.accentVioletStrong, colors.primary] as const;
 
 function HeaderOrnament({
   compact,
@@ -148,48 +145,6 @@ function TodayBar({
   );
 }
 
-function GroupIcon({ icon, tint }: { icon: HabitGroup["icon"]; tint: string }) {
-  if (icon === "heart") {
-    return (
-      <Svg height={31} viewBox="0 0 32 32" width={31}>
-        <Path
-          d="M16 27S5.5 20.3 5.5 12.3c0-4.1 5.3-6.8 10.5-.9 5.2-5.9 10.5-3.2 10.5.9C26.5 20.3 16 27 16 27Z"
-          fill="none"
-          stroke={tint}
-          strokeLinejoin="round"
-          strokeWidth={2}
-        />
-        <Path
-          d="M11.5 22.6c.3-5.7 3.5-10.1 9.4-13.4"
-          fill="none"
-          stroke={tint}
-          strokeLinecap="round"
-          strokeWidth={1.8}
-        />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg height={31} viewBox="0 0 32 32" width={31}>
-      <Path
-        d="M5.5 8c4.8 0 8 1.4 10.5 4.8C18.5 9.4 21.7 8 26.5 8v16c-4.8 0-8 1.4-10.5 4.8C13.5 25.4 10.3 24 5.5 24V8Z"
-        fill="none"
-        stroke={tint}
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-      <Path
-        d="M16 12.8v16"
-        fill="none"
-        stroke={tint}
-        strokeLinecap="round"
-        strokeWidth={2}
-      />
-    </Svg>
-  );
-}
-
 function HabitRow({
   activeDayIndex,
   checkedSections,
@@ -218,13 +173,6 @@ function HabitRow({
       activeDayIndex={activeDayIndex}
       checkedSections={checkedSections}
       compact={compact}
-      containerStyle={[
-        styles.habitRow,
-        compact && styles.habitRowCompact,
-        phone && styles.habitRowPhone,
-        expanded && styles.habitRowExpanded,
-        expanded && compact && styles.habitRowExpandedCompact,
-      ]}
       expanded={expanded}
       habit={habit}
       onDayPress={onDayPress}
@@ -249,25 +197,26 @@ function HabitRow({
   );
 }
 
-function GroupHeader({
+function SectionTitle({
   compact,
-  group,
+  count,
   phone,
+  title,
 }: {
   compact: boolean;
-  group: HabitGroup;
+  count: number;
   phone: boolean;
+  title: string;
 }) {
   return (
     <View style={[styles.groupHeader, compact && styles.groupHeaderCompact]}>
       <View style={[styles.groupTitleRow, compact && styles.groupTitleRowCompact]}>
-        <GroupIcon icon={group.icon} tint={group.tint} />
         <AppText
           numberOfLines={1}
           style={[styles.groupTitle, compact && styles.groupTitleCompact]}
           variant="button"
         >
-          {group.title}
+          {title}
         </AppText>
         {/* The rows it counts are directly below. */}
         {phone ? null : (
@@ -276,15 +225,13 @@ function GroupHeader({
             style={[styles.groupCount, compact && styles.groupCountCompact]}
             variant="subtitle"
           >
-            {group.count}
+            {`${count} ${count === 1 ? "habit" : "habits"}`}
           </AppText>
         )}
       </View>
-      {group.habits.length === 0 ? <ChevronIcon /> : null}
     </View>
   );
 }
-
 export default function HabitsScreen() {
   const router = useRouter();
   const { compact, phone } = useLayoutSize();
@@ -332,29 +279,36 @@ export default function HabitsScreen() {
   // Monday-first index of today, matching the week strip's order.
   const activeDayIndex = (new Date().getDay() + 6) % 7;
 
-  const groups: (HabitGroup & { views: HabitWeekView[] })[] = useMemo(
-    () =>
-      dreams
-        .map((dream, index) => {
-          const visuals = GROUP_VISUAL_CYCLE[index % GROUP_VISUAL_CYCLE.length];
-          const views = habitViews.filter(
-            (view) => view.habit.dreamId === dream.id,
-          );
-          return {
-            count: `${views.length} ${views.length === 1 ? "habit" : "habits"}`,
-            icon: visuals.icon,
-            tint: visuals.tint,
-            title: dream.title,
-            habits: views.map((view, habitIndex) =>
-              toBoardHabit(view, habitIndex, visuals.tint),
-            ),
-            views,
-          };
-        })
-        .filter((group) => group.habits.length > 0),
-    [dreams, habitViews],
-  );
+  const sections = useMemo(() => {
+    const tints = new Map(
+      dreams.map((dream, index) => [
+        dream.id,
+        DREAM_TINT_CYCLE[index % DREAM_TINT_CYCLE.length],
+      ]),
+    );
+    const titles = new Map(dreams.map((dream) => [dream.id, dream.title]));
 
+    const rows = habitViews.map((view, index) => ({
+      habit: {
+        ...toBoardHabit(view, index, tints.get(view.habit.dreamId) ?? colors.primary),
+        dreamTitle: titles.get(view.habit.dreamId),
+      },
+      status: habitStatus(view, activeDayIndex),
+      timeOrder: view.timeOrder,
+    }));
+
+    return HABIT_SECTIONS.map((section) => ({
+      ...section,
+      // Within a section: through the day, then alphabetically.
+      rows: rows
+        .filter((row) => row.status === section.key)
+        .sort(
+          (left, right) =>
+            left.timeOrder - right.timeOrder ||
+            left.habit.title.localeCompare(right.habit.title),
+        ),
+    })).filter((section) => section.rows.length > 0);
+  }, [activeDayIndex, dreams, habitViews]);
   function handleHabitPress(id: number) {
     setExpandedHabit((current) => (current === id ? null : id));
   }
@@ -477,10 +431,15 @@ export default function HabitsScreen() {
       />
 
       <View style={styles.groups}>
-        {groups.map((group) => (
-          <View key={group.title} style={styles.group}>
-            <GroupHeader compact={compact} group={group} phone={phone} />
-            {group.habits.map((habit) => (
+        {sections.map((section) => (
+          <View key={section.key} style={styles.group}>
+            <SectionTitle
+              compact={compact}
+              count={section.rows.length}
+              phone={phone}
+              title={section.title}
+            />
+            {section.rows.map(({ habit }) => (
               <HabitRow
                 activeDayIndex={activeDayIndex}
                 checkedSections={checksByHabit.get(habit.id) ?? []}
@@ -749,36 +708,6 @@ const styles = StyleSheet.create({
   },
   todayLabelRowCompact: {
     gap: 6,
-  },
-  habitRow: {
-    borderTopColor: colors.borderSoft,
-    borderTopWidth: 1,
-    paddingBottom: 23,
-    paddingHorizontal: 18,
-    paddingTop: spacing.md,
-  },
-  habitRowCompact: {
-    paddingBottom: spacing.md,
-    paddingHorizontal: 2,
-    paddingTop: 14,
-  },
-  /** The 52 pt medallion and 24 pt day dots leave the row shorter. */
-  habitRowPhone: {
-    paddingBottom: spacing.sm,
-    paddingTop: spacing.sm,
-  },
-  habitRowExpandedCompact: {
-    paddingHorizontal: 10,
-  },
-  habitRowExpanded: {
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-    marginTop: 6,
-    paddingHorizontal: spacing.lg,
-    ...shadowStyle({ color: colors.primary, elevation: 8, opacity: 0.18, radius: 18 }),
   },
   header: {
     alignItems: "center",

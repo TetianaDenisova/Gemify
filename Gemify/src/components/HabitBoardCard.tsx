@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  Pressable,
   StyleSheet,
   View,
   type StyleProp,
@@ -9,22 +8,13 @@ import {
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { HabitCard } from "@/components/HabitCard";
-import {
-  HabitItemRow,
-  HabitProgress,
-  type HabitCompletion,
-} from "@/components/HabitItem";
+import { HabitProgress, type HabitCompletion } from "@/components/HabitItem";
 import { habitVisualsFor, type HabitVisuals } from "@/data/habitVisuals";
 import type { HabitDetailSection as DbHabitDetailSection } from "@/db";
 import type { HabitWeekView } from "@/hooks/useHabitWeek";
 import { AppText, Checkbox } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import {
-  fontSizes,
-  lineHeights,
-  pressed,
-  spacing,
-} from "@/theme/theme";
+import { fontSizes, lineHeights, spacing } from "@/theme/theme";
 
 export type BoardDetailSection = {
   /** Rows with a checkbox toggle today's "partial" status; plan rows do not. */
@@ -39,6 +29,8 @@ export type BoardDetailSection = {
 export type BoardHabit = {
   accent: string;
   day: number;
+  /** Dream the habit belongs to, shown beside the time on the card. */
+  dreamTitle?: string;
   details: readonly BoardDetailSection[];
   goal: number;
   icon: "workout" | "water" | "book" | "meditate";
@@ -274,78 +266,42 @@ export function HabitBoardRow({
   phone?: boolean;
   trailing?: ReactNode;
 }) {
-  // Phone: the shared habit card. Its check toggles today (the same write as
-  // tapping today's day cell), and the week strip, "Day N / goal" and the
-  // detail panels move inside the expanded card.
-  if (phone) {
-    return (
-      <HabitCard
-        done={habit.progress[activeDayIndex] === "done"}
-        expanded={expanded}
-        menu={trailing}
-        onPress={onPress}
-        onToggleDone={() => onDayPress?.(activeDayIndex)}
-        streakDays={habit.streakDays}
-        style={styles.phoneCard}
-        subtitle={habit.time}
-        title={habit.title}
-        visuals={habit.visuals}
-      >
-        {expanded ? (
-          <View style={styles.phoneExpanded}>
-            <View style={styles.phoneDayCount}>
-              <AppText color={colors.primary} variant="labelStrong">
-                Day {habit.day}
-              </AppText>
-              <AppText color={colors.textMuted} variant="labelStrong">
-                {" "}/ {habit.goal}
-              </AppText>
-            </View>
-            <HabitProgress
-              activeDayIndex={activeDayIndex}
-              compact
-              onDayPress={onDayPress}
-              phone
-              progress={habit.progress}
-            />
-            {habit.details.map((section) => (
-              <HabitDetailSectionView
-                checked={checkedSections?.includes(section.key) ?? false}
-                compact
-                key={section.key}
-                onToggleRow={() => onDetailToggle?.(section.key)}
-                phone
-                section={section}
-              />
-            ))}
-            {footer}
-          </View>
-        ) : null}
-      </HabitCard>
-    );
-  }
-
+  // One card at every screen size. Its check toggles today (the same write
+  // as tapping today's day cell), and the week strip, "Day N / goal" and the
+  // detail panels live inside the expanded card. A wide screen gets the same
+  // card with room to breathe — `compact`/`phone` only scale what is inside.
   return (
-    // No accessibilityRole="button": on web that renders a <button>, and the
-    // nested day-cell/menu/footer buttons would be invalid HTML inside it.
-    <Pressable
-      accessibilityState={{ expanded }}
+    <HabitCard
+      done={habit.progress[activeDayIndex] === "done"}
+      expanded={expanded}
+      menu={trailing}
       onPress={onPress}
-      style={({ pressed: isPressed }) => [containerStyle, isPressed && pressed]}
+      onToggleDone={() => onDayPress?.(activeDayIndex)}
+      streakDays={habit.streakDays}
+      style={[styles.card, containerStyle]}
+      subtitle={
+        habit.dreamTitle ? `${habit.time} · ${habit.dreamTitle}` : habit.time
+      }
+      title={habit.title}
+      visuals={habit.visuals}
     >
-      {/* Day cells stay tappable even collapsed, so a tap on a circle
-          toggles that day instead of just expanding the row. */}
-      <HabitItemRow
-        activeDayIndex={activeDayIndex}
-        compact={compact}
-        expanded={expanded}
-        habit={habit}
-        onDayPress={onDayPress}
-        phone={phone}
-        trailing={trailing}
-      />
       {expanded ? (
-        <View style={styles.detailPanel}>
+        <View style={styles.expanded}>
+          <View style={styles.dayCount}>
+            <AppText color={colors.primary} variant="labelStrong">
+              Day {habit.day}
+            </AppText>
+            <AppText color={colors.textMuted} variant="labelStrong">
+              {" "}/ {habit.goal}
+            </AppText>
+          </View>
+          <HabitProgress
+            activeDayIndex={activeDayIndex}
+            compact={compact}
+            onDayPress={onDayPress}
+            phone={phone}
+            progress={habit.progress}
+          />
           {habit.details.map((section) => (
             <HabitDetailSectionView
               checked={checkedSections?.includes(section.key) ?? false}
@@ -359,10 +315,9 @@ export function HabitBoardRow({
           {footer}
         </View>
       ) : null}
-    </Pressable>
+    </HabitCard>
   );
 }
-
 const styles = StyleSheet.create({
   detailCopy: {
     flex: 1,
@@ -378,11 +333,6 @@ const styles = StyleSheet.create({
   detailIconFrameCompact: {
     height: 52,
     width: 52,
-  },
-  detailPanel: {
-    borderTopColor: colors.borderSoft,
-    borderTopWidth: 1,
-    marginTop: spacing.lg,
   },
   detailRow: {
     alignItems: "center",
@@ -416,14 +366,14 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
   },
-  phoneCard: {
+  card: {
     marginBottom: spacing.sm,
   },
-  phoneDayCount: {
+  dayCount: {
     alignItems: "baseline",
     flexDirection: "row",
   },
-  phoneExpanded: {
+  expanded: {
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
     paddingBottom: spacing.sm,

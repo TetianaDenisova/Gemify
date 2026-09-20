@@ -20,6 +20,8 @@ export type Dream = {
   /** Zoom multiplier over the frame-covering fit (1 = plain cover). */
   photoScale: number;
   isArchived: boolean;
+  /** Finished for good: kept, celebrated, and out of the daily screens. */
+  isCompleted: boolean;
 };
 
 export type NewDream = {
@@ -38,6 +40,7 @@ export type DreamPatch = {
   photoFocusY?: number;
   photoScale?: number;
   isArchived?: boolean;
+  isCompleted?: boolean;
 };
 
 export type FeelingState = {

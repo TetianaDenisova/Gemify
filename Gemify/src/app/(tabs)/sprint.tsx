@@ -21,6 +21,7 @@ import Animated, {
 
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
+import { OverdueQuestsModal } from "@/components/OverdueQuestsModal";
 import {
   AcceptQuestModal,
   QuestActionSheet,
@@ -36,7 +37,6 @@ import {
   getScheduledQuestCounts,
   getScheduledQuests,
   getWeekAscent,
-  rolloverOverdueQuests,
   setQuestDone,
   updateQuest,
   type QuestWithBreadcrumb,
@@ -61,6 +61,7 @@ import {
   ScreenScaffold,
 } from "@/shared/components";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
+import { useOverduePrompt } from "@/hooks/useOverduePrompt";
 import { colors } from "@/theme/colors";
 import { iconSizes, pressed, radius, spacing } from "@/theme/theme";
 import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
@@ -370,9 +371,6 @@ export default function SprintScreen() {
 
   const loadBoard = useCallback(async () => {
     try {
-      // Undone quests stuck on past days (yesterday included) lose their date
-      // so they can be rescheduled from their milestone.
-      await rolloverOverdueQuests(todayKey());
       const from = toDateKey(weekStart);
       const to = toDateKey(addDays(weekStart, 6));
       const [countMap, dayQuests, weekAscent] = await Promise.all([
@@ -393,6 +391,10 @@ export default function SprintScreen() {
       loadBoard();
     }, [loadBoard]),
   );
+
+  // Yesterday’s unfinished quests, asked about once a day. loadBoard is a
+  // stable useCallback, so the check runs on the flag, not on every render.
+  const overdue = useOverduePrompt(loadBoard);
 
   /**
    * Snapshot the week-strip cells in window coordinates (drag just lifted).
@@ -923,6 +925,17 @@ export default function SprintScreen() {
           />
         ) : null}
       </ScreenScaffold>
+
+      <OverdueQuestsModal
+        onMoveToToday={() => {
+          void overdue.moveToToday();
+        }}
+        onRelease={() => {
+          void overdue.release();
+        }}
+        quests={overdue.quests}
+        visible={overdue.visible}
+      />
 
       {draggingQuest ? (
         <DragGhost

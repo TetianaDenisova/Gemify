@@ -36,6 +36,7 @@ import {
   DreamPhotoAdjuster,
   type DreamPhotoTransform,
 } from "@/components/DreamPhotoFrame";
+import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { JourneyMapControls } from "@/components/JourneyMapControls";
 import { JourneyMapScroll } from "@/components/JourneyMapScroll";
 import {
@@ -1152,6 +1153,7 @@ export function GoalJourneyMapScreen() {
   }>();
   const openedInEditFlow = edit === "1";
   const [dream, setDream] = useState<Dream | null>(null);
+  const [dreamCompleted, setDreamCompleted] = useState(false);
   const [dbMilestones, setDbMilestones] = useState<Milestone[]>([]);
   const [isEditMode, setIsEditMode] = useState(openedInEditFlow);
   // Guided reverse planning: the journey is built backwards from the dream —
@@ -1412,6 +1414,39 @@ export function GoalJourneyMapScreen() {
     setFirstStepVisible(false);
   };
 
+  // Finishing a dream keeps everything (memories included) and takes it off
+  // the daily screens; the celebration then offers to capture the moment.
+  const handleCompleteDream = async () => {
+    if (!dream) return;
+    try {
+      const updated = await updateDream(dream.id, { isCompleted: true });
+      if (updated) setDream(updated);
+      setDreamCompleted(true);
+    } catch (cause) {
+      console.error("Failed to complete the dream", cause);
+    }
+  };
+
+  // "Add a Memory" lands on the Memories tab with the add form open for
+  // this dream, prefilled with its name — the same deep link the milestone
+  // celebration uses.
+  const handleDreamMemory = () => {
+    setDreamCompleted(false);
+    router.navigate({
+      pathname: "/memories",
+      params: {
+        addMemory: String(Date.now()),
+        goalKey: dream ? String(dream.id) : "",
+        memoryName: dream?.title ?? "",
+      },
+    });
+  };
+
+  const handleCompletionClose = () => {
+    setDreamCompleted(false);
+    router.dismissTo("/");
+  };
+
   const handleDeleteDream = async () => {
     if (!dream) return;
     try {
@@ -1546,6 +1581,7 @@ export function GoalJourneyMapScreen() {
             : undefined
         }
         photoUri={dream?.photoUri ?? null}
+        onCompleteDream={handleCompleteDream}
         onDeleteDream={handleDeleteDream}
         onEnterEditMode={() => {
           setIsEditMode(true);
@@ -1564,6 +1600,16 @@ export function GoalJourneyMapScreen() {
         onSaveDream={handleSaveDream}
         showDeleteDream={!openedInEditFlow}
         visionStatement={dream?.visionStatement ?? ""}
+      />
+
+      <CompletionCelebration
+        art={JOURNEY_MAP_SOURCE}
+        closeLabel="Skip"
+        onAddMemory={handleDreamMemory}
+        onClose={handleCompletionClose}
+        subtitle={`You’ve completed ${dream?.title ?? ""}`}
+        title="Dream Complete!"
+        visible={dreamCompleted}
       />
 
       <MilestoneModal

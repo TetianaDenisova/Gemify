@@ -11,7 +11,12 @@ import {
   ScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
-import { confirmSignInCode, requestSignInCode, signOut } from "@/sync";
+import {
+  confirmSignInCode,
+  requestSignInCode,
+  signOut,
+  type SyncResult,
+} from "@/sync";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/theme";
@@ -21,6 +26,26 @@ import { spacing } from "@/theme/theme";
  * device's journey. Everything keeps working offline — syncing only decides
  * whether the other device sees it.
  */
+/**
+ * What the pass actually moved. A row this device pushed comes back on the
+ * same pull (the cursor is inclusive) and is skipped rather than written, so
+ * "received" only ever counts work from another device — and when nothing
+ * moved at all, the honest answer is that there was nothing to move.
+ */
+function syncSummary(result: SyncResult): string {
+  const parts: string[] = [];
+  if (result.pushed > 0) parts.push(`sent ${result.pushed}`);
+  if (result.pulled > 0) parts.push(`received ${result.pulled}`);
+  if (result.downloaded > 0) {
+    parts.push(
+      `${result.downloaded} ${result.downloaded === 1 ? "photo" : "photos"} downloaded`,
+    );
+  }
+  if (parts.length === 0) return "Already up to date.";
+
+  const summary = parts.join(", ");
+  return `${summary.charAt(0).toUpperCase()}${summary.slice(1)}.`;
+}
 export default function CloudSyncScreen() {
   const insets = useSafeAreaInsets();
   const { phone } = useLayoutSize();
@@ -196,12 +221,7 @@ function SignedIn({
       />
 
       {lastResult ? (
-        <AppText variant="helper">
-          {`Sent ${lastResult.pushed}, received ${lastResult.pulled}` +
-            (lastResult.downloaded > 0
-              ? `, ${lastResult.downloaded} photos downloaded.`
-              : ".")}
-        </AppText>
+        <AppText variant="helper">{syncSummary(lastResult)}</AppText>
       ) : null}
 
       {sync.error ? (

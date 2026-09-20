@@ -25,7 +25,9 @@ import {
 } from "@/db";
 import { useBottomInset } from "@/hooks/useBottomInset";
 import { habitIconForId, useDayHabits } from "@/hooks/useDayHabits";
+import { OverdueQuestsModal } from "@/components/OverdueQuestsModal";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
+import { useOverduePrompt } from "@/hooks/useOverduePrompt";
 import {
   AppButton,
   ConfirmDialog,
@@ -83,6 +85,8 @@ export default function MyDayScreen() {
 
   const dateKey = toDateKey(selectedDate);
   const { blocks, refresh, toggleQuest } = useDayQuestBlocks(dateKey);
+  // Yesterday's unfinished quests, asked about once a day.
+  const overdue = useOverduePrompt(refresh);
   const { habits: dayHabits, setDone: setHabitDone } = useDayHabits(dateKey);
 
   const today = new Date();
@@ -378,6 +382,17 @@ export default function MyDayScreen() {
           </Card>
         )}
       </ScreenScaffold>
+
+      <OverdueQuestsModal
+        onMoveToToday={() => {
+          void overdue.moveToToday();
+        }}
+        onRelease={() => {
+          void overdue.release();
+        }}
+        quests={overdue.quests}
+        visible={overdue.visible}
+      />
 
       <View
         style={[

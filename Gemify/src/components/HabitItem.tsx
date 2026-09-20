@@ -1,34 +1,12 @@
-import { useMemo, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, Line, Path } from "react-native-svg";
 
-import { AppText, ChevronIcon, ClockIcon } from "@/shared/components";
+import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import {
-  fontSizes,
-  lineHeights,
-  shadowStyle,
-  typography,
-} from "@/theme/theme";
+import { shadowStyle, typography } from "@/theme/theme";
 
 export type HabitCompletion = "done" | "missed" | "open" | "partial";
 
-type Habit = {
-  accent: string;
-  day: number;
-  goal: number;
-  icon: "workout" | "water" | "book" | "meditate";
-  progress: readonly HabitCompletion[];
-  time: string;
-  title: string;
-};
-
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-
-/** Inner SVG size for the habit medallion; the frame around it is 12pt larger. */
-const ART_SIZE = 90;
-const ART_SIZE_COMPACT = 62;
-const ART_SIZE_PHONE = 52;
 
 function DayStatus({
   phone,
@@ -56,196 +34,6 @@ function DayStatus({
     />
   );
 }
-
-function HabitArt({
-  accent,
-  compact = false,
-  icon,
-  phone = false,
-}: {
-  accent: string;
-  compact?: boolean;
-  icon: Habit["icon"];
-  phone?: boolean;
-}) {
-  const artSize = phone ? ART_SIZE_PHONE : compact ? ART_SIZE_COMPACT : ART_SIZE;
-  // shadowStyle regex-parses the color on web — compute once per accent, not per render.
-  const accentFrame = useMemo(
-    () => [
-      { borderColor: `${accent}A8` },
-      shadowStyle({ color: accent, opacity: 0.5, radius: 16 }),
-    ],
-    [accent],
-  );
-
-  return (
-    <View
-      style={[
-        styles.habitArt,
-        compact && styles.habitArtCompact,
-        phone && styles.habitArtPhone,
-        ...accentFrame,
-      ]}
-    >
-      <Svg height={artSize} viewBox="0 0 90 90" width={artSize}>
-        <Circle cx={45} cy={45} fill="#050817" r={42} />
-        <Circle cx={45} cy={45} fill={accent} opacity={0.15} r={34} />
-        <Circle cx={45} cy={45} fill="none" opacity={0.58} r={37} stroke={accent} strokeWidth={1.4} />
-        <Circle cx={45} cy={13.5} fill={accent} r={1.8} />
-        <Circle cx={45} cy={76.5} fill={accent} r={1.8} />
-        <Circle cx={13.5} cy={45} fill={accent} r={1.8} />
-        <Circle cx={76.5} cy={45} fill={accent} r={1.8} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={45} x2={45} y1={6} y2={12} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={45} x2={45} y1={78} y2={84} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={6} x2={12} y1={45} y2={45} />
-        <Line opacity={0.35} stroke={accent} strokeWidth={1} x1={78} x2={84} y1={45} y2={45} />
-        {icon === "workout" ? (
-          <>
-            <Path
-              d="M25 38v14M31 33v24M58 33v24M64 38v14M31 45h27"
-              fill="none"
-              stroke={accent}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={3.2}
-            />
-            <Path d="M36 39h17v12H36z" fill="none" stroke={colors.primaryBright} strokeWidth={1.7} />
-          </>
-        ) : null}
-        {icon === "water" ? (
-          <Path
-            d="M45 22c10.1 14 16.2 21.1 16.2 31.2 0 9-6.9 15.8-16.2 15.8s-16.2-6.8-16.2-15.8C28.8 43.1 34.9 36 45 22Z"
-            fill="none"
-            stroke={accent}
-            strokeLinejoin="round"
-            strokeWidth={3}
-          />
-        ) : null}
-        {icon === "book" ? (
-          <>
-            <Path
-              d="M25 31c8.8 0 14.3 2.6 20 9 5.7-6.4 11.2-9 20-9v27c-8.8 0-14.3 2.6-20 9-5.7-6.4-11.2-9-20-9V31Z"
-              fill={colors.accentVioletStrong}
-              stroke={colors.accentViolet}
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-            <Path
-              d="M45 40v27M29 37c6.2.4 10.8 2.2 16 6.8M61 37c-6.2.4-10.8 2.2-16 6.8"
-              fill="none"
-              stroke={colors.primaryBright}
-              strokeLinecap="round"
-              strokeWidth={2.2}
-            />
-          </>
-        ) : null}
-        {icon === "meditate" ? (
-          <>
-            <Circle cx={45} cy={31} fill={colors.accentViolet} r={6.2} />
-            <Path
-              d="M43.8 39.5c-9 6.3-9 15.1 1.2 20.7 10.2-5.6 10.2-14.4 1.2-20.7Z"
-              fill={colors.accentVioletStrong}
-            />
-            <Path
-              d="M25 65c9.2-9.5 17-10.5 20-4.2 3-6.3 10.8-5.3 20 4.2M34 48.5 23 57M56 48.5 67 57"
-              fill="none"
-              stroke={colors.accentViolet}
-              strokeLinecap="round"
-              strokeWidth={3.5}
-            />
-          </>
-        ) : null}
-      </Svg>
-    </View>
-  );
-}
-
-/**
- * The habit title. It wraps onto a second line when space is tight — it is
- * never hidden, so a long name can't vanish from its own row.
- */
-function HabitTitle({ compact, title }: { compact: boolean; title: string }) {
-  return (
-    <AppText
-      color={colors.textPrimary}
-      numberOfLines={2}
-      style={compact && styles.habitTitleCompact}
-      variant="pill"
-    >
-      {title}
-    </AppText>
-  );
-}
-
-export function HabitItemHeader({
-  compact = false,
-  expanded = false,
-  habit,
-  phone = false,
-  trailing,
-}: {
-  compact?: boolean;
-  expanded?: boolean;
-  habit: Habit;
-  phone?: boolean;
-  /** Extra control between the day counter and the chevron (e.g. a menu). */
-  trailing?: ReactNode;
-}) {
-  return (
-    <View style={[styles.habitTop, compact && styles.habitTopCompact]}>
-      <View style={[styles.habitIdentity, compact && styles.habitIdentityCompact]}>
-        <HabitArt
-          accent={habit.accent}
-          compact={compact}
-          icon={habit.icon}
-          phone={phone}
-        />
-        <View style={styles.habitInfo}>
-          <HabitTitle compact={compact} title={habit.title} />
-          <View style={[styles.habitTimeRow, compact && styles.habitTimeRowCompact]}>
-            <ClockIcon
-              color={colors.textMuted}
-              size={compact ? 14 : 17}
-              strokeWidth={1.9}
-            />
-            <AppText
-              color={colors.textMuted}
-              style={[styles.habitTime, compact && styles.habitTimeCompact]}
-              variant="subtitle"
-            >
-              {habit.time}
-            </AppText>
-          </View>
-        </View>
-      </View>
-      <View style={[styles.habitMeta, compact && styles.habitMetaCompact]}>
-        <View style={[styles.habitDay, compact && styles.habitDayCompact]}>
-          <AppText
-            color={colors.primary}
-            style={compact && styles.dayCountCompact}
-            variant="pill"
-          >
-            Day {habit.day}
-          </AppText>
-          <AppText
-            color={colors.textMuted}
-            style={compact && styles.goalCountCompact}
-            variant="pill"
-          >
-            {" "}/ {habit.goal}
-          </AppText>
-        </View>
-        {trailing}
-        <ChevronIcon
-          direction={expanded ? "up" : "down"}
-          size={compact ? 20 : 25}
-          strokeWidth={2.2}
-        />
-      </View>
-    </View>
-  );
-}
-
 export function HabitProgress({
   activeDayIndex,
   compact = false,
@@ -303,44 +91,6 @@ export function HabitProgress({
   );
 }
 
-export function HabitItemRow({
-  activeDayIndex,
-  compact = false,
-  expanded = false,
-  habit,
-  onDayPress,
-  phone = false,
-  trailing,
-}: {
-  activeDayIndex?: number;
-  compact?: boolean;
-  expanded?: boolean;
-  habit: Habit;
-  onDayPress?: (dayIndex: number) => void;
-  phone?: boolean;
-  trailing?: ReactNode;
-}) {
-  return (
-    <View>
-      <HabitItemHeader
-        compact={compact}
-        expanded={expanded}
-        habit={habit}
-        phone={phone}
-        trailing={trailing}
-      />
-      <HabitProgress
-        activeDayIndex={activeDayIndex}
-        compact={compact}
-        expanded={expanded}
-        onDayPress={onDayPress}
-        phone={phone}
-        progress={habit.progress}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   dayCell: {
     alignItems: "center",
@@ -369,10 +119,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.62, radius: 14 }),
   },
-  dayCountCompact: {
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.md,
-  },
   dayDotPhone: {
     borderRadius: 12,
     height: 24,
@@ -398,91 +144,6 @@ const styles = StyleSheet.create({
   },
   dayLabelHighlighted: {
     color: colors.accentViolet,
-  },
-  goalCountCompact: {
-    fontSize: fontSizes.md,
-    lineHeight: lineHeights.md,
-  },
-  habitArt: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 61,
-    borderWidth: 1.1,
-    height: ART_SIZE + 12,
-    justifyContent: "center",
-    width: ART_SIZE + 12,
-  },
-  habitArtCompact: {
-    borderRadius: (ART_SIZE_COMPACT + 12) / 2,
-    height: ART_SIZE_COMPACT + 12,
-    width: ART_SIZE_COMPACT + 12,
-  },
-  habitArtPhone: {
-    borderRadius: (ART_SIZE_PHONE + 12) / 2,
-    height: ART_SIZE_PHONE + 12,
-    width: ART_SIZE_PHONE + 12,
-  },
-  habitDay: {
-    alignItems: "baseline",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    minWidth: 118,
-  },
-  habitDayCompact: {
-    minWidth: 0,
-  },
-  habitIdentity: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 24,
-    minWidth: 250,
-  },
-  habitIdentityCompact: {
-    gap: 12,
-    minWidth: 0,
-  },
-  habitInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  habitMeta: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 16,
-  },
-  habitMetaCompact: {
-    gap: 4,
-  },
-  habitTime: {
-    flexShrink: 1,
-  },
-  habitTimeCompact: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-  },
-  habitTimeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 7,
-  },
-  habitTimeRowCompact: {
-    gap: 6,
-    marginTop: 4,
-  },
-  habitTitleCompact: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
-  },
-  habitTop: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 18,
-    justifyContent: "space-between",
-  },
-  habitTopCompact: {
-    gap: 8,
   },
   partialDotPhone: {
     borderRadius: 12,

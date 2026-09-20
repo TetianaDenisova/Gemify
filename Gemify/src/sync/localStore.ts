@@ -377,7 +377,12 @@ async function applyRow(
       "DELETE FROM sync_tombstones WHERE table_name = ? AND uid = ?",
       [table.name, remote.uid],
     );
-    return "applied";
+    // With no local row there was nothing to delete: this is almost always
+    // the tombstone this device pushed moments ago coming back on the same
+    // pass (the pull starts at the cursor, so our own writes are included).
+    // Counting it as a row received would report deletions that never
+    // arrived from anywhere.
+    return existing ? "applied" : "skipped";
   }
 
   if (existing && (existing.updated_at ?? "") >= remote.client_updated_at) {

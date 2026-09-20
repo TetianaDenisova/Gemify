@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
+import { CompletionCelebration } from "@/components/CompletionCelebration";
 import {
   AcceptQuestModal,
   ActionSheet,
@@ -37,7 +38,6 @@ import {
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import {
   AppButton,
-  AppModal,
   ConfirmDialog,
   AppText,
   BackIcon,
@@ -46,7 +46,6 @@ import {
   Card,
   CheckIcon,
   Checkbox,
-  ImageIcon,
   MilestoneIcon,
   PlusIcon,
   ScreenHeader,
@@ -825,48 +824,14 @@ export default function MilestoneQuestsScreen() {
         visible={questDeleteTarget !== null}
       />
 
-      <AppModal
-        onClose={() => setCelebrationVisible(false)}
+      <CompletionCelebration
+        art={MILESTONE_DOOR_SOURCE}
+        onAddMemory={handleAddMemory}
+        onClose={handleCelebrationClose}
+        subtitle={`You’ve completed ${milestone?.title ?? ""}`}
+        title="Milestone Complete!"
         visible={celebrationVisible}
-      >
-        <Image
-          contentFit="contain"
-          source={MILESTONE_DOOR_SOURCE}
-          style={styles.celebrationImage}
-        />
-        <AppText align="center" variant="title">
-          Milestone Complete!
-        </AppText>
-        <AppText
-          align="center"
-          style={styles.celebrationSubtitle}
-          variant="bodySerif"
-        >
-          You&rsquo;ve completed {milestone?.title}
-        </AppText>
-        <AppText
-          align="center"
-          color={colors.primary}
-          style={styles.celebrationHint}
-          variant="caption"
-        >
-          Take a moment to capture what changed.
-        </AppText>
-        <AppButton
-          icon={<ImageIcon color={colors.textOnPrimary} />}
-          iconPosition="before"
-          label="Add a Memory"
-          onPress={handleAddMemory}
-          size="lg"
-          style={styles.celebrationButton}
-        />
-        <AppButton
-          label="Close"
-          onPress={handleCelebrationClose}
-          style={styles.celebrationCloseButton}
-          variant="secondary"
-        />
-      </AppModal>
+      />
     </ScreenScaffold>
   );
 }
@@ -896,24 +861,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     letterSpacing: 1.8,
     lineHeight: lineHeights.sm,
-  },
-  celebrationButton: {
-    marginTop: spacing.lg,
-  },
-  celebrationCloseButton: {
-    marginTop: spacing.md,
-  },
-  celebrationHint: {
-    marginTop: spacing.md,
-  },
-  celebrationImage: {
-    alignSelf: "center",
-    height: 150,
-    marginBottom: spacing.sm,
-    width: 220,
-  },
-  celebrationSubtitle: {
-    marginTop: spacing.sm,
   },
   completeButton: {
     marginTop: spacing.lg,
