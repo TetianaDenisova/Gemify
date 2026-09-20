@@ -1,8 +1,9 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   StyleSheet,
   View,
@@ -20,6 +21,7 @@ import {
   WEEKDAY_LABELS,
 } from "@/components/QuestActions";
 import {
+  addTimelineMoment,
   createQuest,
   DEFAULT_TIME_BLOCKS,
   deleteQuest,
@@ -388,6 +390,7 @@ export default function MilestoneQuestsScreen() {
   const [moveQuest, setMoveQuest] = useState<Quest | null>(null);
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [celebrationVisible, setCelebrationVisible] = useState(false);
+  const addingDefaultMemory = useRef(false);
 
   const loadScreen = useCallback(async () => {
     try {
@@ -494,9 +497,29 @@ export default function MilestoneQuestsScreen() {
     });
   };
 
-  const handleCelebrationClose = () => {
-    setCelebrationVisible(false);
-    goToJourneyMap();
+  const handleCelebrationClose = async () => {
+    if (addingDefaultMemory.current) return;
+    if (!milestone) {
+      setCelebrationVisible(false);
+      goToJourneyMap();
+      return;
+    }
+    addingDefaultMemory.current = true;
+    try {
+      await addTimelineMoment({
+        dreamId: milestone.dreamId,
+        iconKey: "milestoneCompleted",
+        label: milestone.title,
+        occurredOn: toDateKey(new Date()),
+      });
+      setCelebrationVisible(false);
+      goToJourneyMap();
+    } catch (cause) {
+      console.error("Failed to add the milestone memory", cause);
+      Alert.alert("Memory not saved", "Please try closing again.");
+    } finally {
+      addingDefaultMemory.current = false;
+    }
   };
 
   // Every quest is an equal slice of the milestone (mirrors the dream-level

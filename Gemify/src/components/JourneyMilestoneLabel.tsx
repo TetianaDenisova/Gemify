@@ -8,7 +8,6 @@ import { colors } from "@/theme/colors";
 import {
   fonts,
   radius,
-  shadowStyle,
   shadows,
   spacing,
   textGlow,
@@ -16,7 +15,6 @@ import {
 } from "@/theme/theme";
 
 export type JourneyMilestoneLabelProps = {
-  /** Visual hierarchy on the path without changing label geometry. */
   emphasis?: "completed" | "open";
   number: number;
   /** Phone tier: full wrapping title on a dark backing, no empty subtitle. */
@@ -32,9 +30,6 @@ export type JourneyMilestoneLabelProps = {
 // badge) rather than the app type scale — an intentional exception.
 const BADGE_SIZE = 36;
 const CONNECTOR_WIDTH = 14;
-const COMPLETED_BRONZE = "#9A7E48";
-const COMPLETED_BRONZE_BORDER = "rgba(154, 126, 72, 0.62)";
-
 // Static SVG shared by every label — built once, never reconciled per render.
 const goldenConnector = (
   <Svg
@@ -93,33 +88,19 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
         style,
       ]}
     >
-      <View
-        style={[
-          styles.connector,
-          completed && styles.connectorCompleted,
-        ]}
-      >
+      <View style={styles.connector}>
         {goldenConnector}
       </View>
 
-      <View
-        style={[
-          styles.badge,
-          completed && styles.badgeCompleted,
-        ]}
-      >
+      <View style={styles.badge}>
         <View
           style={[
             styles.badgeInnerRing,
-            completed && styles.badgeInnerRingCompleted,
             { pointerEvents: "none" },
           ]}
         />
         <AppText
-          style={[
-            styles.badgeText,
-            completed && styles.badgeTextCompleted,
-          ]}
+          style={[styles.badgeText, completed && styles.completedText]}
         >
           {displayNumber}
         </AppText>
@@ -136,7 +117,7 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
           numberOfLines={phone ? undefined : 1}
           style={[
             styles.title,
-            completed && styles.titleCompleted,
+            completed && styles.completedText,
             isLeft && styles.textAlignRight,
           ]}
         >
@@ -147,7 +128,6 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
             numberOfLines={phone ? undefined : 1}
             style={[
               styles.subtitle,
-              completed && styles.subtitleCompleted,
               isLeft && styles.textAlignRight,
             ]}
             variant="caption"
@@ -182,9 +162,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  connectorCompleted: {
-    opacity: 0.8,
-  },
   badge: {
     width: BADGE_SIZE,
     height: BADGE_SIZE,
@@ -196,26 +173,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadows.goldGlow,
   },
-  badgeCompleted: {
-    backgroundColor: "rgba(8, 10, 14, 0.82)",
-    borderColor: COMPLETED_BRONZE_BORDER,
-    opacity: 0.8,
-    ...shadowStyle({
-      color: COMPLETED_BRONZE,
-      elevation: 0,
-      opacity: 0.01,
-      radius: 1,
-    }),
-  },
   badgeInnerRing: {
     position: "absolute",
     inset: 3,
     borderRadius: (BADGE_SIZE - 6) / 2,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderSoft,
-  },
-  badgeInnerRingCompleted: {
-    borderColor: "rgba(154, 126, 72, 0.42)",
   },
   badgeText: {
     color: colors.primary,
@@ -226,8 +189,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     ...textGlow(colors.primaryGlow, 5),
   },
-  badgeTextCompleted: {
-    color: COMPLETED_BRONZE,
+  completedText: {
+    color: colors.textMuted,
     ...textGlow(colors.transparent, 0),
   },
   textBlock: {
@@ -270,11 +233,6 @@ const styles = StyleSheet.create({
     textAlign: "left",
     ...textGlow(colors.primaryGlow, 4),
   },
-  titleCompleted: {
-    color: COMPLETED_BRONZE,
-    opacity: 0.8,
-    ...textGlow(colors.transparent, 0),
-  },
   subtitle: {
     marginTop: 1,
     fontSize: 11,
@@ -282,9 +240,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
     lineHeight: 14,
     textAlign: "left",
-  },
-  subtitleCompleted: {
-    color: COMPLETED_BRONZE,
-    opacity: 0.8,
   },
 });

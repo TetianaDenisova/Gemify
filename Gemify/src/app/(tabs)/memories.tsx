@@ -58,15 +58,18 @@ const TIMELINE_ITEM_WIDTH = 104;
 const TIMELINE_ITEM_WIDTH_PHONE = 88;
 const TIMELINE_CONNECTOR_WIDTH = 26;
 const TIMELINE_CONNECTOR_WIDTH_PHONE = 16;
+const TIMELINE_CIRCLE_SIZE = 52;
 /** Vertical offset from a row's top to the centre of its circles (badge slot + half circle). */
-const TIMELINE_CIRCLE_CENTER_Y = 67;
+const TIMELINE_CIRCLE_CENTER_Y = 62;
 /** Horizontal distance from an item's edge to the edge of its circle. */
-/** Half the slack either side of an item's 64 pt circle, per tier. */
-const turnLead = (itemWidth: number) => (itemWidth - 64) / 2;
+/** Half the slack either side of an item's visible circle, per tier. */
+const turnLead = (itemWidth: number) =>
+  (itemWidth - TIMELINE_CIRCLE_SIZE) / 2;
 const TIMELINE_TURN_WIDTH = 36;
 const MAX_MEMORY_PHOTOS = 5;
 
 const MEMORIES_BACK = require("../../../assets/images/memory-custle.png");
+const MILESTONE_COMPLETED_SOURCE = require("../../../assets/ml-complited-default.png");
 
 const goldTint = { glow: colors.primaryGlow, main: colors.primary };
 
@@ -185,6 +188,7 @@ function TimelineMomentItem({
   onPress: (moment: TimelineMoment) => void;
   phone: boolean;
 }) {
+  const milestoneCompleted = moment.icon === "milestoneCompleted";
   return (
     <Pressable
       accessibilityLabel={`Open memory ${moment.label}`}
@@ -207,7 +211,15 @@ function TimelineMomentItem({
             timelineCircleShadow,
           ]}
         >
-          <TimelineGlyph color={goldTint.main} icon={moment.icon} />
+          {milestoneCompleted ? (
+            <Image
+              contentFit="contain"
+              source={MILESTONE_COMPLETED_SOURCE}
+              style={styles.milestoneCompletedIcon}
+            />
+          ) : (
+            <TimelineGlyph color={goldTint.main} icon={moment.icon} />
+          )}
         </View>
         {moment.photoUris.length > 0 ? (
           <View style={[styles.photoBubble, { borderColor: goldTint.main }]}>
@@ -221,8 +233,18 @@ function TimelineMomentItem({
         style={styles.timelineName}
         variant="pill"
       >
-        {moment.label}
+        {milestoneCompleted ? "Complited" : moment.label}
       </AppText>
+      {milestoneCompleted ? (
+        <AppText
+          align="center"
+          numberOfLines={2}
+          style={styles.timelineMilestoneName}
+          variant="caption"
+        >
+          {moment.label}
+        </AppText>
+      ) : null}
       <AppText
         align="center"
         color={colors.textSecondary}
@@ -1197,6 +1219,10 @@ const styles = StyleSheet.create({
   momentButton: {
     flex: 1,
   },
+  milestoneCompletedIcon: {
+    height: 40,
+    width: 40,
+  },
   photoAddTile: {
     alignItems: "center",
     aspectRatio: 1,
@@ -1274,16 +1300,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDeep,
     borderRadius: radius.round,
     borderWidth: 1.5,
-    height: 64,
+    height: TIMELINE_CIRCLE_SIZE,
     justifyContent: "center",
-    width: 64,
+    width: TIMELINE_CIRCLE_SIZE,
   },
   timelineConnector: {
     alignSelf: "flex-start",
     borderColor: "rgba(246, 232, 200, 0.28)",
     borderStyle: "dotted",
     borderTopWidth: 2,
-    marginTop: 67,
+    marginTop: TIMELINE_CIRCLE_CENTER_Y,
     width: TIMELINE_CONNECTOR_WIDTH,
   },
   timelineConnectorPhone: {
@@ -1311,6 +1337,9 @@ const styles = StyleSheet.create({
   },
   timelineName: {
     marginTop: spacing.sm,
+  },
+  timelineMilestoneName: {
+    marginTop: 1,
   },
   timelineRow: {
     flexDirection: "row",

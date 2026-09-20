@@ -42,6 +42,10 @@ const TIMELINE_ICONS: readonly TimelineIconKey[] = [
   "chat",
   "target",
 ];
+const VALID_TIMELINE_ICONS: readonly TimelineIconKey[] = [
+  ...TIMELINE_ICONS,
+  "milestoneCompleted",
+];
 
 type Bucket = {
   /** YYYY-MM-DD range, inclusive. */
@@ -340,7 +344,7 @@ function toProgressMoment(
   moment: Omit<TimelineMoment, "dreamId">,
   index: number,
 ): ProgressTimelineMoment {
-  const iconKey = TIMELINE_ICONS.includes(moment.iconKey as TimelineIconKey)
+  const iconKey = VALID_TIMELINE_ICONS.includes(moment.iconKey as TimelineIconKey)
     ? (moment.iconKey as TimelineIconKey)
     : TIMELINE_ICONS[index % TIMELINE_ICONS.length];
   return {

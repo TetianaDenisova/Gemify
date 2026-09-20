@@ -4,7 +4,8 @@ export type TimelineIconKey =
   | "userPlus"
   | "rocket"
   | "chat"
-  | "target";
+  | "target"
+  | "milestoneCompleted";
 
 export type ProgressAccent = "violet" | "gold" | "pink" | "ember" | "muted";
 
@@ -95,4 +96,3 @@ export interface ProgressContent {
    */
   hasChartData: boolean;
 }
-

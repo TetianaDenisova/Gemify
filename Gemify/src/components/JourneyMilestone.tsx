@@ -195,8 +195,7 @@ export const JourneyMilestone = memo(function JourneyMilestone({
           {
             width: groupWidth,
             height: groupHeight,
-            opacity:
-              (emphasis === "completed" ? 0.8 : 1) * (pressed ? 0.78 : 1),
+            opacity: pressed ? 0.78 : 1,
             transform: [{ scale: pressed ? 0.988 : 1 }],
           },
         ]}

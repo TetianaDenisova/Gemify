@@ -529,6 +529,93 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Default memories created when a milestone celebration is dismissed use
+    // their own icon. SQLite cannot widen a CHECK constraint in place, so
+    // rebuild the table while preserving ids and every cloud-sync column.
+    toVersion: 21,
+    up: async (db) => {
+      await db.execAsync(`
+        DROP TRIGGER IF EXISTS trg_timeline_moments_sync_insert;
+        DROP TRIGGER IF EXISTS trg_timeline_moments_sync_update;
+        DROP TRIGGER IF EXISTS trg_timeline_moments_sync_delete;
+        DROP TRIGGER IF EXISTS trg_timeline_moment_photos_sync_insert;
+        DROP TRIGGER IF EXISTS trg_timeline_moment_photos_sync_update;
+        DROP TRIGGER IF EXISTS trg_timeline_moment_photos_sync_delete;
+
+        ALTER TABLE timeline_moments RENAME TO timeline_moments_v20;
+
+        CREATE TABLE timeline_moments (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          dream_id    INTEGER NOT NULL REFERENCES dreams(id) ON DELETE CASCADE,
+          occurred_on TEXT NOT NULL CHECK (date(occurred_on) IS NOT NULL),
+          label       TEXT NOT NULL,
+          icon_key    TEXT CHECK (icon_key IS NULL OR icon_key IN
+                        ('spark', 'code', 'userPlus', 'rocket', 'chat', 'target',
+                         'milestoneCompleted')),
+          is_locked   INTEGER NOT NULL DEFAULT 0 CHECK (is_locked IN (0, 1)),
+          description TEXT,
+          uid         TEXT,
+          updated_at  TEXT,
+          sync_dirty  INTEGER NOT NULL DEFAULT 1
+        );
+
+        INSERT INTO timeline_moments
+          (id, dream_id, occurred_on, label, icon_key, is_locked, description,
+           uid, updated_at, sync_dirty)
+        SELECT id, dream_id, occurred_on, label, icon_key, is_locked, description,
+               uid, updated_at, sync_dirty
+          FROM timeline_moments_v20;
+
+        CREATE TABLE timeline_moment_photos_v21 (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          moment_id        INTEGER NOT NULL
+                             REFERENCES timeline_moments(id) ON DELETE CASCADE,
+          uri              TEXT NOT NULL,
+          position         INTEGER NOT NULL DEFAULT 0,
+          photo_remote_key TEXT,
+          uid              TEXT,
+          updated_at       TEXT,
+          sync_dirty       INTEGER NOT NULL DEFAULT 1
+        );
+
+        INSERT INTO timeline_moment_photos_v21
+          (id, moment_id, uri, position, photo_remote_key, uid, updated_at,
+           sync_dirty)
+        SELECT id, moment_id, uri, position, photo_remote_key, uid, updated_at,
+               sync_dirty
+          FROM timeline_moment_photos;
+
+        DROP TABLE timeline_moment_photos;
+        DROP TABLE timeline_moments_v20;
+        ALTER TABLE timeline_moment_photos_v21
+          RENAME TO timeline_moment_photos;
+
+        CREATE INDEX idx_moments_dream
+          ON timeline_moments (dream_id, occurred_on);
+        CREATE UNIQUE INDEX idx_timeline_moments_uid
+          ON timeline_moments (uid);
+        CREATE INDEX idx_moment_photos
+          ON timeline_moment_photos (moment_id, position);
+        CREATE UNIQUE INDEX idx_timeline_moment_photos_uid
+          ON timeline_moment_photos (uid);
+      `);
+
+      const timelineMoments = SYNC_V17_TABLES.find(
+        (table) => table.name === "timeline_moments",
+      );
+      const timelinePhotos = SYNC_V17_TABLES.find(
+        (table) => table.name === "timeline_moment_photos",
+      );
+      if (!timelineMoments || !timelinePhotos) {
+        throw new Error("Missing timeline sync definition.");
+      }
+      await db.execAsync(syncTriggersV17(timelineMoments));
+      await db.execAsync(syncUpdateTriggerV18(timelineMoments.name));
+      await db.execAsync(syncTriggersV17(timelinePhotos));
+      await db.execAsync(syncUpdateTriggerV18(timelinePhotos.name));
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

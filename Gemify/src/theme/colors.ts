@@ -25,7 +25,7 @@ export const colors = {
 
   textPrimary: "#F6E8C8",
   textSecondary: "#B8A77F",
-  textMuted: "#6F7890",
+  textMuted: "#858574",
   textOnPrimary: "#1A0F04",
   textPlaceholder: "rgba(246, 232, 200, 0.5)",
 
