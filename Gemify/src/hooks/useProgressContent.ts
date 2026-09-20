@@ -12,12 +12,16 @@ import {
   getDreams,
   getDreamsWithCompleted,
   getForecastProjection,
+  getHabitCompletions,
+  getHabitsByDream,
+  getHabitScheduleDays,
   getMilestones,
   getQuestsByDream,
   getTimelineMoments,
   saveForecastProjection,
   JOURNEY_MILESTONE_COUNT,
   type Dream,
+  type HabitCompletionRecord,
   type Milestone,
   type Quest,
   type TimelineMoment,
@@ -45,6 +49,13 @@ type Bucket = {
   key: string;
   label: string;
   start: string;
+};
+
+type HabitProgress = {
+  completions: HabitCompletionRecord[];
+  scheduleDays: number[];
+  /** First day with stored habit history; avoids inventing earlier misses. */
+  trackingStart: string;
 };
 
 function weekBuckets(): Bucket[] {
@@ -153,9 +164,25 @@ function goalRange(
   };
 }
 
-/** Per-bucket completion rate of quests scheduled inside the bucket. */
+/** Every local date in an inclusive YYYY-MM-DD range, capped at today. */
+function datesInRange(start: string, end: string, today: string): string[] {
+  const last = end < today ? end : today;
+  if (start > last) return [];
+
+  const dates: string[] = [];
+  let date = new Date(`${start}T12:00:00`);
+  const lastDate = new Date(`${last}T12:00:00`);
+  while (date <= lastDate) {
+    dates.push(toDateKey(date));
+    date = addDays(date, 1);
+  }
+  return dates;
+}
+
+/** Per-bucket completion rate of due quests and scheduled habit occurrences. */
 function completionRange(
   quests: Quest[],
+  habits: HabitProgress[],
   buckets: Bucket[],
   key: string,
   label: string,
@@ -163,24 +190,46 @@ function completionRange(
 ): FulfillmentRange {
   let rangeDone = 0;
   let rangeTotal = 0;
+  const today = toDateKey(new Date());
 
   const points = buckets.map((bucket) => {
     const scheduled = quests.filter(
       (quest) =>
         quest.scheduledDate !== null &&
         quest.scheduledDate >= bucket.start &&
-        quest.scheduledDate <= bucket.end,
+        quest.scheduledDate <= bucket.end &&
+        quest.scheduledDate <= today,
     );
-    const done = scheduled.filter((quest) => quest.isDone).length;
+    const questDone = scheduled.filter((quest) => quest.isDone).length;
+
+    let habitDone = 0;
+    let habitTotal = 0;
+    const dates = datesInRange(bucket.start, bucket.end, today);
+    for (const { completions, scheduleDays, trackingStart } of habits) {
+      const doneDates = new Set(
+        completions
+          .filter((record) => record.status === "done")
+          .map((record) => record.date),
+      );
+      for (const dateKey of dates) {
+        if (dateKey < trackingStart) continue;
+        const date = new Date(`${dateKey}T12:00:00`);
+        const weekday = (date.getDay() + 6) % 7;
+        if (scheduleDays.length > 0 && !scheduleDays.includes(weekday)) continue;
+        habitTotal += 1;
+        if (doneDates.has(dateKey)) habitDone += 1;
+      }
+    }
+
+    const done = questDone + habitDone;
+    const total = scheduled.length + habitTotal;
     rangeDone += done;
-    rangeTotal += scheduled.length;
-    const today = toDateKey(new Date());
+    rangeTotal += total;
     return {
       current: bucket.start <= today && today <= bucket.end,
       key: bucket.key,
       label: bucket.label,
-      percent:
-        scheduled.length > 0 ? Math.round((done / scheduled.length) * 100) : 0,
+      percent: total > 0 ? Math.round((done / total) * 100) : 0,
     };
   });
 
@@ -191,7 +240,7 @@ function completionRange(
     summary: {
       eyebrow,
       percent: rangeTotal > 0 ? Math.round((rangeDone / rangeTotal) * 100) : 0,
-      caption: `${rangeDone} of ${rangeTotal} quests completed`,
+      caption: `${rangeDone} of ${rangeTotal} activities completed`,
     },
   };
 }
@@ -332,6 +381,7 @@ export function useProgressContent(
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [habits, setHabits] = useState<HabitProgress[]>([]);
   const [moments, setMoments] = useState<ProgressTimelineMoment[]>([]);
   // Built in refresh(), not in the memo below: projecting reads and writes
   // the remembered date, and neither belongs in a render.
@@ -356,17 +406,36 @@ export function useProgressContent(
       if (!resolved) {
         setMilestones([]);
         setQuests([]);
+        setHabits([]);
         setMoments([]);
         setForecast(null);
         return;
       }
-      const [milestoneList, questList, momentList] = await Promise.all([
-        getMilestones(resolved.id),
-        getQuestsByDream(resolved.id),
-        getTimelineMoments(resolved.id),
-      ]);
+      const [milestoneList, questList, momentList, habitList] =
+        await Promise.all([
+          getMilestones(resolved.id),
+          getQuestsByDream(resolved.id),
+          getTimelineMoments(resolved.id),
+          getHabitsByDream(resolved.id),
+        ]);
+      const historyStart = sixMonthBuckets()[0].start;
+      const today = toDateKey(new Date());
+      const habitProgress = await Promise.all(
+        habitList.map(async (habit) => {
+          const [scheduleDays, completions] = await Promise.all([
+            getHabitScheduleDays(habit.id),
+            getHabitCompletions(habit.id, historyStart, today),
+          ]);
+          return {
+            completions,
+            scheduleDays,
+            trackingStart: completions[0]?.date ?? today,
+          };
+        }),
+      );
       setMilestones(milestoneList);
       setQuests(questList);
+      setHabits(habitProgress);
       setMoments(momentList.map(toProgressMoment));
       setForecast(await projectForecast(resolved.id, questList, milestoneList));
     } catch (cause) {
@@ -429,13 +498,28 @@ export function useProgressContent(
         },
         {
           key: "daily",
-          label: "Quest Completion",
+          label: "Quest & Habit Completion",
           chart: "bars",
           ranges: [
-            completionRange(quests, week, "week", "Week", "Weekly Average"),
-            completionRange(quests, month, "month", "Month", "Monthly Average"),
             completionRange(
               quests,
+              habits,
+              week,
+              "week",
+              "Week",
+              "Weekly Average",
+            ),
+            completionRange(
+              quests,
+              habits,
+              month,
+              "month",
+              "Month",
+              "Monthly Average",
+            ),
+            completionRange(
+              quests,
+              habits,
               sixMonths,
               "6months",
               "6 Months",
@@ -445,9 +529,13 @@ export function useProgressContent(
         },
       ],
       overallLabel: "Overall Goal Progress",
-      hasChartData: quests.some((quest) => quest.isDone),
+      hasChartData:
+        quests.some((quest) => quest.isDone) ||
+        habits.some(({ completions }) =>
+          completions.some((record) => record.status === "done"),
+        ),
     };
-  }, [dreams, forecast, moments, quests, weights]);
+  }, [dreams, forecast, habits, moments, quests, weights]);
 
   return { content, dreamId, loading, refresh };
 }

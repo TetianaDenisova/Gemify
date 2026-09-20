@@ -18,13 +18,20 @@ export type UseOncePerDayResult = {
  * today's key and closes it for the rest of the day.
  */
 export function useOncePerDay(key: string): UseOncePerDayResult {
-  const [due, setDue] = useState(false);
+  const [state, setState] = useState({ due: false, key });
 
   useEffect(() => {
     let active = true;
+    setState({ due: false, key });
+    if (key === "") {
+      return () => {
+        active = false;
+      };
+    }
+
     getSetting(key)
       .then((seenOn) => {
-        if (active) setDue(seenOn !== todayKey());
+        if (active) setState({ due: seenOn !== todayKey(), key });
       })
       .catch((cause: unknown) => {
         console.error(`Failed to read the daily flag ${key}`, cause);
@@ -35,7 +42,9 @@ export function useOncePerDay(key: string): UseOncePerDayResult {
   }, [key]);
 
   const markSeen = useCallback(async () => {
-    setDue(false);
+    setState({ due: false, key });
+    if (key === "") return;
+
     try {
       await setSetting(key, todayKey());
     } catch (cause) {
@@ -43,5 +52,5 @@ export function useOncePerDay(key: string): UseOncePerDayResult {
     }
   }, [key]);
 
-  return { due, markSeen };
+  return { due: state.key === key && state.due, markSeen };
 }

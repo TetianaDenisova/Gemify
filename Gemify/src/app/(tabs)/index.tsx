@@ -180,7 +180,10 @@ export default function HomeScreen() {
         view.scheduleDays.length === 0 ||
         view.scheduleDays.includes(habitDayIndex),
     );
-    const toHabitAction = (view: (typeof habitViews)[number]) => ({
+    const toHabitAction = (
+      view: (typeof habitViews)[number],
+      overdue = false,
+    ) => ({
       cue: view.habit.cue,
       done: view.weekProgress[habitDayIndex] === "done",
       habitId: view.habit.id,
@@ -192,25 +195,58 @@ export default function HomeScreen() {
       streakDays: view.streakDays,
       title: view.habit.title,
       visuals: habitVisualsFor(view.habit),
+      overdue,
     });
     // Every habit scheduled today, for the day's completion math.
-    const habitActions = todaysHabitViews.map(toHabitAction);
+    const habitActions = todaysHabitViews.map((view) => toHabitAction(view));
     // Only habits whose time block is the current focus join the focus list;
     // "Anytime" habits (no block, or the flexible block) fit any moment.
+    const overdueBlockKeys = new Set(
+      focusBlock?.time === "Flexible"
+        ? []
+        : blocks
+            .filter(
+              (block) =>
+                block.time !== "Flexible" &&
+                focusBlock !== undefined &&
+                block.time < focusBlock.time,
+            )
+            .map((block) => block.key),
+    );
     const focusHabitActions = todaysHabitViews
       .filter(
         (view) =>
           view.habit.timeOfDay === null ||
           view.habit.timeOfDay === flexibleBlock?.key ||
-          view.habit.timeOfDay === focusBlock?.key,
+          view.habit.timeOfDay === focusBlock?.key ||
+          (view.habit.timeOfDay !== null &&
+            overdueBlockKeys.has(view.habit.timeOfDay)),
       )
-      .map(toHabitAction);
+      .map((view) =>
+        toHabitAction(
+          view,
+          view.habit.timeOfDay !== null &&
+            overdueBlockKeys.has(view.habit.timeOfDay),
+        ),
+      );
 
-    const questActions = focusBlock
-      ? flexibleBlock && flexibleBlock.key !== focusBlock.key
-        ? [...focusBlock.actions, ...flexibleBlock.actions]
-        : focusBlock.actions
+    const overdueQuestActions = blocks.flatMap((block) =>
+      overdueBlockKeys.has(block.key)
+        ? block.actions.map((action) => ({ ...action, overdue: true }))
+        : [],
+    );
+    const currentQuestActions = focusBlock
+      ? focusBlock.actions.map((action) => ({ ...action, overdue: false }))
       : [];
+    const flexibleQuestActions =
+      flexibleBlock && flexibleBlock.key !== focusBlock?.key
+        ? flexibleBlock.actions.map((action) => ({ ...action, overdue: false }))
+        : [];
+    const questActions = [
+      ...overdueQuestActions,
+      ...currentQuestActions,
+      ...flexibleQuestActions,
+    ];
     // Checked-off actions leave the focus list.
     const focusActions = [...questActions, ...focusHabitActions].filter(
       (action) => !action.done,
@@ -242,10 +278,8 @@ export default function HomeScreen() {
       0,
     );
 
-    // Everything still waiting today outside the current focus: every block
-    // with open quests or habits, upcoming ones first (nearest first), then
-    // earlier leftovers. The focus and flexible blocks are excluded — their
-    // open items already sit in the focus list.
+    // Everything still waiting later today outside the current focus. Earlier
+    // leftovers have already been promoted into focus as overdue actions.
     const clock = `${String(now.getHours()).padStart(2, "0")}:${String(
       now.getMinutes(),
     ).padStart(2, "0")}`;
@@ -260,7 +294,8 @@ export default function HomeScreen() {
       if (
         blockKey === null ||
         blockKey === flexibleBlock?.key ||
-        blockKey === focusBlock?.key
+        blockKey === focusBlock?.key ||
+        overdueBlockKeys.has(blockKey)
       ) {
         continue;
       }
@@ -273,7 +308,9 @@ export default function HomeScreen() {
     const laterBlocks = blocks
       .filter(
         (block) =>
-          block.key !== focusBlock?.key && block.time !== "Flexible",
+          block.key !== focusBlock?.key &&
+          block.time !== "Flexible" &&
+          block.time > clock,
       )
       .map((block) => ({
         ...block,
@@ -299,9 +336,9 @@ export default function HomeScreen() {
     };
   }, [blocks, habitViews, dreams, completedQuests, totalQuests]);
 
-  // "Later today" is the fallback for an empty focus, not a second list beside
-  // it: while the current focus has something open, the rest of the day waits.
-  const showLater = !hasFocus && laterBlocks.length > 0;
+  // Future actions remain visible even while the current focus has work. The
+  // blocks are loaded for `today`, so tomorrow's plan never enters this list.
+  const showLater = laterBlocks.length > 0;
 
   // On a phone, every focus action gets its own card in one shared design —
   // quests as the My Day quest card (+%), habits as the habit card (🔥 tag).
@@ -433,6 +470,14 @@ export default function HomeScreen() {
                         textStyle={styles.habitBadgeText}
                       />
                     )}
+                    {action.overdue ? (
+                      <Badge
+                        color={colors.danger}
+                        label="OVERDUE"
+                        style={styles.habitBadge}
+                        textStyle={styles.habitBadgeText}
+                      />
+                    ) : null}
                   </View>
                   {"questId" in action ? (
                     <View style={styles.focusBreadcrumb}>
@@ -545,6 +590,16 @@ export default function HomeScreen() {
                     />
                   }
                   title={action.title}
+                  titleAccessory={
+                    action.overdue ? (
+                      <Badge
+                        color={colors.danger}
+                        label="OVERDUE"
+                        style={styles.habitBadge}
+                        textStyle={styles.habitBadgeText}
+                      />
+                    ) : undefined
+                  }
                   trailing={
                     <AppText color={colors.primary} variant="pill">
                       +{Math.max(1, Math.round(action.progressPercent))}%
@@ -567,6 +622,16 @@ export default function HomeScreen() {
                 style={styles.habitCardSpacing}
                 subtitle={action.cue || action.subtitle}
                 title={action.title}
+                titleAccessory={
+                  action.overdue ? (
+                    <Badge
+                      color={colors.danger}
+                      label="OVERDUE"
+                      style={styles.habitBadge}
+                      textStyle={styles.habitBadgeText}
+                    />
+                  ) : undefined
+                }
                 visuals={action.visuals}
               />
             ),
@@ -576,9 +641,9 @@ export default function HomeScreen() {
 
       {showLater ? (
         <>
-          {/* The celebration card takes the "Current focus" heading, so the
-              list below it needs its own. */}
-          {showCelebration ? (
+          {/* Current focus (or its celebration) already owns the first heading,
+              so a following future list needs its own. */}
+          {hasFocus || showCelebration ? (
             <>
               {phone ? null : (
                 <View style={styles.laterDivider}>

@@ -35,6 +35,8 @@ export type DayActionRowProps = {
   /** Line under the title: plain text, or a node such as a breadcrumb. */
   subtitle?: ReactNode;
   title: string;
+  /** Compact metadata displayed beside the title, such as OVERDUE. */
+  titleAccessory?: ReactNode;
   /** Node right before the checkbox (a quest's +%, a habit's streak tag). */
   trailing?: ReactNode;
 };
@@ -55,6 +57,7 @@ export function DayActionRow({
   pressLabel,
   subtitle,
   title,
+  titleAccessory,
   trailing,
 }: DayActionRowProps) {
   const { compact, phone } = useLayoutSize();
@@ -90,13 +93,16 @@ export function DayActionRow({
           {icon(phone ? 24 : compact ? 28 : 36)}
         </View>
         <View style={styles.actionCopy}>
-          <AppText
-            color={colors.textPrimary}
-            style={compact && styles.actionTitleCompact}
-            variant="pill"
-          >
-            {title}
-          </AppText>
+          <View style={styles.actionTitleRow}>
+            <AppText
+              color={colors.textPrimary}
+              style={[styles.actionTitle, compact && styles.actionTitleCompact]}
+              variant="pill"
+            >
+              {title}
+            </AppText>
+            {titleAccessory}
+          </View>
           {typeof subtitle === "string" ? (
             <AppText
               style={[
@@ -262,6 +268,14 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
     marginTop: 2,
+  },
+  actionTitle: {
+    flexShrink: 1,
+  },
+  actionTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
   },
   actionTitleCompact: {
     fontSize: fontSizes.lg,

@@ -41,6 +41,8 @@ export type HabitCardProps = {
   /** The habit's cue ("After waking up"); hidden when empty. */
   subtitle?: string | null;
   title: string;
+  /** Compact metadata displayed beside the title, such as OVERDUE. */
+  titleAccessory?: ReactNode;
   visuals: HabitVisuals;
 };
 
@@ -86,6 +88,7 @@ export function HabitCard({
   style,
   subtitle,
   title,
+  titleAccessory,
   visuals,
 }: HabitCardProps) {
   const menuNode =
@@ -123,6 +126,7 @@ export function HabitCard({
         pressLabel={`Details for the habit ${title}`}
         subtitle={subtitle || undefined}
         title={title}
+        titleAccessory={titleAccessory}
         trailing={
           <View style={styles.streakTag}>
             <FlameIcon color={colors.primary} size={STREAK_ICON_SIZE} />
