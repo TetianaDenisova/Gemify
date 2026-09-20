@@ -124,6 +124,7 @@ type MilestoneModalProps = {
   onDelete: () => void;
   onOpenQuests: () => void;
   onSave: (values: MilestoneFormValues) => void;
+  onUncomplete: () => void;
   /** Quest counts for the shown milestone, null when unknown (add mode). */
   questProgress: MilestoneQuestCounts | null;
   state: MilestoneModalState | null;
@@ -479,6 +480,7 @@ function MilestoneModal({
   onDelete,
   onOpenQuests,
   onSave,
+  onUncomplete,
   questProgress,
   state,
   stepCount,
@@ -908,32 +910,43 @@ function MilestoneModal({
                   </View>
                 </View>
               ) : (
-                <View style={styles.formActionsRow}>
-                  {mode === "edit" ? (
+                <>
+                  {mode === "edit" && milestone?.completed ? (
                     <AppButton
-                      label="Delete Milestone"
-                      onPress={() => setConfirmDelete(true)}
-                      style={[styles.formActionButton, styles.deleteButton]}
-                      textStyle={[styles.formActionLabel, styles.deleteLabel]}
-                      variant="secondary"
-                    />
-                  ) : (
-                    <AppButton
-                      label="Cancel"
-                      onPress={onClose}
-                      style={styles.formActionButton}
+                      label="Uncomplete Milestone"
+                      onPress={onUncomplete}
+                      style={styles.uncompleteButton}
                       textStyle={styles.formActionLabel}
                       variant="secondary"
                     />
-                  )}
-                  <AppButton
-                    disabled={!canSave}
-                    label="Save Changes"
-                    onPress={() => onSave(draft)}
-                    style={styles.formActionButton}
-                    textStyle={styles.formActionLabel}
-                  />
-                </View>
+                  ) : null}
+                  <View style={styles.formActionsRow}>
+                    {mode === "edit" ? (
+                      <AppButton
+                        label="Delete Milestone"
+                        onPress={() => setConfirmDelete(true)}
+                        style={[styles.formActionButton, styles.deleteButton]}
+                        textStyle={[styles.formActionLabel, styles.deleteLabel]}
+                        variant="secondary"
+                      />
+                    ) : (
+                      <AppButton
+                        label="Cancel"
+                        onPress={onClose}
+                        style={styles.formActionButton}
+                        textStyle={styles.formActionLabel}
+                        variant="secondary"
+                      />
+                    )}
+                    <AppButton
+                      disabled={!canSave}
+                      label="Save Changes"
+                      onPress={() => onSave(draft)}
+                      style={styles.formActionButton}
+                      textStyle={styles.formActionLabel}
+                    />
+                  </View>
+                </>
               )}
             </LinearGradient>
 
@@ -1371,6 +1384,21 @@ export function GoalJourneyMapScreen() {
     setModalState(null);
   };
 
+  const handleUncomplete = async () => {
+    if (!modalState || modalState.mode !== "edit") return;
+
+    try {
+      const dbId = dbIdByDisplayId.get(modalState.milestone.id);
+      if (dbId !== undefined) {
+        await updateMilestone(dbId, { status: "active" });
+      }
+      await loadJourney();
+      setModalState(null);
+    } catch (cause) {
+      console.error("Failed to uncomplete the milestone", cause);
+    }
+  };
+
   const handleSaveDream = async (
     name: string,
     vision: string,
@@ -1633,6 +1661,7 @@ export function GoalJourneyMapScreen() {
           });
         }}
         onSave={handleSave}
+        onUncomplete={handleUncomplete}
         questProgress={
           modalState && modalState.mode !== "add"
             ? (questCounts.get(
@@ -1893,6 +1922,9 @@ const styles = StyleSheet.create({
   formActionLabel: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
+  },
+  uncompleteButton: {
+    marginTop: spacing.sm,
   },
   deleteButton: {
     borderColor: colors.danger,
