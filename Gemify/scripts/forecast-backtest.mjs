@@ -147,7 +147,6 @@ async function main() {
       const projection = forecastCompletion({
         quests,
         milestones: scenario.milestones,
-        journeySlices: JOURNEY_SLICES,
         today: asOf,
       });
 

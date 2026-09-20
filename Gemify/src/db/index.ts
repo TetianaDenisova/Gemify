@@ -18,7 +18,6 @@ export {
   updateDream,
 } from "./dreamsRepository";
 export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";
-export { JOURNEY_MILESTONE_COUNT } from "./dreamsRepository";
 
 // Settings (device-local key/value: "seen today" flags and the like)
 export { getSetting, setSetting } from "./settingsRepository";

@@ -1,5 +1,4 @@
 import { getDatabase } from "./database";
-import { JOURNEY_MILESTONE_COUNT } from "./dreamsRepository";
 import type { Idea, Quest, QuestPatch, QuestWithBreadcrumb } from "./types";
 
 type QuestRow = {
@@ -28,15 +27,13 @@ const SELECT_QUEST = `
 `;
 
 // progress_percent uses the getDreamSummaries weighting: every milestone an
-// equal slice of the dream (at least JOURNEY_MILESTONE_COUNT slices), every
-// active quest an equal slice of its milestone.
+// equal slice of the dream, every active quest an equal slice of its milestone.
 const SELECT_QUEST_WITH_BREADCRUMB = `
   SELECT q.id, q.milestone_id, q.title, q.is_active, q.is_done, q.created_at,
          q.scheduled_date, q.scheduled_time, q.is_planned, q.completed_at,
          m.title AS milestone_title, d.title AS dream_title,
-         100.0 / (MAX((SELECT COUNT(*) FROM milestones m2
-                       WHERE m2.dream_id = m.dream_id),
-                      ${JOURNEY_MILESTONE_COUNT})
+         100.0 / ((SELECT COUNT(*) FROM milestones m2
+                   WHERE m2.dream_id = m.dream_id)
                   * MAX((SELECT COUNT(*) FROM quests q2
                          WHERE q2.milestone_id = q.milestone_id
                            AND q2.is_active = 1),

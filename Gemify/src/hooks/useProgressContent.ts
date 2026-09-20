@@ -19,7 +19,6 @@ import {
   getQuestsByDream,
   getTimelineMoments,
   saveForecastProjection,
-  JOURNEY_MILESTONE_COUNT,
   type Dream,
   type HabitCompletionRecord,
   type Milestone,
@@ -329,7 +328,6 @@ async function projectForecast(
   const projection = forecastCompletion({
     quests,
     milestones,
-    journeySlices: JOURNEY_MILESTONE_COUNT,
     previous,
     today,
   });
@@ -461,7 +459,7 @@ export function useProgressContent(
   // identity change doesn't rebuild the whole content object below. The same
   // split the home card shows, so the charts and the card agree.
   const weights = useMemo(
-    () => dreamWeights(quests, milestones, JOURNEY_MILESTONE_COUNT).shares,
+    () => dreamWeights(quests, milestones).shares,
     [milestones, quests],
   );
 

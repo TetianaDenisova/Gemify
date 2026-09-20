@@ -5,14 +5,6 @@ import type { Dream, DreamPatch, FeelingState, NewDream } from "./types";
 
 const MAX_FEELING_STATES = 3;
 
-/**
- * Planned length of every journey (Awakening → Vision). Users create
- * milestones one at a time, so a dream often holds fewer rows than the full
- * path — progress still measures against at least this many milestones, so
- * finishing the first created milestone never reads as the whole dream.
- */
-export const JOURNEY_MILESTONE_COUNT = 6;
-
 type DreamRow = {
   id: number;
   seed_key: string | null;
@@ -141,11 +133,10 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
       progress_fraction: number;
     }
   >(
-    // Weighted progress: every milestone is an equal slice of the dream (the
-    // journey counts at least JOURNEY_MILESTONE_COUNT slices even while fewer
-    // are created) and every active quest an equal slice of its milestone. A
+    // Weighted progress: every created milestone is an equal slice of the
+    // dream and every active quest an equal slice of its milestone. A
     // milestone the user marked completed counts as its full slice regardless
-    // of quest state; empty levels count as 0.
+    // of quest state; empty milestones and dreams with no milestones count as 0.
     `WITH milestone_progress AS (
        SELECT m.id, m.dream_id,
               CASE WHEN m.status = 'completed' THEN 1.0
@@ -176,9 +167,8 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
             COALESCE(
               (SELECT SUM(mp.progress) FROM milestone_progress mp
                WHERE mp.dream_id = d.id)
-              / MAX((SELECT COUNT(*) FROM milestones m
-                     WHERE m.dream_id = d.id),
-                    ${JOURNEY_MILESTONE_COUNT}),
+              / (SELECT COUNT(*) FROM milestones m
+                 WHERE m.dream_id = d.id),
               0) AS progress_fraction
      FROM dreams d
      WHERE d.is_archived = 0 AND d.is_completed = 0
@@ -230,9 +220,8 @@ export async function getWeekAscent(
     // done mid-week must not erase the credit its planned quests earned.
     `WITH quest_weight AS (
        SELECT m.dream_id, q.is_done,
-              1.0 / (MAX((SELECT COUNT(*) FROM milestones m2
-                          WHERE m2.dream_id = m.dream_id),
-                         ${JOURNEY_MILESTONE_COUNT})
+              1.0 / ((SELECT COUNT(*) FROM milestones m2
+                      WHERE m2.dream_id = m.dream_id)
                      * (SELECT COUNT(*) FROM quests q2
                         WHERE q2.milestone_id = m.id AND q2.is_active = 1)
                     ) AS weight

@@ -58,12 +58,6 @@ export type DreamForecast = {
 export type ForecastInput = {
   quests: readonly ForecastQuest[];
   milestones: readonly ForecastMilestone[];
-  /**
-   * Slices the journey is always divided into, even before every milestone
-   * exists — pass the app's JOURNEY_MILESTONE_COUNT so the forecast and the
-   * home card's percentage measure the same dream.
-   */
-  journeySlices?: number;
   /** The day the projection is made on. */
   today: Date;
   /** Day shown last time (YYYY-MM-DD), so the date stops jittering. */
@@ -131,22 +125,20 @@ export type DreamWeights = {
 /**
  * What each quest is worth, and how much of the dream is already done.
  *
- * The same split the home card shows: the dream is cut into `journeySlices`
- * equal slices (more when the journey has more milestones), each milestone's
- * slice is cut equally across its *active* quests, and a milestone the user
- * marked completed counts as its whole slice whatever its quests say.
+ * The same split the home card shows: the dream is cut into one equal slice
+ * per created milestone, each milestone's slice is cut equally across its
+ * *active* quests, and a milestone the user marked completed counts as its
+ * whole slice whatever its quests say.
  *
- * Slices with no milestone yet, and milestones with no quests yet, hold their
- * share without any quest to earn it — that work is real, it is simply not
- * written down, and it stays in `1 - doneShare` until the user writes it.
+ * Milestones with no quests yet hold their share without any quest to earn it.
+ * A dream with no milestones has no progress.
  */
 export function dreamWeights(
   quests: readonly ForecastQuest[],
   milestones: readonly ForecastMilestone[],
-  journeySlices: number,
 ): DreamWeights {
   const shares = new Map<number, number>();
-  const slices = Math.max(milestones.length, journeySlices);
+  const slices = milestones.length;
   if (slices === 0) return { shares, doneShare: 0 };
 
   const sliceShare = 1 / slices;
@@ -302,7 +294,6 @@ function latestDate(
 export function forecastCompletion({
   quests,
   milestones,
-  journeySlices = 6,
   today,
   previous,
 }: ForecastInput): DreamForecast {
@@ -320,7 +311,7 @@ export function forecastCompletion({
   const doneQuests = quests.filter((quest) => quest.isDone);
   if (doneQuests.length === 0) return { ...idle, reason: "never-started" };
 
-  const { shares, doneShare } = dreamWeights(quests, milestones, journeySlices);
+  const { shares, doneShare } = dreamWeights(quests, milestones);
   // A quest the weight table cannot see (no milestone of its own) still has to
   // be worth something, or finishing it would move nothing.
   const shareOf = (quest: ForecastQuest) =>
