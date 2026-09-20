@@ -1346,13 +1346,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   rewardCell: {
-    flexBasis: "48%",
+    flexBasis: "22%",
     flexGrow: 1,
-    minWidth: 280,
+    maxWidth: 240,
+    minWidth: 170,
   },
   rewardCellPhone: {
-    flexBasis: "100%",
-    minWidth: 0,
+    flexBasis: "46%",
+    maxWidth: undefined,
+    minWidth: 145,
   },
   rewardsGrid: {
     flexDirection: "row",
