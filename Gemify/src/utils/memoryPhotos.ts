@@ -21,13 +21,31 @@ function uniquePhotoName(sourceUri: string): string {
  * because it has no web implementation.
  */
 export async function persistMemoryPhoto(uri: string): Promise<string> {
-  if (Platform.OS === "web") return uri;
+  if (Platform.OS === "web") return persistWebPhoto(uri);
   const { Directory, File, Paths } = await import("expo-file-system");
   const dir = new Directory(Paths.document, PHOTO_DIR);
   if (!dir.exists) dir.create();
   const target = new File(dir, uniquePhotoName(uri));
   new File(uri).copy(target);
   return target.uri;
+}
+
+async function persistWebPhoto(uri: string): Promise<string> {
+  if (uri.startsWith("data:")) return uri;
+  if (!uri.startsWith("blob:")) return uri;
+
+  const response = await fetch(uri);
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Failed to persist web photo."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 /** Best-effort removal of photo files this app copied into permanent storage. */

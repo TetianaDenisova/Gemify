@@ -126,16 +126,13 @@ function JourneyOverviewModal({
     >
       <View style={styles.frameOuter}>
         <View style={styles.frameInner}>
-          <AppText align="center" variant="eyebrow">
-            THE LIFE I&apos;M CREATING
-          </AppText>
-          <View style={styles.overviewTitleRow}>
+          <View style={styles.overviewEyebrowRow}>
             <AppText
               align="center"
-              style={[styles.title, styles.overviewTitle]}
-              variant="title"
+              style={styles.overviewEyebrow}
+              variant="eyebrow"
             >
-              {dreamName}
+              THE LIFE I&apos;M CREATING
             </AppText>
             {isIntro ? null : (
               <Pressable
@@ -148,10 +145,14 @@ function JourneyOverviewModal({
                   pressed && pressedStyle,
                 ]}
               >
-                <DotsIcon color={colors.textSecondary} size={iconSizes.md} />
+                <View style={styles.overviewMenuInnerEdge} pointerEvents="none" />
+                <DotsIcon color={colors.primary} size={iconSizes.md} />
               </Pressable>
             )}
           </View>
+          <AppText align="center" style={styles.title} variant="title">
+            {dreamName}
+          </AppText>
           {/* Pure ornament above a sheet that is already tight on a phone. */}
           {phone ? null : (
             <View style={styles.ornamentRow}>
@@ -855,22 +856,43 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.xl,
   },
-  /** The name centred, with the ⋯ button riding its right edge. */
-  overviewTitleRow: {
+  overviewEyebrowRow: {
     alignItems: "center",
-    flexDirection: "row",
     justifyContent: "center",
+    minHeight: 42,
+    position: "relative",
   },
-  overviewTitle: {
-    flex: 1,
+  overviewEyebrow: {
+    alignSelf: "stretch",
+    paddingHorizontal: 42,
   },
   overviewMenuButton: {
     alignItems: "center",
-    height: 36,
+    backgroundColor: colors.surfaceGlass,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    height: 42,
     justifyContent: "center",
+    overflow: "hidden",
     position: "absolute",
     right: 0,
-    width: 36,
+    top: 0,
+    width: 42,
+    ...shadowStyle({
+      color: colors.primary,
+      elevation: 8,
+      opacity: 0.22,
+      radius: 10,
+    }),
+  },
+  overviewMenuInnerEdge: {
+    ...StyleSheet.absoluteFill,
+    borderBottomColor: colors.secondaryDark,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    margin: 2,
   },
   overviewAction: {
     alignSelf: "stretch",

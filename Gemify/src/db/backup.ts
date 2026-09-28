@@ -10,9 +10,8 @@ import { LATEST_SCHEMA_VERSION } from "./migrations";
 /**
  * Full-database backup as a single JSON file. Export dumps every user table
  * (plus memory photos, embedded as base64 so they survive reinstalls) and
- * hands the file to the system share sheet. Import picks a backup file and
- * replaces the entire database contents with it — original row ids are kept,
- * so foreign keys need no remapping.
+ * hands the file to the system share sheet. Import merges dreams by stable uid,
+ * replacing matching dream trees and adding nonmatching dreams.
  */
 
 /** Row order respects foreign keys: parents first. Deletes run reversed. */
@@ -406,9 +405,9 @@ export async function exportBackup(): Promise<void> {
 // Import
 
 /**
- * Opens the system file picker and, if the user selects a valid backup,
- * replaces the entire database contents with it. Returns null when the picker
- * is cancelled; throws with a readable message for invalid files.
+ * Opens the system file picker and merges a valid backup into local dreams.
+ * Returns null when the picker is cancelled; throws with a readable message
+ * for invalid files.
  */
 export async function pickAndImportBackup(): Promise<ImportSummary | null> {
   const DocumentPicker = await import("expo-document-picker");
@@ -491,36 +490,209 @@ async function restoreBackup(document: BackupDocument): Promise<void> {
 
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {
-    for (const table of [...BACKUP_TABLES].reverse()) {
-      await db.runAsync(`DELETE FROM ${table}`);
+    const dreamIds = new Map<string, number>();
+    const stateIds = await mergeFeelingStates(db, document);
+    const milestoneIds = new Map<string, number>();
+    const habitIds = new Map<string, number>();
+    const riskIds = new Map<string, number>();
+    const momentIds = new Map<string, number>();
+
+    for (const source of document.tables.dreams ?? []) {
+      const uid = stringValue(source.uid);
+      const existing = uid
+        ? await db.getFirstAsync<{ id: number }>(
+            "SELECT id FROM dreams WHERE uid = ?",
+            [uid],
+          )
+        : null;
+      if (existing) {
+        await db.runAsync("DELETE FROM dreams WHERE id = ?", existing.id);
+      }
+
+      const row = resolveDreamPhoto(source, photoUriByName);
+      const seedKey = stringValue(row.seed_key);
+      if (!existing && seedKey) {
+        const conflict = await db.getFirstAsync<{ id: number }>(
+          "SELECT id FROM dreams WHERE seed_key = ?",
+          [seedKey],
+        );
+        if (conflict) row.seed_key = null;
+      }
+      dreamIds.set(
+        rowKey(source.id),
+        await insertImportedRow(db, "dreams", row),
+      );
     }
 
-    for (const table of BACKUP_TABLES) {
-      for (const row of document.tables[table] ?? []) {
-        const resolved =
-          table === "timeline_moment_photos"
-            ? resolvePhotoUri(row, photoUriByName)
-            : table === "dreams" || table === "milestones"
-              ? resolveDreamPhoto(row, photoUriByName)
-              : row;
-        if (!resolved) continue;
+    for (const source of document.tables.dream_feeling_states ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      const stateId = stateIds.get(rowKey(source.state_id));
+      if (dreamId && stateId) {
+        await insertImportedRow(db, "dream_feeling_states", source, {
+          dream_id: dreamId,
+          state_id: stateId,
+        });
+      }
+    }
 
-        const columns = Object.keys(resolved).filter(
-          (column) =>
-            /^[a-z_]+$/.test(column) && !RESTORE_SKIPPED_COLUMNS.has(column),
-        );
-        if (columns.length === 0) continue;
+    for (const source of document.tables.milestones ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      if (!dreamId) continue;
+      const row = resolveDreamPhoto(source, photoUriByName);
+      milestoneIds.set(
+        rowKey(source.id),
+        await insertImportedRow(db, "milestones", row, { dream_id: dreamId }),
+      );
+    }
 
-        await db.runAsync(
-          `INSERT INTO ${table} (${columns.join(", ")})
-           VALUES (${columns.map(() => "?").join(", ")})`,
-          columns.map((column) => resolved[column] ?? null),
-        );
+    for (const source of document.tables.milestone_rewards ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      const milestoneId = milestoneIds.get(rowKey(source.milestone_id));
+      if (dreamId && milestoneId) {
+        await insertImportedRow(db, "milestone_rewards", source, {
+          dream_id: dreamId,
+          milestone_id: milestoneId,
+        });
+      }
+    }
+
+    for (const table of ["quests", "ideas"] as const) {
+      for (const source of document.tables[table] ?? []) {
+        const milestoneId = milestoneIds.get(rowKey(source.milestone_id));
+        if (milestoneId) {
+          await insertImportedRow(db, table, source, {
+            milestone_id: milestoneId,
+          });
+        }
+      }
+    }
+
+    for (const source of document.tables.habits ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      if (!dreamId) continue;
+      habitIds.set(
+        rowKey(source.id),
+        await insertImportedRow(db, "habits", source, { dream_id: dreamId }),
+      );
+    }
+
+    for (const table of [
+      "habit_schedule_days",
+      "habit_detail_entries",
+      "habit_completions",
+      "habit_detail_checks",
+    ] as const) {
+      for (const source of document.tables[table] ?? []) {
+        const habitId = habitIds.get(rowKey(source.habit_id));
+        if (habitId) {
+          await insertImportedRow(db, table, source, { habit_id: habitId });
+        }
+      }
+    }
+
+    for (const source of document.tables.risks ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      if (!dreamId) continue;
+      riskIds.set(
+        rowKey(source.id),
+        await insertImportedRow(db, "risks", source, { dream_id: dreamId }),
+      );
+    }
+    for (const source of document.tables.risk_actions ?? []) {
+      const riskId = riskIds.get(rowKey(source.risk_id));
+      if (riskId) {
+        await insertImportedRow(db, "risk_actions", source, {
+          risk_id: riskId,
+        });
+      }
+    }
+
+    for (const source of document.tables.timeline_moments ?? []) {
+      const dreamId = dreamIds.get(rowKey(source.dream_id));
+      if (!dreamId) continue;
+      momentIds.set(
+        rowKey(source.id),
+        await insertImportedRow(db, "timeline_moments", source, {
+          dream_id: dreamId,
+        }),
+      );
+    }
+    for (const source of document.tables.timeline_moment_photos ?? []) {
+      const momentId = momentIds.get(rowKey(source.moment_id));
+      const row = resolvePhotoUri(source, photoUriByName);
+      if (momentId && row) {
+        await insertImportedRow(db, "timeline_moment_photos", row, {
+          moment_id: momentId,
+        });
       }
     }
   });
 
   await finishRestoreForSync(db);
+}
+
+async function mergeFeelingStates(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  document: BackupDocument,
+): Promise<Map<string, number>> {
+  const ids = new Map<string, number>();
+  const needed = new Set(
+    (document.tables.dream_feeling_states ?? []).map((row) =>
+      rowKey(row.state_id),
+    ),
+  );
+
+  for (const source of document.tables.feeling_states ?? []) {
+    if (!needed.has(rowKey(source.id))) continue;
+    const uid = stringValue(source.uid);
+    const label = stringValue(source.label);
+    let existing = uid
+      ? await db.getFirstAsync<{ id: number }>(
+          "SELECT id FROM feeling_states WHERE uid = ?",
+          [uid],
+        )
+      : null;
+    if (!existing && label) {
+      existing = await db.getFirstAsync<{ id: number }>(
+        "SELECT id FROM feeling_states WHERE label = ? COLLATE NOCASE",
+        [label],
+      );
+    }
+    const id =
+      existing?.id ??
+      (await insertImportedRow(db, "feeling_states", source));
+    ids.set(rowKey(source.id), id);
+  }
+  return ids;
+}
+
+async function insertImportedRow(
+  db: Awaited<ReturnType<typeof getDatabase>>,
+  table: string,
+  source: Row,
+  overrides: Row = {},
+): Promise<number> {
+  const row = { ...source, ...overrides };
+  const columns = Object.keys(row).filter(
+    (column) =>
+      column !== "id" &&
+      /^[a-z_]+$/.test(column) &&
+      !RESTORE_SKIPPED_COLUMNS.has(column),
+  );
+  const result = await db.runAsync(
+    `INSERT INTO ${table} (${columns.join(", ")})
+     VALUES (${columns.map(() => "?").join(", ")})`,
+    columns.map((column) => row[column] ?? null),
+  );
+  return result.lastInsertRowId;
+}
+
+function rowKey(value: Row[string]): string {
+  return String(value ?? "");
+}
+
+function stringValue(value: Row[string]): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 /** Restores bundled photo files into the memories directory; name → new URI. */
@@ -534,12 +706,14 @@ async function writePhotoFiles(
   const dir = new Directory(Paths.document, PHOTO_DIR);
   if (!dir.exists) dir.create();
 
-  for (const photo of photos) {
+  for (let index = 0; index < photos.length; index += 1) {
+    const photo = photos[index];
     // Names come from the backup file; keep writes confined to the photo dir.
     if (!/^[\w.-]+$/.test(photo.name)) continue;
     try {
-      const file = new File(dir, photo.name);
-      if (file.exists) file.delete();
+      // Never overwrite a file that may still belong to a preserved dream.
+      const importedName = `import-${Date.now()}-${index}-${photo.name}`;
+      const file = new File(dir, importedName);
       file.create();
       file.write(base64ToBytes(photo.base64));
       uriByName.set(photo.name, file.uri);

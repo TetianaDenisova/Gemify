@@ -147,7 +147,7 @@ export async function updateMilestone(
     params.push(patch.status);
   }
   if (patch.photoUri !== undefined) {
-    assignments.push("photo_uri = ?");
+    assignments.push("photo_uri = ?", "photo_remote_key = NULL");
     params.push(patch.photoUri);
   }
   if (patch.photoFocusX !== undefined) {

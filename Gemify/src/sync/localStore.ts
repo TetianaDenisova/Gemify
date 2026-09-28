@@ -263,20 +263,21 @@ export async function clearTombstones(
 }
 
 /**
- * Settles the database after a backup import so the restored journey becomes
- * the version other devices receive.
+ * Settles newly inserted rows after a backup import so the imported dream
+ * trees become the version other devices receive.
  *
- * The import wipes and rewrites every table with the triggers live, which is
- * what leaves tombstones for the rows it dropped. Rows the backup brought
- * back keep their uid, so their tombstones have to go — otherwise the very
- * next sync would delete what was just restored.
+ * Imported rows that already carry a uid skip the insert trigger and therefore
+ * have no timestamp. Replaced rows also leave tombstones behind. Stamp only
+ * those new rows, preserving unrelated local data, and clear tombstones for
+ * every uid that is present again.
  */
 export async function finishRestoreForSync(db: SQLiteDatabase): Promise<void> {
   const stamp = nowIso();
   await withSyncApply(db, async (txn) => {
     for (const table of SYNC_TABLES) {
       await txn.runAsync(
-        `UPDATE ${table.name} SET updated_at = ?, sync_dirty = 1`,
+        `UPDATE ${table.name} SET updated_at = ?, sync_dirty = 1
+         WHERE updated_at IS NULL`,
         [stamp],
       );
       await txn.runAsync(

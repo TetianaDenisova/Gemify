@@ -22,8 +22,8 @@ type ResultNotice = {
 /**
  * The ⋮ overflow menu: a bottom sheet with the data actions. Cloud sync keeps
  * this device and the user's other one on the same journey; export shares a
- * single JSON backup file (photos included); import replaces all current data
- * with a previously exported file, behind a confirmation step.
+ * single JSON backup file (photos included); import adds new dreams and
+ * replaces only dreams with matching permanent identities.
  */
 export function MoreMenuSheet({
   onClose,
@@ -63,7 +63,7 @@ export function MoreMenuSheet({
         setNotice({
           title: "Import complete",
           message:
-            `Restored ${summary.dreams} dreams, ${summary.habits} habits, ` +
+            `Imported ${summary.dreams} dreams, ${summary.habits} habits, ` +
             `${summary.quests} quests and ${summary.moments} memories.`,
         });
       }
@@ -105,10 +105,11 @@ export function MoreMenuSheet({
         onClose={() => setConfirmVisible(false)}
         visible={confirmVisible}
       >
-        <AppText variant="cardTitle">Replace all data?</AppText>
+        <AppText variant="cardTitle">Import dreams?</AppText>
         <AppText style={styles.modalBody} variant="bodySmall">
-          Importing a backup replaces everything currently in the app — dreams,
-          milestones, habits, progress and memories. This cannot be undone.
+          New dreams will be added. If a dream already exists, that dream and
+          its milestones, habits, progress and memories will be replaced by the
+          imported version. Other dreams and app settings stay unchanged.
         </AppText>
         <View style={styles.modalButtons}>
           <AppButton

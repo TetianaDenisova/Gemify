@@ -312,7 +312,7 @@ export async function updateDream(
     params.push(patch.visionStatement?.trim() || null);
   }
   if (patch.photoUri !== undefined) {
-    assignments.push("photo_uri = ?");
+    assignments.push("photo_uri = ?", "photo_remote_key = NULL");
     params.push(patch.photoUri);
   }
   if (patch.photoFocusX !== undefined) {
