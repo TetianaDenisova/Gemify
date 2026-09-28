@@ -26,6 +26,8 @@ export type JourneyMapScrollProps = {
   children?: ReactNode | ((layout: JourneyMapLayout) => ReactNode);
   /** Enables/disables dragging without removing the map. */
   enabled?: boolean;
+  /** Optional minimum rendered map height, used when dense overlays need room. */
+  minImageHeight?: number;
   showAtmosphere?: boolean;
   source: ImageSourcePropType;
   style?: StyleProp<ViewStyle>;
@@ -39,6 +41,7 @@ type ViewportSize = {
 export function JourneyMapScroll({
   children,
   enabled = true,
+  minImageHeight = 0,
   showAtmosphere = true,
   source,
   style,
@@ -72,8 +75,11 @@ export function JourneyMapScroll({
           viewport.height / Math.max(assetHeight, 1),
         )
       : 0;
-  const imageWidth = assetWidth * coverScale;
-  const imageHeight = assetHeight * coverScale;
+  const minHeightScale =
+    minImageHeight > 0 ? minImageHeight / Math.max(assetHeight, 1) : 0;
+  const imageScale = Math.max(coverScale, minHeightScale);
+  const imageWidth = assetWidth * imageScale;
+  const imageHeight = assetHeight * imageScale;
   const imageLeft = (viewport.width - imageWidth) / 2;
   // Stable identity so memoized overlay children can bail out between renders.
   const layout: JourneyMapLayout = useMemo(

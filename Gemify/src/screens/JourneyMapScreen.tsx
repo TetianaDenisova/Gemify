@@ -48,7 +48,10 @@ import type {
   JourneyMilestoneBoardConfig,
   JourneyMilestoneData,
 } from "@/data/journeyMilestones";
-import { journeyPageConfig } from "@/data/journeyPageConfig";
+import {
+  journeyPageConfig,
+  type JourneyPageConfig,
+} from "@/data/journeyPageConfig";
 import {
   createQuest,
   deleteDream,
@@ -163,6 +166,52 @@ const NEW_MILESTONE_VISUALS: Omit<JourneyMilestoneBoardConfig, "milestoneId"> = 
   x: 0.5,
   y: 0.7,
 };
+
+function clampNormalized(value: number) {
+  return Math.min(Math.max(value, 0), 1);
+}
+
+function getCastleMilestoneY(config: JourneyPageConfig) {
+  return clampNormalized(config.castleApproachY + config.castleClearance);
+}
+
+function getJourneyPathPosition(
+  index: number,
+  milestoneCount: number,
+  config: JourneyPageConfig,
+): JourneyMilestonePosition {
+  const pathStartY = clampNormalized(config.pathStartY);
+  const castleY = getCastleMilestoneY(config);
+  const x = clampNormalized(config.pathX);
+
+  if (milestoneCount <= 1) {
+    return {
+      x,
+      y: castleY,
+    };
+  }
+
+  const progress = index / (milestoneCount - 1);
+  const y = pathStartY - progress * (pathStartY - castleY);
+
+  return {
+    x,
+    y,
+  };
+}
+
+function getMinimumMapHeight(
+  milestoneCount: number,
+  config: JourneyPageConfig,
+) {
+  if (milestoneCount <= 1) {
+    return 0;
+  }
+
+  const availablePath = Math.abs(config.pathStartY - getCastleMilestoneY(config));
+
+  return ((milestoneCount - 1) * config.minSpacing) / availablePath;
+}
 
 function QuestButtonShimmer() {
   const [buttonWidth, setButtonWidth] = useState(0);
@@ -1252,49 +1301,32 @@ export function GoalJourneyMapScreen() {
   );
 
   const currentConfig = journeyPageConfig;
-  // The path anchors at the castle gates and grows downward with a fixed
-  // step: the chronologically last milestone sits at the entrance, earlier
-  // ones below it. Once five rings exist the spacing matches the stretched
-  // full-path layout, so long journeys still reach the bottom of the map.
-  const ringStep =
-    (currentConfig.bottomY - currentConfig.castleY) /
-    Math.max(4, milestones.length - 1);
+  const layoutAnchorCount = isEditMode ? milestones.length + 1 : milestones.length;
+  const minimumMapHeight = useMemo(
+    () => getMinimumMapHeight(layoutAnchorCount, currentConfig),
+    [currentConfig, layoutAnchorCount],
+  );
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
-      milestones.map((_, index) => ({
-        x: 0.5,
-        y:
-          currentConfig.castleY +
-          ringStep * (milestones.length - 1 - index),
-      })),
-    [currentConfig, ringStep, milestones],
+      displayMilestones.map((_, index) =>
+        getJourneyPathPosition(index, displayMilestones.length, currentConfig),
+      ),
+    [currentConfig, displayMilestones],
   );
   const insertSlots =
     isEditMode && !isGuidedAdd
       ? Array.from({ length: milestones.length + 1 }, (_, index) => index)
       : [];
-  /** Map Y for the guided plus: at the gates when empty, else one step below
-   * the newest (lowest) milestone. */
-  const guidedPlusY = Math.min(
-    Math.max(
-      currentConfig.castleY + ringStep * milestones.length,
-      0.03,
-    ),
-    0.97,
+  const guidedPlusPosition = useMemo(
+    () => getJourneyPathPosition(0, milestones.length + 1, currentConfig),
+    [currentConfig, milestones.length],
   );
-  /** Map Y for the plus that inserts at `slot`: midway between neighbours. */
-  const getInsertSlotY = (slot: number) => {
-    if (milestones.length === 0) {
-      return currentConfig.castleY;
-    }
-
-    const y =
-      currentConfig.castleY +
-      ringStep * (milestones.length - 1 - slot) +
-      ringStep / 2;
-
-    return Math.min(Math.max(y, 0.03), 0.97);
-  };
+  /** Map position for the plus that inserts at `slot` on the future path. */
+  const getInsertSlotPosition = useCallback(
+    (slot: number) =>
+      getJourneyPathPosition(slot, milestones.length + 1, currentConfig),
+    [currentConfig, milestones.length],
+  );
 
   // Stable identity so memoized JourneyMilestone rows can skip re-rendering.
   const handleMilestonePress = useCallback(
@@ -1491,6 +1523,7 @@ export function GoalJourneyMapScreen() {
     <View style={styles.screen}>
       <JourneyMapScroll
         enabled={modalState === null}
+        minImageHeight={minimumMapHeight}
         showAtmosphere
         source={JOURNEY_MAP_SOURCE}
       >
@@ -1511,7 +1544,7 @@ export function GoalJourneyMapScreen() {
             ))}
 
             {insertSlots.map((slot) => {
-              const slotY = getInsertSlotY(slot);
+              const slotPosition = getInsertSlotPosition(slot);
 
               return (
                 <Pressable
@@ -1525,8 +1558,10 @@ export function GoalJourneyMapScreen() {
                   style={({ pressed }) => [
                     styles.plusButton,
                     {
-                      left: imageWidth / 2 - PLUS_TOUCH_SIZE / 2,
-                      top: slotY * imageHeight - PLUS_TOUCH_SIZE / 2,
+                      left:
+                        slotPosition.x * imageWidth - PLUS_TOUCH_SIZE / 2,
+                      top:
+                        slotPosition.y * imageHeight - PLUS_TOUCH_SIZE / 2,
                     },
                     pressed && pressedStyle,
                   ]}
@@ -1552,8 +1587,12 @@ export function GoalJourneyMapScreen() {
                   style={({ pressed }) => [
                     styles.plusButton,
                     {
-                      left: imageWidth / 2 - PLUS_TOUCH_SIZE / 2,
-                      top: guidedPlusY * imageHeight - PLUS_TOUCH_SIZE / 2,
+                      left:
+                        guidedPlusPosition.x * imageWidth -
+                        PLUS_TOUCH_SIZE / 2,
+                      top:
+                        guidedPlusPosition.y * imageHeight -
+                        PLUS_TOUCH_SIZE / 2,
                     },
                     pressed && pressedStyle,
                   ]}
@@ -1569,9 +1608,13 @@ export function GoalJourneyMapScreen() {
                     styles.guidedHint,
                     {
                       pointerEvents: "none",
-                      left: imageWidth / 2 - GUIDED_HINT_WIDTH / 2,
+                      left:
+                        guidedPlusPosition.x * imageWidth -
+                        GUIDED_HINT_WIDTH / 2,
                       top:
-                        guidedPlusY * imageHeight + PLUS_TOUCH_SIZE / 2 + 6,
+                        guidedPlusPosition.y * imageHeight +
+                        PLUS_TOUCH_SIZE / 2 +
+                        6,
                     },
                   ]}
                 >
