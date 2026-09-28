@@ -290,7 +290,6 @@ const MILESTONE_DETAIL_FIELDS: readonly MilestoneDetailField[] = [
     key: "state",
     label: "HOW I WANT TO FEEL ALONG THE WAY",
     placeholder: "How do you want to feel at this stage?",
-    required: true,
   },
   {
     description:
@@ -578,12 +577,8 @@ function MilestoneModal({
     draft.photoTransform.focusX !== initialValues.photoTransform.focusX ||
     draft.photoTransform.focusY !== initialValues.photoTransform.focusY ||
     draft.photoTransform.scale !== initialValues.photoTransform.scale;
-  // Only title and state are mandatory; artifact, mentor, and reward are
-  // optional.
-  const requiredKeys: readonly ("title" | "state")[] = ["title", "state"];
-  const requiredComplete = requiredKeys.every(
-    (key) => draft[key].trim().length > 0,
-  );
+  // The title identifies the milestone; all supporting details are optional.
+  const requiredComplete = draft.title.trim().length > 0;
   const canSave =
     mode === "add" ? requiredComplete : isDirty && requiredComplete;
 

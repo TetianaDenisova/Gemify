@@ -16,11 +16,13 @@ type DreamRow = {
   photo_scale: number;
   is_archived: number;
   is_completed: number;
+  completed_at: string | null;
 };
 
 const SELECT_DREAM = `
   SELECT id, seed_key, title, vision_statement, photo_uri,
-         photo_focus_x, photo_focus_y, photo_scale, is_archived, is_completed
+         photo_focus_x, photo_focus_y, photo_scale, is_archived, is_completed,
+         completed_at
   FROM dreams
 `;
 
@@ -36,6 +38,7 @@ function toDream(row: DreamRow): Dream {
     photoScale: row.photo_scale,
     isArchived: row.is_archived === 1,
     isCompleted: row.is_completed === 1,
+    completedAt: row.completed_at,
   };
 }
 
@@ -92,7 +95,9 @@ export async function getDreams(includeArchived = false): Promise<Dream[]> {
 export async function getCompletedDreams(): Promise<Dream[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<DreamRow>(
-    `${SELECT_DREAM} WHERE is_archived = 0 AND is_completed = 1 ORDER BY id DESC`,
+    `${SELECT_DREAM}
+     WHERE is_archived = 0 AND is_completed = 1
+     ORDER BY completed_at DESC, id DESC`,
   );
   return rows.map(toDream);
 }
@@ -149,7 +154,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
      )
      SELECT d.id, d.seed_key, d.title, d.vision_statement, d.photo_uri,
             d.photo_focus_x, d.photo_focus_y, d.photo_scale, d.is_archived,
-            d.is_completed,
+            d.is_completed, d.completed_at,
             COALESCE(
               (SELECT m.title FROM milestones m
                WHERE m.dream_id = d.id AND m.status = 'active'
@@ -329,6 +334,11 @@ export async function updateDream(
   if (patch.isCompleted !== undefined) {
     assignments.push("is_completed = ?");
     params.push(patch.isCompleted ? 1 : 0);
+    assignments.push(
+      patch.isCompleted
+        ? "completed_at = COALESCE(completed_at, STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        : "completed_at = NULL",
+    );
   }
 
   if (assignments.length > 0) {

@@ -86,10 +86,9 @@ type JourneyOverviewModalProps = {
   onClose: () => void;
   /** Opens the ⋯ sheet: edit the dream, edit the path, complete, delete. */
   onOpenMenu: () => void;
-  onOpenWhatIfPlan: () => void;
   /**
    * "intro" is the once-a-day greeting — the dream, and an OK button.
-   * "overview" is the ✨ sheet, with the menu and the What-If action.
+   * "overview" is the ✨ sheet, with the menu.
    */
   variant: "intro" | "overview";
   photoTransform: DreamPhotoTransform;
@@ -102,7 +101,6 @@ function JourneyOverviewModal({
   dreamName,
   onClose,
   onOpenMenu,
-  onOpenWhatIfPlan,
   photoTransform,
   photoUri,
   variant,
@@ -198,22 +196,7 @@ function JourneyOverviewModal({
               style={styles.overviewAction}
               variant="primary"
             />
-          ) : (
-            <AppButton
-              accessibilityLabel="Check What If Plan"
-              icon={
-                <SparklesIcon
-                  color={colors.textOnPrimary}
-                  size={iconSizes.sm}
-                />
-              }
-              iconPosition="before"
-              label={'Check "What If" Plan'}
-              onPress={onOpenWhatIfPlan}
-              style={styles.overviewAction}
-              variant="primary"
-            />
-          )}
+          ) : null}
         </View>
       </View>
     </AppModal>
@@ -684,7 +667,6 @@ export function JourneyMapControls({
         dreamName={dreamName}
         onClose={() => setOverviewMode(null)}
         onOpenMenu={openMenu}
-        onOpenWhatIfPlan={openWhatIfPlan}
         photoTransform={photoTransform}
         photoUri={photoUri}
         variant={overviewMode ?? "overview"}
@@ -706,6 +688,11 @@ export function JourneyMapControls({
           icon={<MilestoneIcon color={colors.primary} size={22} />}
           label="Edit path"
           onPress={() => runFromMenu(onEnterEditMode)}
+        />
+        <SheetActionRow
+          icon={<SparklesIcon color={colors.primary} size={22} />}
+          label={'Check "What If" Plan'}
+          onPress={() => runFromMenu(openWhatIfPlan)}
         />
         <SheetActionRow
           icon={<CheckIcon color={colors.primary} size={22} />}

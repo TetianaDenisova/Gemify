@@ -22,6 +22,8 @@ export type Dream = {
   isArchived: boolean;
   /** Finished for good: kept, celebrated, and out of the daily screens. */
   isCompleted: boolean;
+  /** ISO 8601 UTC timestamp set when the dream is completed. */
+  completedAt: string | null;
 };
 
 export type NewDream = {

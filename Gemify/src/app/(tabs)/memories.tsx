@@ -38,11 +38,13 @@ import {
   ChevronIcon,
   CloseIcon,
   DotsIcon,
+  DreamIcon,
   HistoryIcon,
   IconButton,
   ListItem,
   PlusIcon,
   ScreenScaffold,
+  SparkIcon,
   SparkleGlyphIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
@@ -88,6 +90,15 @@ const timelineCircleShadow = shadowStyle({
 /** "Aug 23, 2026" for a YYYY-MM-DD key (noon guards against TZ day shifts). */
 function formatDateKey(dateKey: string): string {
   return new Date(`${dateKey}T12:00:00`).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCompletedAt(value: string | null): string {
+  if (!value) return "Date unavailable";
+  return new Date(value).toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -1042,13 +1053,41 @@ export default function MemoriesScreen() {
         ) : null}
       </AppModal>
       <AppModal
+        maxWidth={720}
         onClose={() => setCompletedOpen(false)}
-        variant="sheet"
+        panelStyle={[styles.completedPanel, phone && styles.completedPanelPhone]}
         visible={completedOpen}
       >
-        <AppText align="center" color={colors.primary} variant="titleSm">
-          Completed Dreams
-        </AppText>
+        <View style={styles.completedClose}>
+          <IconButton
+            accessibilityLabel="Close completed dreams"
+            icon={<CloseIcon color={colors.primary} size={20} />}
+            onPress={() => setCompletedOpen(false)}
+            size="md"
+          />
+        </View>
+        <View style={styles.completedHeading}>
+          <View style={styles.completedTitleRow}>
+            <SparkIcon size={phone ? 18 : 22} />
+            <AppText
+              align="center"
+              color={colors.textPrimary}
+              style={phone && styles.completedTitlePhone}
+              variant="screenTitle"
+            >
+              Completed Dreams
+            </AppText>
+            <SparkIcon size={phone ? 18 : 22} />
+          </View>
+          <AppText
+            align="center"
+            color={colors.textSecondary}
+            style={styles.completedSubtitle}
+            variant="bodySerif"
+          >
+            {completedDreams.length} {completedDreams.length === 1 ? "dream" : "dreams"} achieved
+          </AppText>
+        </View>
         {completedDreams.length === 0 ? (
           <AppText
             align="center"
@@ -1068,16 +1107,38 @@ export default function MemoriesScreen() {
                   setGoalKey(String(dream.id));
                   setCompletedOpen(false);
                 }}
-                style={({ pressed: isPressed }) => [
-                  styles.completedRow,
-                  isPressed && pressed,
-                ]}
+                style={({ pressed: isPressed }) => [styles.completedRow, isPressed && pressed]}
               >
-                <SparkleGlyphIcon size={18} />
-                <AppText numberOfLines={1} style={styles.completedTitle} variant="button">
-                  {dream.title}
-                </AppText>
-                <ChevronIcon color={colors.textSecondary} size={16} strokeWidth={1.8} />
+                <View style={styles.completedMedallionWrap}>
+                  <SparkIcon size={13} />
+                  <View style={styles.completedMedallion}>
+                    {dream.photoUri ? (
+                      <Image
+                        contentFit="cover"
+                        source={{ uri: dream.photoUri }}
+                        style={styles.completedPhoto}
+                      />
+                    ) : (
+                      <DreamIcon color={colors.primary} size={32} strokeWidth={1.6} />
+                    )}
+                  </View>
+                  <View style={styles.completedMedallionSpark}>
+                    <SparkIcon size={10} />
+                  </View>
+                </View>
+                <View style={styles.completedCopy}>
+                  <AppText
+                    color={colors.textPrimary}
+                    numberOfLines={2}
+                    style={styles.completedTitle}
+                    variant="titleSm"
+                  >
+                    {dream.title}
+                  </AppText>
+                  <AppText color={colors.textSecondary} variant="bodySerif">
+                    Completed {formatCompletedAt(dream.completedAt)}
+                  </AppText>
+                </View>
               </Pressable>
             ))}
           </View>
@@ -1203,25 +1264,85 @@ const styles = StyleSheet.create({
   /** Opaque, image-matched ground: the artwork's dark edges dissolve into
    * it, so the content below the hero image sits on a seamless background. */
   completedEmpty: {
+    marginVertical: spacing.xl,
+  },
+  completedClose: {
+    position: "absolute",
+    right: spacing.lg,
+    top: spacing.lg,
+    zIndex: 2,
+  },
+  completedCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  completedHeading: {
+    alignItems: "center",
+    marginBottom: spacing.xl,
     marginTop: spacing.lg,
   },
   completedList: {
-    gap: spacing.md,
-    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  completedMedallion: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.primary,
+    borderRadius: radius.round,
+    borderWidth: 2,
+    height: 78,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 78,
+    ...shadowStyle({ color: colors.primary, opacity: 0.4, radius: 10 }),
+  },
+  completedMedallionSpark: {
+    bottom: 4,
+    position: "absolute",
+    right: 0,
+  },
+  completedMedallionWrap: {
+    alignItems: "center",
+    height: 96,
+    justifyContent: "center",
+    width: 100,
+  },
+  completedPanel: {
+    backgroundColor: colors.backgroundSoft,
+    borderColor: colors.borderFaint,
+    padding: spacing.xl,
+  },
+  completedPanelPhone: {
+    padding: spacing.md,
+    paddingTop: spacing.xl,
+  },
+  completedPhoto: {
+    height: "100%",
+    width: "100%",
   },
   completedRow: {
     alignItems: "center",
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.card,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: spacing.lg,
+    minHeight: 106,
+    paddingHorizontal: spacing.sm,
+  },
+  completedSubtitle: {
+    fontStyle: "italic",
+    marginTop: spacing.sm,
   },
   completedTitle: {
-    flex: 1,
+    fontSize: fontSizes.xxl,
+    lineHeight: lineHeights.xxxl,
+  },
+  completedTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  completedTitlePhone: {
+    fontSize: fontSizes.xxxl,
+    lineHeight: lineHeights.xxxl,
   },
   forecastCard: {
     backgroundColor: colors.background,

@@ -288,6 +288,18 @@ const backupUpgrades: BackupUpgrade[] = [
     toVersion: 23,
     up: () => {},
   },
+  {
+    // v24 records when a dream was completed. Older backups have no exact
+    // timestamp, so use their export time as the closest honest fallback.
+    toVersion: 24,
+    up: (doc) => {
+      for (const row of doc.tables.dreams ?? []) {
+        if (row.completed_at === undefined) {
+          row.completed_at = row.is_completed === 1 ? doc.exportedAt : null;
+        }
+      }
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -675,6 +675,19 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // Completion history needs the actual date shown in the Memories modal.
+    // Existing completed dreams receive the migration timestamp.
+    toVersion: 24,
+    up: async (db) => {
+      await db.execAsync(`
+        ALTER TABLE dreams ADD COLUMN completed_at TEXT;
+        UPDATE dreams
+          SET completed_at = STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')
+          WHERE is_completed = 1;
+      `);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */
