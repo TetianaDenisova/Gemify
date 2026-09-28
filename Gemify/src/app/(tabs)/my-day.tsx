@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { DatePickerModal, formatDayTitle, isSameDay } from "@/components/DatePickerModal";
@@ -18,6 +19,7 @@ import { TimeBlockTabs } from "@/components/TimeBlockTabs";
 import { habitVisualsFor } from "@/data/habitVisuals";
 import {
   deleteQuest,
+  getDreams,
   getSchedulableQuests,
   setQuestDone,
   updateQuest,
@@ -82,12 +84,32 @@ export default function MyDayScreen() {
   const [scheduleQuest, setScheduleQuest] = useState<DayQuestRef | null>(null);
   const [editQuest, setEditQuest] = useState<DayQuestRef | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DayQuestRef | null>(null);
+  const [dreamTitles, setDreamTitles] = useState<Map<number, string>>(
+    () => new Map(),
+  );
 
   const dateKey = toDateKey(selectedDate);
   const { blocks, refresh, toggleQuest } = useDayQuestBlocks(dateKey);
+  const { habits: dayHabits, setDone: setHabitDone } = useDayHabits(dateKey);
+
+  const loadDreamTitles = useCallback(async () => {
+    try {
+      const dreams = await getDreams();
+      setDreamTitles(new Map(dreams.map((dream) => [dream.id, dream.title])));
+    } catch (cause) {
+      console.error("Failed to load dream names", cause);
+      setDreamTitles(new Map());
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadDreamTitles();
+    }, [loadDreamTitles]),
+  );
+
   // Yesterday's unfinished quests, asked about once a day.
   const overdue = useOverduePrompt(refresh);
-  const { habits: dayHabits, setDone: setHabitDone } = useDayHabits(dateKey);
 
   const today = new Date();
   const headerTitle = isSameDay(selectedDate, today) ? "Today" : formatDayTitle(selectedDate);
@@ -102,31 +124,39 @@ export default function MyDayScreen() {
   // The open block's habits: its own, plus the "Anytime" ones (no block, or
   // the flexible block) that fit any moment — the same rule Home focuses by.
   const flexibleKey = blocks.find((block) => block.time === "Flexible")?.key;
-  const blockHabits = activeBlock
-    ? dayHabits.filter(
-        (view) =>
-          view.blockKey === activeBlock.key ||
-          view.blockKey === null ||
-          view.blockKey === flexibleKey,
-      )
-    : [];
+  const habitActionFor = (view: (typeof dayHabits)[number]) => ({
+    done: view.done,
+    habit: {
+      cue: dreamTitles.get(view.habit.dreamId) ?? view.habit.cue,
+      streakDays: view.streakDays,
+      visuals: habitVisualsFor(view.habit),
+    },
+    icon: habitIconForId(view.habit.id),
+    subtitle: dreamTitles.get(view.habit.dreamId) ?? "Daily habit",
+    title: view.habit.title,
+  });
+  const habitsVisibleInBlock = (blockKey: string) =>
+    dayHabits.filter(
+      (view) =>
+        view.blockKey === blockKey ||
+        view.blockKey === null ||
+        view.blockKey === flexibleKey,
+    );
+  const tabBlocks = blocks.map((block) => ({
+    ...block,
+    actions: [
+      ...block.actions,
+      ...habitsVisibleInBlock(block.key).map(habitActionFor),
+    ],
+  }));
+  const blockHabits = activeBlock ? habitsVisibleInBlock(activeBlock.key) : [];
   // Habit rows follow the block's quests, so a row index past the quests is a
   // habit — that keeps TimeBlockCard's index-based callbacks working.
   const questCount = activeBlock?.actions.length ?? 0;
   const blockActions = activeBlock
     ? [
         ...activeBlock.actions,
-        ...blockHabits.map((view) => ({
-          done: view.done,
-          habit: {
-            cue: view.habit.cue,
-            streakDays: view.streakDays,
-            visuals: habitVisualsFor(view.habit),
-          },
-          icon: habitIconForId(view.habit.id),
-          subtitle: "Daily habit",
-          title: view.habit.title,
-        })),
+        ...blockHabits.map(habitActionFor),
       ]
     : [];
   // The footer scores the whole day, not the open block: every block's quests
@@ -282,7 +312,7 @@ export default function MyDayScreen() {
 
         <TimeBlockTabs
           activeKey={activeBlock?.key ?? ""}
-          blocks={blocks}
+          blocks={tabBlocks}
           onSelect={setActiveKey}
           style={compact ? styles.tabsCompact : styles.tabs}
         />
