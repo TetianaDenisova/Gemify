@@ -602,11 +602,7 @@ export default function HomeScreen() {
                 }
                 streakDays={action.streakDays}
                 style={styles.habitCardSpacing}
-                subtitle={
-                  dreams.length > 1
-                    ? action.subtitle
-                    : action.cue || action.subtitle
-                }
+                subtitle={action.cue || action.subtitle}
                 title={action.title}
                 visuals={action.visuals}
               />

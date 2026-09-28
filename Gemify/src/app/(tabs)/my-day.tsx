@@ -124,17 +124,24 @@ export default function MyDayScreen() {
   // The open block's habits: its own, plus the "Anytime" ones (no block, or
   // the flexible block) that fit any moment — the same rule Home focuses by.
   const flexibleKey = blocks.find((block) => block.time === "Flexible")?.key;
-  const habitActionFor = (view: (typeof dayHabits)[number]) => ({
-    done: view.done,
-    habit: {
-      cue: dreamTitles.get(view.habit.dreamId) ?? view.habit.cue,
-      streakDays: view.streakDays,
-      visuals: habitVisualsFor(view.habit),
-    },
-    icon: habitIconForId(view.habit.id),
-    subtitle: dreamTitles.get(view.habit.dreamId) ?? "Daily habit",
-    title: view.habit.title,
-  });
+  const habitActionFor = (view: (typeof dayHabits)[number]) => {
+    const subtitle =
+      view.habit.cue ||
+      dreamTitles.get(view.habit.dreamId) ||
+      "Daily habit";
+
+    return {
+      done: view.done,
+      habit: {
+        cue: subtitle,
+        streakDays: view.streakDays,
+        visuals: habitVisualsFor(view.habit),
+      },
+      icon: habitIconForId(view.habit.id),
+      subtitle,
+      title: view.habit.title,
+    };
+  };
   const habitsVisibleInBlock = (blockKey: string) =>
     dayHabits.filter(
       (view) =>

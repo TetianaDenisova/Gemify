@@ -495,6 +495,7 @@ function MilestoneDetailIcon({
 }
 
 type MilestoneFieldInputProps = {
+  multiline?: boolean;
   onChangeText: (text: string) => void;
   placeholder: string;
   style?: StyleProp<TextStyle>;
@@ -503,6 +504,7 @@ type MilestoneFieldInputProps = {
 
 /** Serif value input with the thin underline used by the milestone form. */
 function MilestoneFieldInput({
+  multiline = false,
   onChangeText,
   placeholder,
   style,
@@ -517,7 +519,10 @@ function MilestoneFieldInput({
       onFocus={() => setFocused(true)}
       placeholder={placeholder}
       placeholderTextColor={colors.textPlaceholder}
+      multiline={multiline}
+      scrollEnabled={multiline}
       style={[styles.fieldInput, focused && styles.fieldInputFocused, style]}
+      textAlignVertical={multiline ? "top" : "auto"}
       value={value}
     />
   );
@@ -758,7 +763,9 @@ function MilestoneModal({
                     <View
                       style={[
                         styles.stepPhotoFrame,
-                        phone && { maxHeight: Math.round(height * 0.24) },
+                        styles.stepPhotoFrameEditor,
+                        isCompact && styles.stepPhotoFrameEditorCompact,
+                        isShort && styles.stepPhotoFrameEditorShort,
                       ]}
                     >
                       <DreamPhoto
@@ -847,6 +854,9 @@ function MilestoneModal({
                     onPress={pickStepPhoto}
                     style={({ pressed }) => [
                       styles.stepPhotoFrame,
+                      styles.stepPhotoFrameEditor,
+                      isCompact && styles.stepPhotoFrameEditorCompact,
+                      isShort && styles.stepPhotoFrameEditorShort,
                       pressed && pressedStyle,
                     ]}
                   >
@@ -916,11 +926,17 @@ function MilestoneModal({
                         </AppText>
                       ) : (
                         <MilestoneFieldInput
+                          multiline
                           onChangeText={(text) =>
                             setDraftField(field.key, text)
                           }
                           placeholder={field.placeholder}
-                          style={isCompact && styles.fieldInputCompact}
+                          style={[
+                            styles.fieldInputMultiline,
+                            isCompact && styles.fieldInputCompact,
+                            isCompact && styles.fieldInputMultilineCompact,
+                            isShort && styles.fieldInputMultilineShort,
+                          ]}
                           value={draft[field.key]}
                         />
                       )}
@@ -1800,6 +1816,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     overflow: "hidden",
   },
+  stepPhotoFrameEditor: {
+    aspectRatio: undefined,
+    height: 112,
+  },
+  stepPhotoFrameEditorCompact: {
+    height: 92,
+  },
+  stepPhotoFrameEditorShort: {
+    height: 78,
+  },
   stepPhoto: {
     height: "100%",
     width: "100%",
@@ -1932,6 +1958,10 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: 0,
   },
+  fieldInputMultiline: {
+    minHeight: 74,
+    paddingBottom: spacing.xs,
+  },
   fieldInputFocused: {
     borderBottomColor: colors.primary,
   },
@@ -1939,6 +1969,12 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
     marginTop: 2,
+  },
+  fieldInputMultilineCompact: {
+    minHeight: 62,
+  },
+  fieldInputMultilineShort: {
+    minHeight: 52,
   },
   titleInput: {
     ...typography.title,
