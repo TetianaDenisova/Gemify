@@ -1309,9 +1309,19 @@ export function GoalJourneyMapScreen() {
   const positions = useMemo<readonly JourneyMilestonePosition[]>(
     () =>
       displayMilestones.map((_, index) =>
-        getJourneyPathPosition(index, displayMilestones.length, currentConfig),
+        isEditMode
+          ? getJourneyPathPosition(
+              index + 0.5,
+              displayMilestones.length + 1,
+              currentConfig,
+            )
+          : getJourneyPathPosition(
+              index,
+              displayMilestones.length,
+              currentConfig,
+            ),
       ),
-    [currentConfig, displayMilestones],
+    [currentConfig, displayMilestones, isEditMode],
   );
   const insertSlots =
     isEditMode && !isGuidedAdd
@@ -1321,7 +1331,7 @@ export function GoalJourneyMapScreen() {
     () => getJourneyPathPosition(0, milestones.length + 1, currentConfig),
     [currentConfig, milestones.length],
   );
-  /** Map position for the plus that inserts at `slot` on the future path. */
+  /** Add circles use whole steps; edit-mode milestones sit halfway between. */
   const getInsertSlotPosition = useCallback(
     (slot: number) =>
       getJourneyPathPosition(slot, milestones.length + 1, currentConfig),
