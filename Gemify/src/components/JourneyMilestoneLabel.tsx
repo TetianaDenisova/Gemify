@@ -7,11 +7,8 @@ import { AppText } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
   fonts,
-  radius,
   shadows,
-  spacing,
   textGlow,
-  withOpacity,
 } from "@/theme/theme";
 
 export type JourneyMilestoneLabelProps = {
@@ -117,6 +114,7 @@ export const JourneyMilestoneLabel = memo(function JourneyMilestoneLabel({
           numberOfLines={phone ? undefined : 1}
           style={[
             styles.title,
+            phone && styles.titlePhone,
             completed && styles.completedText,
             isLeft && styles.textAlignRight,
           ]}
@@ -205,13 +203,9 @@ const styles = StyleSheet.create({
    * wraps one letter per line.
    */
   textBlockPhone: {
-    backgroundColor: withOpacity(colors.background, 0.62),
-    borderRadius: radius.sm,
     flexBasis: "auto",
     flexGrow: 0,
     flexShrink: 1,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: 3,
   },
   /** Left-side labels grow toward the map edge; keep text hugging the badge. */
   textAlignRight: {
@@ -232,6 +226,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: "left",
     ...textGlow(colors.primaryGlow, 4),
+  },
+  titlePhone: {
+    fontSize: 13,
+    lineHeight: 16,
   },
   subtitle: {
     marginTop: 1,

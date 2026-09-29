@@ -190,7 +190,7 @@ function HabitRow({
             isPressed && pressedStyle,
           ]}
         >
-          <DotsIcon color={colors.textSecondary} size={20} />
+          <DotsIcon color={colors.primaryBright} size={20} />
         </Pressable>
       }
     />
@@ -662,7 +662,14 @@ const styles = StyleSheet.create({
   },
   /** Tap target for the row's ⋯ menu. */
   menuButton: {
-    padding: spacing.xs,
+    alignItems: "center",
+    backgroundColor: "rgba(246, 232, 200, 0.06)",
+    borderColor: "rgba(246, 232, 200, 0.22)",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
   },
   todayBar: {
     alignItems: "center",

@@ -17,6 +17,8 @@ export type JourneyMilestoneProps = {
   milestone: JourneyMilestoneData;
   onPress: (milestone: JourneyMilestoneData) => void;
   position?: JourneyMilestonePosition;
+  visibleImageLeft?: number;
+  visibleImageRight?: number;
 };
 
 export type JourneyMilestonePosition = {
@@ -116,6 +118,8 @@ export const JourneyMilestone = memo(function JourneyMilestone({
   milestone,
   onPress,
   position,
+  visibleImageLeft = 0,
+  visibleImageRight = imageWidth,
 }: JourneyMilestoneProps) {
   const { phone } = useLayoutSize();
   const {
@@ -147,12 +151,17 @@ export const JourneyMilestone = memo(function JourneyMilestone({
   // longer titles stay untruncated when the screen is wide enough.
   const availableLabelWidth =
     labelSide === "left"
-      ? left + LABEL_RING_OVERLAP - MAP_EDGE_PADDING
-      : imageWidth - (left + groupWidth) + LABEL_RING_OVERLAP - MAP_EDGE_PADDING;
-  // A phone label wraps instead, so it takes exactly the room up to the map
-  // edge and never runs past it.
+      ? left + LABEL_RING_OVERLAP -
+        (phone ? visibleImageLeft : 0) -
+        MAP_EDGE_PADDING
+      : (phone ? visibleImageRight : imageWidth) -
+        (left + groupWidth) +
+        LABEL_RING_OVERLAP -
+        MAP_EDGE_PADDING;
+  // Phone labels wrap inside the visible viewport, even when the cover-sized
+  // map extends beyond the screen on narrow devices.
   const labelWidth = phone
-    ? availableLabelWidth
+    ? Math.max(0, availableLabelWidth)
     : Math.max(LABEL_WIDTH, availableLabelWidth);
 
   return (

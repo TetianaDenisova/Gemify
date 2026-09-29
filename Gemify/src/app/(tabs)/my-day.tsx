@@ -154,7 +154,7 @@ export default function MyDayScreen() {
     actions: [
       ...block.actions,
       ...habitsVisibleInBlock(block.key).map(habitActionFor),
-    ],
+    ].filter((action) => !action.done),
   }));
   const blockHabits = activeBlock ? habitsVisibleInBlock(activeBlock.key) : [];
   // Habit rows follow the block's quests, so a row index past the quests is a

@@ -1550,10 +1550,15 @@ export function GoalJourneyMapScreen() {
       <JourneyMapScroll
         enabled={modalState === null}
         minImageHeight={minimumMapHeight}
-        showAtmosphere
+        showAtmosphere={false}
         source={JOURNEY_MAP_SOURCE}
       >
-        {({ imageHeight, imageWidth }) => (
+        {({
+          imageHeight,
+          imageWidth,
+          visibleImageLeft,
+          visibleImageRight,
+        }) => (
           <>
             {displayMilestones.map((milestone, index) => (
               <JourneyMilestone
@@ -1566,6 +1571,8 @@ export function GoalJourneyMapScreen() {
                 milestone={milestone}
                 onPress={handleMilestonePress}
                 position={positions[index]}
+                visibleImageLeft={visibleImageLeft}
+                visibleImageRight={visibleImageRight}
               />
             ))}
 

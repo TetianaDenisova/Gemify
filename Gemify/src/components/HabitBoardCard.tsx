@@ -272,6 +272,7 @@ export function HabitBoardRow({
   // card with room to breathe — `compact`/`phone` only scale what is inside.
   return (
     <HabitCard
+      board
       done={habit.progress[activeDayIndex] === "done"}
       expanded={expanded}
       menu={trailing}

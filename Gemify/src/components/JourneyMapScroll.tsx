@@ -20,6 +20,8 @@ import { colors } from "@/theme/colors";
 export type JourneyMapLayout = {
   imageHeight: number;
   imageWidth: number;
+  visibleImageLeft: number;
+  visibleImageRight: number;
 };
 
 export type JourneyMapScrollProps = {
@@ -81,10 +83,12 @@ export function JourneyMapScroll({
   const imageWidth = assetWidth * imageScale;
   const imageHeight = assetHeight * imageScale;
   const imageLeft = (viewport.width - imageWidth) / 2;
+  const visibleImageLeft = Math.max(0, -imageLeft);
+  const visibleImageRight = Math.min(imageWidth, viewport.width - imageLeft);
   // Stable identity so memoized overlay children can bail out between renders.
   const layout: JourneyMapLayout = useMemo(
-    () => ({ imageHeight, imageWidth }),
-    [imageHeight, imageWidth],
+    () => ({ imageHeight, imageWidth, visibleImageLeft, visibleImageRight }),
+    [imageHeight, imageWidth, visibleImageLeft, visibleImageRight],
   );
   const overlay = typeof children === "function" ? children(layout) : children;
 

@@ -6,24 +6,42 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { DayActionCard, DayActionRow } from "@/components/DayActionCard";
 import type { HabitGlyph, HabitVisuals } from "@/data/habitVisuals";
 import {
   AppText,
   BookIcon,
+  Checkbox,
   DotsIcon,
   DropIcon,
   FlameIcon,
   MeditateIcon,
   ShoeIcon,
 } from "@/shared/components";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
-import { iconSizes, pressed, spacing } from "@/theme/theme";
+import {
+  fontSizes,
+  iconSizes,
+  lineHeights,
+  pressed,
+  radius,
+  spacing,
+  withOpacity,
+} from "@/theme/theme";
 
 const STREAK_ICON_SIZE = 14;
+const BOARD_CARD_BORDER = [
+  "rgba(183, 140, 255, 0.58)",
+  "rgba(245, 184, 75, 0.22)",
+  "rgba(183, 140, 255, 0.46)",
+] as const;
 
 export type HabitCardProps = {
+  /** Spacious visual used by the dedicated habits board. */
+  board?: boolean;
   /** Extra content under the main row (e.g. the expanded week and details). */
   children?: ReactNode;
   /** Today's completion. */
@@ -77,6 +95,7 @@ function HabitGlyphIcon({
  * would show its +%, an optional ⋮ menu and the round check.
  */
 export function HabitCard({
+  board = false,
   children,
   done,
   expanded,
@@ -91,6 +110,7 @@ export function HabitCard({
   titleAccessory,
   visuals,
 }: HabitCardProps) {
+  const { compact, phone } = useLayoutSize();
   const menuNode =
     menu ??
     (onOpenMenu ? (
@@ -107,6 +127,101 @@ export function HabitCard({
         <DotsIcon color={colors.textSecondary} size={iconSizes.md} />
       </Pressable>
     ) : null);
+
+  if (board) {
+    return (
+      <LinearGradient
+        colors={BOARD_CARD_BORDER}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={[styles.boardShell, compact && styles.boardShellCompact, style]}
+      >
+        <View
+          style={[
+            styles.boardCard,
+            compact && styles.boardCardCompact,
+            done && styles.boardCardDone,
+          ]}
+        >
+          <View style={[styles.boardRow, compact && styles.boardRowCompact]}>
+            <Pressable
+              accessibilityLabel={`Details for the habit ${title}`}
+              accessibilityRole="button"
+              accessibilityState={
+                expanded === undefined ? undefined : { expanded }
+              }
+              disabled={!onPress}
+              onPress={onPress}
+              style={({ pressed: isPressed }) => [
+                styles.boardBody,
+                isPressed && pressed,
+              ]}
+            >
+              <View
+                style={[
+                  styles.boardIcon,
+                  compact && styles.boardIconCompact,
+                  { backgroundColor: withOpacity(visuals.accent, 0.14) },
+                ]}
+              >
+                <HabitGlyphIcon
+                  color={visuals.accent}
+                  glyph={visuals.glyph}
+                  size={compact ? 30 : 42}
+                />
+              </View>
+
+              <View style={styles.boardCopy}>
+                <View style={styles.boardTitleRow}>
+                  <AppText
+                    color={colors.textPrimary}
+                    numberOfLines={2}
+                    style={[
+                      styles.boardTitle,
+                      compact && styles.boardTitleCompact,
+                    ]}
+                    variant="pill"
+                  >
+                    {title}
+                  </AppText>
+                  {titleAccessory}
+                </View>
+                {subtitle ? (
+                  <AppText
+                    color={colors.textMuted}
+                    numberOfLines={1}
+                    style={styles.boardSubtitle}
+                    variant="subtitle"
+                  >
+                    {subtitle}
+                  </AppText>
+                ) : null}
+                <View style={styles.boardStreak}>
+                  <FlameIcon color={colors.primary} size={18} />
+                  <AppText color={colors.primary} variant="labelStrong">
+                    {formatStreakDays(streakDays)}
+                  </AppText>
+                </View>
+              </View>
+            </Pressable>
+
+            <Checkbox
+              accessibilityLabel={
+                done ? `Mark ${title} not done today` : `Mark ${title} done today`
+              }
+              appearance="glow"
+              checked={done}
+              onPress={onToggleDone}
+              shape="circle"
+              size={phone ? 34 : compact ? 38 : 42}
+            />
+            {menuNode}
+          </View>
+          {children}
+        </View>
+      </LinearGradient>
+    );
+  }
 
   return (
     <DayActionCard style={style}>
@@ -142,6 +257,86 @@ export function HabitCard({
 }
 
 const styles = StyleSheet.create({
+  boardCard: {
+    backgroundColor: "rgba(3, 8, 20, 0.94)",
+    borderColor: "rgba(183, 140, 255, 0.2)",
+    borderRadius: radius.card - 2,
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingHorizontal: 18,
+  },
+  boardCardCompact: {
+    paddingHorizontal: 14,
+  },
+  boardCardDone: {
+    backgroundColor: "rgba(4, 12, 22, 0.96)",
+  },
+  boardBody: {
+    alignItems: "flex-start",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    minWidth: 0,
+  },
+  boardCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 1,
+  },
+  boardIcon: {
+    alignItems: "center",
+    borderRadius: radius.md,
+    height: 68,
+    justifyContent: "center",
+    width: 68,
+  },
+  boardIconCompact: {
+    borderRadius: radius.sm,
+    height: 54,
+    width: 54,
+  },
+  boardRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 120,
+    paddingVertical: 18,
+  },
+  boardRowCompact: {
+    gap: 12,
+    minHeight: 96,
+    paddingVertical: 14,
+  },
+  boardShell: {
+    borderRadius: radius.card,
+    padding: 1.4,
+  },
+  boardShellCompact: {
+    borderRadius: radius.card - 2,
+  },
+  boardStreak: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginTop: 12,
+  },
+  boardSubtitle: {
+    marginTop: 4,
+  },
+  boardTitle: {
+    flexShrink: 1,
+    fontSize: fontSizes.xl,
+    lineHeight: lineHeights.xl,
+  },
+  boardTitleCompact: {
+    fontSize: fontSizes.lg,
+    lineHeight: lineHeights.lg,
+  },
+  boardTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
   menuButton: {
     alignItems: "center",
     height: 44,
