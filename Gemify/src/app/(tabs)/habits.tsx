@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -7,7 +7,6 @@ import {
   toBoardHabit,
   type BoardHabit,
 } from "@/components/HabitBoardCard";
-import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import {
   deleteHabit,
   getCompletedHabits,
@@ -26,7 +25,6 @@ import {
   ConfirmDialog,
   AppText,
   CheckIcon,
-  DotsIcon,
   DreamIcon,
   HistoryIcon,
   IconButton,
@@ -42,7 +40,6 @@ import { colors } from "@/theme/colors";
 import {
   fontSizes,
   lineHeights,
-  pressed as pressedStyle,
   radius,
   spacing,
   textGlow,
@@ -152,8 +149,10 @@ function HabitRow({
   expanded,
   habit,
   onDayPress,
+  onDelete,
   onDetailToggle,
-  onOpenMenu,
+  onEdit,
+  onFinish,
   onPress,
   phone,
 }: {
@@ -163,8 +162,10 @@ function HabitRow({
   expanded: boolean;
   habit: Habit;
   onDayPress: (dayIndex: number) => void;
+  onDelete: () => void;
   onDetailToggle: (section: HabitDetailSection) => void;
-  onOpenMenu: () => void;
+  onEdit: () => void;
+  onFinish: () => void;
   onPress: () => void;
   phone: boolean;
 }) {
@@ -179,19 +180,36 @@ function HabitRow({
       onDetailToggle={onDetailToggle}
       onPress={onPress}
       phone={phone}
-      trailing={
-        <Pressable
-          accessibilityLabel={`Options for the habit ${habit.title}`}
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onOpenMenu}
-          style={({ pressed: isPressed }) => [
-            styles.menuButton,
-            isPressed && pressedStyle,
-          ]}
-        >
-          <DotsIcon color={colors.primaryBright} size={20} />
-        </Pressable>
+      footer={
+        <View style={[styles.habitActions, phone && styles.habitActionsPhone]}>
+          <AppButton
+            density="compact"
+            icon={<CheckIcon color={colors.textOnPrimary} size={18} />}
+            iconPosition="before"
+            label="Finish"
+            onPress={onFinish}
+            style={styles.habitAction}
+          />
+          <AppButton
+            density="compact"
+            icon={<PencilIcon size={18} strokeWidth={1.7} variant="detailed" />}
+            iconPosition="before"
+            label="Edit"
+            onPress={onEdit}
+            style={styles.habitAction}
+            variant="secondary"
+          />
+          <AppButton
+            density="compact"
+            icon={<TrashIcon color={colors.danger} size={18} />}
+            iconPosition="before"
+            label="Delete"
+            onPress={onDelete}
+            style={styles.habitAction}
+            textStyle={styles.deleteActionLabel}
+            variant="ghost"
+          />
+        </View>
       }
     />
   );
@@ -244,7 +262,6 @@ export default function HabitsScreen() {
   const [completedHabits, setCompletedHabits] = useState<
     { habit: DbHabit; doneCount: number }[]
   >([]);
-  const [menuHabit, setMenuHabit] = useState<Habit | null>(null);
   const [dreams, setDreams] = useState<Dream[]>([]);
   const { habits: habitViews, refresh, setCompletion, weekDates } =
     useHabitWeek();
@@ -353,7 +370,6 @@ export default function HabitsScreen() {
   }
 
   function handleEdit(habitId: number) {
-    setMenuHabit(null);
     router.push({
       pathname: "/create-habit",
       params: { habitId: String(habitId) },
@@ -363,7 +379,6 @@ export default function HabitsScreen() {
   // Completing removes the habit from the boards; it waits in the
   // Completed Habits modal, restorable at any time.
   async function handleCompleteHabit(habitId: number) {
-    setMenuHabit(null);
     try {
       await updateHabit(habitId, { isCompleted: true });
       await refresh();
@@ -449,8 +464,12 @@ export default function HabitsScreen() {
                 habit={habit}
                 key={habit.id}
                 onDayPress={(dayIndex) => handleDayPress(habit, dayIndex)}
+                onDelete={() =>
+                  setDeleteTarget({ id: habit.id, title: habit.title })
+                }
                 onDetailToggle={(section) => handleDetailToggle(habit, section)}
-                onOpenMenu={() => setMenuHabit(habit)}
+                onEdit={() => handleEdit(habit.id)}
+                onFinish={() => handleCompleteHabit(habit.id)}
                 onPress={() => handleHabitPress(habit.id)}
               />
             ))}
@@ -465,39 +484,6 @@ export default function HabitsScreen() {
           </AppText>
         </View>
       ) : null}
-
-      {/* Per-habit ⋯ menu: Complete, Edit, Delete. */}
-      <ActionSheet
-        onClose={() => setMenuHabit(null)}
-        title={menuHabit?.title}
-        visible={menuHabit !== null}
-      >
-        <SheetActionRow
-          icon={<CheckIcon color={colors.primary} size={22} />}
-          label="Finish habit"
-          onPress={() => {
-            if (menuHabit) handleCompleteHabit(menuHabit.id);
-          }}
-        />
-        <SheetActionRow
-          icon={<PencilIcon size={22} strokeWidth={1.7} variant="detailed" />}
-          label="Edit"
-          onPress={() => {
-            if (menuHabit) handleEdit(menuHabit.id);
-          }}
-        />
-        <SheetActionRow
-          danger
-          icon={<TrashIcon size={22} />}
-          label="Delete"
-          onPress={() => {
-            if (menuHabit) {
-              setDeleteTarget({ id: menuHabit.id, title: menuHabit.title });
-            }
-            setMenuHabit(null);
-          }}
-        />
-      </ActionSheet>
 
       <AppModal
         onClose={() => setCompletedOpen(false)}
@@ -579,6 +565,9 @@ export default function HabitsScreen() {
 }
 
 const styles = StyleSheet.create({
+  deleteActionLabel: {
+    color: colors.danger,
+  },
   group: {
     borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
@@ -622,6 +611,23 @@ const styles = StyleSheet.create({
   groups: {
     marginTop: spacing.md,
   },
+  habitAction: {
+    flex: 1,
+  },
+  habitActions: {
+    alignItems: "center",
+    borderTopColor: colors.borderSoft,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: 12,
+    paddingTop: spacing.md,
+  },
+  habitActionsPhone: {
+    alignItems: "stretch",
+    flexDirection: "column",
+    paddingHorizontal: 2,
+  },
   emptyState: {
     paddingVertical: spacing.xl,
   },
@@ -659,17 +665,6 @@ const styles = StyleSheet.create({
   },
   manageMetaDream: {
     flexShrink: 1,
-  },
-  /** Tap target for the row's ⋯ menu. */
-  menuButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(246, 232, 200, 0.06)",
-    borderColor: "rgba(246, 232, 200, 0.22)",
-    borderRadius: radius.md,
-    borderWidth: 1,
-    height: 52,
-    justifyContent: "center",
-    width: 52,
   },
   todayBar: {
     alignItems: "center",
