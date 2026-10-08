@@ -153,7 +153,9 @@ export default function MyDayScreen() {
     ...block,
     actions: [
       ...block.actions,
-      ...habitsVisibleInBlock(block.key).map(habitActionFor),
+      ...dayHabits
+        .filter((view) => (view.blockKey ?? flexibleKey) === block.key)
+        .map(habitActionFor),
     ].filter((action) => !action.done),
   }));
   const blockHabits = activeBlock ? habitsVisibleInBlock(activeBlock.key) : [];

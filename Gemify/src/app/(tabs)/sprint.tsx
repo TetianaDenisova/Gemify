@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -20,6 +20,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
+import { DayActionCard, DayActionList } from "@/components/DayActionCard";
+import { QuestActionRow } from "@/components/QuestActionRow";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { OverdueQuestsModal } from "@/components/OverdueQuestsModal";
 import {
@@ -29,7 +31,6 @@ import {
   TextPromptModal,
 } from "@/components/QuestActions";
 import { QuestPickerSheet } from "@/components/QuestPickerSheet";
-import { ActionIconArt } from "@/components/TimeBlockCard";
 import { WeekAscentCard } from "@/components/WeekAscentCard";
 import {
   deleteQuest,
@@ -42,20 +43,14 @@ import {
   type QuestWithBreadcrumb,
   type WeekAscentEntry,
 } from "@/db";
-import { questIconForId } from "@/hooks/useDayQuestBlocks";
 import {
   AppButton,
   ConfirmDialog,
   AppText,
   CalendarIcon,
-  Card,
-  Checkbox,
   ChevronIcon,
-  ClockIcon,
   DotsIcon,
-  DreamIcon,
   IconButton,
-  MilestoneIcon,
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
@@ -156,125 +151,33 @@ function DayCell({
   );
 }
 
-function BreadcrumbPart({
-  color,
-  icon,
-  label,
-}: {
-  color: string;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <View style={styles.breadcrumbPart}>
-      {icon}
-      <AppText
-        color={color}
-        numberOfLines={1}
-        style={styles.breadcrumbLabel}
-        variant="subtitle"
-      >
-        {label}
-      </AppText>
-    </View>
-  );
-}
-
-function QuestBreadcrumb({
-  phone,
-  quest,
-}: {
-  phone: boolean;
-  quest: QuestWithBreadcrumb;
-}) {
-  return (
-    <View style={styles.breadcrumb}>
-      <BreadcrumbPart
-        color={colors.textSecondary}
-        icon={<DreamIcon size={16} />}
-        label={quest.dreamTitle}
-      />
-      {/* Same rule as Home and My Day: the dream is the context that helps. */}
-      {phone ? null : (
-        <>
-          <ChevronIcon color={colors.textMuted} direction="right" size={13} />
-          <BreadcrumbPart
-            color={colors.textSecondary}
-            icon={<MilestoneIcon size={16} />}
-            label={quest.milestoneTitle}
-          />
-        </>
-      )}
-    </View>
-  );
-}
-
-/**
- * A weekly-plan quest item styled like a My Day row: dream-magic icon ·
- * title with a gold time label and the dream › milestone breadcrumb · circle
- * done-toggle. Tapping the row body opens the quest options sheet.
- *
- * Long-pressing anywhere on the card lifts it into a drag; dropping it on a
- * week-strip day cell schedules the quest for that day.
- */
+/** The shared quest row, wrapped in Sprint's existing drag gesture. */
 function QuestItemCard({
   dragGesture,
   dragging,
   onOpenMenu,
   onToggleDone,
-  phone,
   quest,
-  showTime = false,
 }: {
   dragGesture: PanGesture;
   dragging: boolean;
   onOpenMenu: () => void;
   onToggleDone: () => void;
-  phone: boolean;
   quest: QuestWithBreadcrumb;
-  showTime?: boolean;
 }) {
   return (
     <GestureDetector gesture={dragGesture}>
-      <Card style={[styles.questCard, dragging && styles.questCardDragging]}>
-        <View style={styles.questCardRow}>
-          <Pressable
-            accessibilityLabel={`Options for the quest ${quest.title}`}
-            accessibilityRole="button"
-            onPress={onOpenMenu}
-            style={({ pressed: isPressed }) => [
-              styles.questCardBody,
-              isPressed && pressed,
-            ]}
-          >
-            <View style={styles.questIcon}>
-              <ActionIconArt
-                icon={questIconForId(quest.id)}
-                size={phone ? 30 : 36}
-              />
-            </View>
-            <View style={styles.questCardCopy}>
-              <AppText numberOfLines={2} variant="pill">{quest.title}</AppText>
-              <QuestBreadcrumb phone={phone} quest={quest} />
-            </View>
-          </Pressable>
-          {showTime ? (
-            <View style={styles.questMeta}>
-              <ClockIcon color={colors.primary} size={18} />
-              <AppText color={colors.primary} variant="labelStrong">
-                {quest.scheduledTime ?? "Anytime"}
-              </AppText>
-            </View>
-          ) : null}
-          <Checkbox
-            accessibilityLabel="Mark quest done"
-            checked={quest.isDone}
-            onPress={onToggleDone}
-            shape="circle"
-            size={phone ? 32 : 38}
-          />
-        </View>
-      </Card>
+      <DayActionCard done={quest.isDone} style={dragging && styles.questCardDragging}>
+        <QuestActionRow
+          done={quest.isDone}
+          dreamTitle={`${quest.dreamTitle} · ${quest.scheduledTime ?? "Anytime"}`}
+          last
+          onPress={onOpenMenu}
+          onToggle={onToggleDone}
+          progressPercent={quest.progressPercent}
+          title={quest.title}
+        />
+      </DayActionCard>
     </GestureDetector>
   );
 }
@@ -283,13 +186,11 @@ function QuestItemCard({
 function DragGhost({
   dragX,
   dragY,
-  phone,
   quest,
   width,
 }: {
   dragX: SharedValue<number>;
   dragY: SharedValue<number>;
-  phone: boolean;
   quest: QuestWithBreadcrumb;
   width: number;
 }) {
@@ -302,10 +203,16 @@ function DragGhost({
 
   return (
     <Animated.View style={[styles.dragGhost, { width }, followStyle]}>
-      <Card style={styles.dragGhostCard} variant="strong">
-        <AppText numberOfLines={2} variant="button">{quest.title}</AppText>
-        <QuestBreadcrumb phone={phone} quest={quest} />
-      </Card>
+      <DayActionCard done={quest.isDone} style={styles.dragGhostCard}>
+        <QuestActionRow
+          done={quest.isDone}
+          dreamTitle={quest.dreamTitle}
+          last
+          onToggle={() => {}}
+          progressPercent={quest.progressPercent}
+          title={quest.title}
+        />
+      </DayActionCard>
     </Animated.View>
   );
 }
@@ -317,6 +224,10 @@ export default function SprintScreen() {
   const [ascent, setAscent] = useState<WeekAscentEntry[]>([]);
   const [ascentOpen, setAscentOpen] = useState(false);
   const [scheduled, setScheduled] = useState<QuestWithBreadcrumb[]>([]);
+  const orderedQuests = useMemo(
+    () => [...scheduled].sort((a, b) => Number(a.isDone) - Number(b.isDone)),
+    [scheduled],
+  );
   const [scheduleTarget, setScheduleTarget] =
     useState<QuestWithBreadcrumb | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -747,18 +658,18 @@ export default function SprintScreen() {
 
         {scheduled.length > 0 ? (
           <>
-            {scheduled.map((quest) => (
-              <QuestItemCard
-                dragGesture={dragGestures.get(quest.id)!}
-                dragging={draggingQuest?.id === quest.id}
-                key={quest.id}
-                onOpenMenu={() => setMenuQuest(quest)}
-                onToggleDone={() => handleToggleDone(quest)}
-                phone={phone}
-                quest={quest}
-                showTime
-              />
-            ))}
+            <DayActionList>
+              {orderedQuests.map((quest) => (
+                <QuestItemCard
+                  dragGesture={dragGestures.get(quest.id)!}
+                  dragging={draggingQuest?.id === quest.id}
+                  key={quest.id}
+                  onOpenMenu={() => setMenuQuest(quest)}
+                  onToggleDone={() => handleToggleDone(quest)}
+                  quest={quest}
+                />
+              ))}
+            </DayActionList>
             {isPastDay ? null : (
               <AppButton
                 icon={<PlusIcon color={colors.primary} size={iconSizes.md} />}
@@ -941,7 +852,6 @@ export default function SprintScreen() {
         <DragGhost
           dragX={dragX}
           dragY={dragY}
-          phone={phone}
           quest={draggingQuest}
           width={ghostWidth}
         />
@@ -960,22 +870,6 @@ const styles = StyleSheet.create({
   /** 220 pt does not fit beside anything on a 370 pt row. */
   buttonPhone: {
     flexShrink: 1,
-    minWidth: 0,
-  },
-  breadcrumb: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  breadcrumbLabel: {
-    flexShrink: 1,
-  },
-  breadcrumbPart: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexShrink: 1,
-    gap: spacing.xs,
     minWidth: 0,
   },
   dayCell: {
@@ -1089,39 +983,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingHorizontal: 0,
   },
-  questCard: {
-    borderColor: colors.accentVioletGlow,
-    marginBottom: spacing.md,
-  },
-  questCardBody: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: spacing.lg,
-    minWidth: 0,
-  },
-  questCardCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
   questCardDragging: {
     opacity: 0.35,
-  },
-  questCardRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  questIcon: {
-    alignItems: "center",
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  questMeta: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs + 2,
   },
   screenWrap: {
     flex: 1,

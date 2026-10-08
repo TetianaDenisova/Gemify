@@ -4,14 +4,10 @@ import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import {
-  DayActionBreadcrumb,
-  DayActionCard,
-  DayActionRow,
-} from "@/components/DayActionCard";
-import { HabitCard } from "@/components/HabitCard";
+import { DayActionCard, DayActionList } from "@/components/DayActionCard";
+import { HabitActionRow } from "@/components/HabitActionRow";
+import { QuestActionRow } from "@/components/QuestActionRow";
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
-import { ActionIconArt } from "@/components/TimeBlockCard";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import { habitVisualsFor } from "@/data/habitVisuals";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
@@ -28,20 +24,18 @@ import {
   ArrowRightIcon,
   Badge,
   Card,
-  Checkbox,
   ChevronIcon,
   DreamIcon,
   IconButton,
   MilestoneIcon,
   PlusIcon,
-  RepeatIcon,
   ScreenScaffold,
   SectionHeader,
   SparkIcon,
   SyncIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, shadowStyle, spacing } from "@/theme/theme";
+import { radius, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
 
 // Same enchanted-forest path art as the Milestone Quests hero.
@@ -340,12 +334,7 @@ export default function HomeScreen() {
   // blocks are loaded for `today`, so tomorrow's plan never enters this list.
   const showLater = laterBlocks.length > 0;
 
-  // On a phone, every focus action gets its own card in one shared design —
-  // quests as the My Day quest card (+%), habits as the habit card (🔥 tag).
-  // Wider layouts keep them as rows of a single focus card.
   const focusActions = currentBlock?.actions ?? [];
-  const focusCardActions = phone ? [] : focusActions;
-  const focusPhoneCards = phone ? focusActions : [];
 
   return (
     <ScreenScaffold tabClearance topInset>
@@ -429,186 +418,42 @@ export default function HomeScreen() {
       ) : null}
 
       {hasFocus && currentBlock ? (
-        <View style={styles.currentBlock}>
-          {focusCardActions.length > 0 ? (
-          <Card padded={false} style={styles.focusCard}>
-            {focusCardActions.map((action, index) => (
-              <View
-                key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
-                style={[
-                  styles.focusRow,
-                  phone && styles.focusRowPhone,
-                  index > 0 && styles.focusRowDivider,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.focusMedallion,
-                    phone && styles.focusMedallionPhone,
-                  ]}
-                >
-                  {"questId" in action ? (
-                    <SparkIcon color={colors.primary} size={phone ? 18 : 22} />
-                  ) : (
-                    <RepeatIcon color={colors.primary} size={phone ? 18 : 22} />
-                  )}
-                </View>
-                <View style={styles.focusCopy}>
-                  <View style={styles.focusTitleRow}>
-                    <AppText
-                      // The phone row has room to show the whole title.
-                      numberOfLines={phone ? undefined : 2}
-                      style={styles.focusTitleText}
-                      variant="pill"
-                    >
-                      {action.title}
-                    </AppText>
-                    {"questId" in action ? null : (
-                      <Badge
-                        label="HABIT"
-                        style={styles.habitBadge}
-                        textStyle={styles.habitBadgeText}
-                      />
-                    )}
-                  </View>
-                  {"questId" in action ? (
-                    <View style={styles.focusBreadcrumb}>
-                      <DreamIcon size={16} />
-                      <AppText
-                        color={phone ? colors.textSecondary : LATER_COLORS.label}
-                        numberOfLines={1}
-                        style={styles.laterCrumbLabel}
-                        variant="subtitle"
-                      >
-                        {action.dreamTitle}
-                      </AppText>
-                      {/* The milestone is the subject of the screen this row
-                          opens into, so a phone keeps only the dream. */}
-                      {phone ? null : (
-                        <>
-                          <ChevronIcon
-                            color={colors.textMuted}
-                            direction="right"
-                            size={13}
-                          />
-                          <AppText
-                            color={colors.primarySoft}
-                            numberOfLines={1}
-                            style={styles.laterCrumbLabel}
-                            variant="subtitle"
-                          >
-                            {action.milestoneTitle}
-                          </AppText>
-                        </>
-                      )}
-                    </View>
-                  ) : action.subtitle ? (
-                    <View style={styles.focusBreadcrumb}>
-                      <DreamIcon size={16} />
-                      <AppText
-                        color={LATER_COLORS.label}
-                        numberOfLines={1}
-                        style={styles.laterCrumbLabel}
-                        variant="subtitle"
-                      >
-                        {action.subtitle}
-                      </AppText>
-                    </View>
-                  ) : null}
-                </View>
-                {"questId" in action ? (
-                  <AppText
-                    color={colors.primary}
-                    variant={phone ? "pill" : "cardTitle"}
-                  >
-                    +{Math.max(1, Math.round(action.progressPercent))}%
-                  </AppText>
-                ) : (
-                  // Completing a habit adds one day to its streak.
-                  <AppText
-                    color={colors.primary}
-                    variant={phone ? "pill" : "cardTitle"}
-                  >
-                    +1 day
-                  </AppText>
-                )}
-                <Checkbox
-                  accessibilityLabel={`Mark ${action.title} done`}
-                  checked={action.done}
-                  onPress={() => {
-                    if ("questId" in action) {
-                      // The dream's card percentage reflects the change the
-                      // moment the write lands — no refocus needed.
-                      toggleQuest(action.questId, !action.done).then(
-                        refreshDreams,
-                      );
-                    } else {
-                      setCompletion(
-                        action.habitId,
-                        today,
-                        action.done ? null : "done",
-                      );
-                    }
-                  }}
-                  shape="circle"
-                  size={phone ? 34 : 40}
-                />
-              </View>
-            ))}
-          </Card>
-          ) : null}
-          {focusPhoneCards.map((action) =>
-            "questId" in action ? (
-              <DayActionCard
-                key={`q${action.questId}`}
-                style={styles.habitCardSpacing}
-              >
-                <DayActionRow
-                  checkLabel={`Mark ${action.title} done`}
+        <DayActionList style={styles.currentBlock}>
+          {focusActions.map((action) => (
+            <DayActionCard
+              done={action.done}
+              key={"questId" in action ? `q${action.questId}` : `h${action.habitId}`}
+            >
+              {"questId" in action ? (
+                <QuestActionRow
                   done={action.done}
-                  icon={(size) => <ActionIconArt icon={action.icon} size={size} />}
+                  dreamTitle={action.dreamTitle}
                   last
                   onToggle={() => {
-                    // The dream's card percentage reflects the change the
-                    // moment the write lands — no refocus needed.
-                    toggleQuest(action.questId, !action.done).then(
-                      refreshDreams,
-                    );
+                    toggleQuest(action.questId, !action.done).then(refreshDreams);
                   }}
-                  subtitle={
-                    <DayActionBreadcrumb
-                      dreamTitle={action.dreamTitle}
-                      milestoneTitle={action.milestoneTitle}
-                    />
-                  }
+                  progressPercent={action.progressPercent}
                   title={action.title}
-                  trailing={
-                    <AppText color={colors.primary} variant="pill">
-                      +{Math.max(1, Math.round(action.progressPercent))}%
-                    </AppText>
-                  }
                 />
-              </DayActionCard>
-            ) : (
-              <HabitCard
-                done={action.done}
-                key={`h${action.habitId}`}
-                onToggleDone={() =>
-                  setCompletion(
-                    action.habitId,
-                    today,
-                    action.done ? null : "done",
-                  )
-                }
-                streakDays={action.streakDays}
-                style={styles.habitCardSpacing}
-                subtitle={action.cue || action.subtitle}
-                title={action.title}
-                visuals={action.visuals}
-              />
-            ),
-          )}
-        </View>
+              ) : (
+                <HabitActionRow
+                  done={action.done}
+                  last
+                  onToggle={() =>
+                    setCompletion(
+                      action.habitId,
+                      today,
+                      action.done ? null : "done",
+                    )
+                  }
+                  streakDays={action.streakDays}
+                  subtitle={action.cue || action.subtitle}
+                  title={action.title}
+                />
+              )}
+            </DayActionCard>
+          ))}
+        </DayActionList>
       ) : null}
 
       {showLater ? (
@@ -751,68 +596,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   currentBlock: {
     marginBottom: spacing.md,
-  },
-  focusBreadcrumb: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs + 2,
-    marginTop: spacing.xs + 2,
-  },
-  /** One card holds every focus action, rows split by faint dividers. */
-  focusCard: {
-    marginBottom: spacing.md,
-  },
-  focusCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  /** Dark gold-ringed disc with the spark, standing in for the quest icon. */
-  focusMedallion: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceDeep,
-    borderColor: "rgba(245, 184, 75, 0.55)",
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-    ...shadowStyle({
-      color: colors.primary,
-      elevation: 5,
-      opacity: 0.3,
-      radius: 9,
-    }),
-  },
-  focusMedallionPhone: {
-    height: 36,
-    width: 36,
-  },
-  focusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  /** Tighter phone row so the title column gets the width. */
-  focusRowPhone: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  habitCardSpacing: {
-    marginBottom: spacing.sm,
-  },
-  focusRowDivider: {
-    borderTopColor: colors.borderFaint,
-    borderTopWidth: 1,
-  },
-  focusTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  focusTitleText: {
-    flexShrink: 1,
   },
   /** Compact outlined HABIT tag beside the habit's name. */
   habitBadge: {

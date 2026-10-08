@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import type { Goal, ThemeColor } from "@/data/homeTypes";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
-import { goalIcons } from "@/data/icons";
 import { goalImages } from "@/data/images";
 import { AppText, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
@@ -121,14 +120,6 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       />
 
       <View style={[styles.inner, phone && styles.innerPhone]}>
-        <View style={[styles.iconWrapper, phone && styles.iconWrapperPhone]}>
-          <Image
-            source={goalIcons[goal.iconKey]}
-            style={phone ? styles.iconImagePhone : styles.iconImage}
-            contentFit="contain"
-          />
-        </View>
-
         <View style={styles.titleBlock}>
           <AppText numberOfLines={2} variant="pill">
             {goal.title}
@@ -212,30 +203,6 @@ const styles = StyleSheet.create({
 
   innerPhone: {
     paddingVertical: 10,
-  },
-
-  iconWrapper: {
-    alignItems: "center",
-    height: 64,
-    justifyContent: "center",
-    marginRight: 6,
-    width: 64,
-  },
-
-  iconWrapperPhone: {
-    height: 48,
-    marginRight: 2,
-    width: 48,
-  },
-
-  iconImage: {
-    height: 42,
-    width: 42,
-  },
-
-  iconImagePhone: {
-    height: 32,
-    width: 32,
   },
 
   titleBlock: {

@@ -7,15 +7,12 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
-import {
-  DayActionBreadcrumb,
-  DayActionCard,
-  DayActionRow,
-} from "@/components/DayActionCard";
-import { HabitCard } from "@/components/HabitCard";
+import { DayActionCard, DayActionList } from "@/components/DayActionCard";
+import { HabitActionRow } from "@/components/HabitActionRow";
+import { QuestActionRow } from "@/components/QuestActionRow";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import type { ActionIcon, DayAction, TimeBlock } from "@/dto/timeBlocks";
-import { AppText, Card, SparkIcon } from "@/shared/components";
+import { AppText, SparkIcon } from "@/shared/components";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { fontSizes, lineHeights, spacing } from "@/theme/theme";
@@ -208,28 +205,29 @@ function ActionRow({
   onPress?: () => void;
   onToggle: () => void;
 }) {
+  if (action.habit) {
+    return (
+      <HabitActionRow
+        done={action.done}
+        last={last}
+        onPress={onPress}
+        onToggle={onToggle}
+        streakDays={action.habit.streakDays}
+        subtitle={action.habit.cue || action.subtitle}
+        title={action.title}
+      />
+    );
+  }
+
   return (
-    <DayActionRow
-      checkLabel={
-        action.done
-          ? `Mark ${action.title} incomplete`
-          : `Mark ${action.title} complete`
-      }
+    <QuestActionRow
       done={action.done}
-      icon={(size) => <ActionIconArt icon={action.icon} size={size} />}
+      dreamTitle={action.dreamTitle}
       last={last}
       onPress={onPress}
       onToggle={onToggle}
-      subtitle={
-        action.dreamTitle && action.milestoneTitle ? (
-          <DayActionBreadcrumb
-            dreamTitle={action.dreamTitle}
-            milestoneTitle={action.milestoneTitle}
-          />
-        ) : (
-          action.subtitle
-        )
-      }
+      progressPercent={action.progressPercent ?? 0}
+      subtitle={action.subtitle}
       title={action.title}
     />
   );
@@ -260,20 +258,18 @@ export function TimeBlockCard({
   showIntro = true,
   style,
 }: TimeBlockCardProps) {
-  const { compact, phone } = useLayoutSize();
+  const { compact } = useLayoutSize();
   const done = block.actions.filter((action) => action.done).length;
-  // On a phone, checked-off rows sink below the open ones. Each row keeps its
+  // Checked-off rows sink below the open ones. Each row keeps its
   // original index, so the index-based callbacks still hit the right action.
   const indexedActions = block.actions.map((action, index) => ({
     action,
     index,
   }));
-  const orderedActions = phone
-    ? [
-        ...indexedActions.filter((entry) => !entry.action.done),
-        ...indexedActions.filter((entry) => entry.action.done),
-      ]
-    : indexedActions;
+  const orderedActions = [
+    ...indexedActions.filter((entry) => !entry.action.done),
+    ...indexedActions.filter((entry) => entry.action.done),
+  ];
 
   return (
     <View style={style}>
@@ -312,39 +308,25 @@ export function TimeBlockCard({
       {block.actions.length === 0 && emptySlot ? (
         emptySlot
       ) : separated ? (
-        <View style={[styles.separatedList, compact && styles.separatedListCompact]}>
-          {orderedActions.map(({ action, index }) =>
-            // A phone shows habits as the same habit card as every screen.
-            phone && action.habit ? (
-              <HabitCard
-                done={action.done}
-                key={action.title}
-                onToggleDone={() => onToggleAction(index)}
-                streakDays={action.habit.streakDays}
-                subtitle={action.habit.cue}
-                title={action.title}
-                visuals={action.habit.visuals}
+        <DayActionList style={[styles.separatedList, compact && styles.separatedListCompact]}>
+          {orderedActions.map(({ action, index }) => (
+            <DayActionCard done={action.done} key={index}>
+              <ActionRow
+                action={action}
+                last
+                onPress={onPressAction ? () => onPressAction(index) : undefined}
+                onToggle={() => onToggleAction(index)}
               />
-            ) : (
-              <DayActionCard key={action.title}>
-                <ActionRow
-                  action={action}
-                  last
-                  onPress={onPressAction ? () => onPressAction(index) : undefined}
-                  onToggle={() => onToggleAction(index)}
-                />
-              </DayActionCard>
-            ),
-          )}
-        </View>
+            </DayActionCard>
+          ))}
+        </DayActionList>
       ) : (
-      <Card
+      <DayActionCard
         style={[
           styles.card,
           compact && styles.cardCompact,
           !showHeader && styles.cardNoHeader,
         ]}
-        variant="default"
       >
         {showIntro ? (
           <>
@@ -378,14 +360,14 @@ export function TimeBlockCard({
           {orderedActions.map(({ action, index }, position) => (
             <ActionRow
               action={action}
-              key={action.title}
+              key={index}
               last={position === orderedActions.length - 1}
               onPress={onPressAction ? () => onPressAction(index) : undefined}
               onToggle={() => onToggleAction(index)}
             />
           ))}
         </View>
-      </Card>
+      </DayActionCard>
       )}
     </View>
   );
@@ -402,7 +384,6 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   card: {
-    borderColor: colors.accentVioletGlow,
     marginTop: 18,
   },
   cardCompact: {
@@ -482,11 +463,9 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.sm,
   },
   separatedList: {
-    gap: spacing.md,
     marginTop: 18,
   },
   separatedListCompact: {
-    gap: spacing.sm,
     marginTop: 14,
   },
 });

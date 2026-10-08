@@ -24,7 +24,7 @@ export type BlockIcon = TimeBlockIcon;
 /** View-model for a single action rendered inside a time block. */
 export type DayAction = {
   done: boolean;
-  /** Set on habit rows: phones render them as the shared habit card. */
+  /** Set on habit rows to render the shared streak and cue layout. */
   habit?: {
     cue: string | null;
     streakDays: number;
@@ -34,6 +34,7 @@ export type DayAction = {
   dreamTitle?: string;
   icon: ActionIcon;
   milestoneTitle?: string;
+  progressPercent?: number;
   subtitle: string;
   title: string;
 };

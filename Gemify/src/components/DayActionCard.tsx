@@ -8,49 +8,32 @@ import {
 } from "react-native";
 
 import { useLayoutSize } from "@/hooks/useLayoutSize";
-import {
-  AppText,
-  Card,
-  Checkbox,
-  ChevronIcon,
-  DreamIcon,
-  MilestoneIcon,
-} from "@/shared/components";
+import { AppText, Card, Checkbox } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { fontSizes, lineHeights, pressed, spacing } from "@/theme/theme";
 
 export type DayActionRowProps = {
   checkLabel: string;
   done: boolean;
-  /** Set when pressing the body expands/collapses something. */
   expanded?: boolean;
-  /** Draws the row icon at the size the layout calls for. */
-  icon: (size: number) => ReactNode;
   last?: boolean;
-  /** Node between the trailing slot and the checkbox (e.g. a ⋮ button). */
+  trailing: ReactNode;
   menu?: ReactNode;
   onPress?: () => void;
   onToggle: () => void;
   pressLabel?: string;
-  /** Line under the title: plain text, or a node such as a breadcrumb. */
   subtitle?: ReactNode;
   title: string;
-  /** Compact metadata displayed beside the title, such as OVERDUE. */
   titleAccessory?: ReactNode;
-  /** Node right before the checkbox (a quest's +%, a habit's streak tag). */
-  trailing?: ReactNode;
 };
 
-/**
- * The day-plan action row — the My Day quest look shared by every quest and
- * habit: bare icon, serif title over a subtitle line, round check.
- */
+/** Shared focus layout for quests and habits outside the habits board. */
 export function DayActionRow({
   checkLabel,
   done,
   expanded,
-  icon,
   last = false,
+  trailing,
   menu,
   onPress,
   onToggle,
@@ -58,133 +41,66 @@ export function DayActionRow({
   subtitle,
   title,
   titleAccessory,
-  trailing,
 }: DayActionRowProps) {
-  const { compact, phone } = useLayoutSize();
+  const { phone } = useLayoutSize();
 
   return (
-    <View
-      style={[
-        styles.actionRow,
-        compact && styles.actionRowCompact,
-        last && styles.actionRowLast,
-      ]}
-    >
+    <View style={[styles.row, phone && styles.rowPhone, last && styles.rowLast]}>
       <Pressable
         accessibilityLabel={pressLabel ?? `Options for ${title}`}
-        accessibilityRole="button"
+        accessibilityRole={onPress ? "button" : undefined}
         accessibilityState={expanded === undefined ? undefined : { expanded }}
         disabled={!onPress}
         onPress={onPress}
         style={({ pressed: isPressed }) => [
-          styles.actionBody,
-          compact && styles.actionBodyCompact,
-          phone && styles.actionBodyPhone,
+          styles.body,
           isPressed && pressed,
         ]}
       >
-        <View
-          style={[
-            styles.actionIcon,
-            compact && styles.actionIconCompact,
-            phone && styles.actionIconPhone,
-          ]}
-        >
-          {icon(phone ? 24 : compact ? 28 : 36)}
-        </View>
-        <View style={styles.actionCopy}>
-          <View style={styles.actionTitleRow}>
+        <View style={styles.copy}>
+          <View style={styles.titleRow}>
             <AppText
               color={colors.textPrimary}
-              style={[styles.actionTitle, compact && styles.actionTitleCompact]}
+              numberOfLines={1}
+              style={[styles.title, phone && styles.titlePhone, done && styles.titleDone]}
               variant="pill"
             >
               {title}
             </AppText>
             {titleAccessory}
           </View>
-          {typeof subtitle === "string" ? (
+          {typeof subtitle === "string" ? subtitle ? (
             <AppText
-              style={[
-                styles.actionSubtitle,
-                compact && styles.actionSubtitleCompact,
-              ]}
+              color={colors.textMuted}
+              numberOfLines={1}
+              style={[styles.subtitle, phone && styles.subtitlePhone]}
               variant="subtitle"
             >
               {subtitle}
             </AppText>
-          ) : (
+          ) : null : (
             subtitle
           )}
         </View>
       </Pressable>
-      {trailing}
+      <View style={[styles.trailing, phone && styles.trailingPhone]}>
+        {trailing}
+      </View>
       {menu}
       <Checkbox
         accessibilityLabel={checkLabel}
+        borderColor={done ? colors.primary : "#807F7B"}
         checked={done}
         onPress={onToggle}
         shape="circle"
-        size={phone ? 30 : compact ? 32 : 38}
+        size={32}
       />
     </View>
   );
 }
 
-/** Dream (› milestone) crumb under a quest title; a phone keeps the dream. */
-export function DayActionBreadcrumb({
-  dreamTitle,
-  milestoneTitle,
-}: {
-  dreamTitle?: string | null;
-  milestoneTitle?: string | null;
-}) {
-  const { compact, phone } = useLayoutSize();
-
-  return (
-    <View
-      style={[styles.actionBreadcrumb, compact && styles.actionBreadcrumbCompact]}
-    >
-      <View style={styles.breadcrumbPart}>
-        <DreamIcon size={compact ? 14 : 16} />
-        <AppText
-          color={colors.textSecondary}
-          numberOfLines={1}
-          style={[styles.breadcrumbLabel, compact && styles.actionSubtitleCompact]}
-          variant="subtitle"
-        >
-          {dreamTitle}
-        </AppText>
-      </View>
-      {phone || !milestoneTitle ? null : (
-        <>
-          <ChevronIcon
-            color={colors.textMuted}
-            direction="right"
-            size={compact ? 11 : 13}
-          />
-          <View style={styles.breadcrumbPart}>
-            <MilestoneIcon size={compact ? 14 : 16} />
-            <AppText
-              color={colors.textSecondary}
-              numberOfLines={1}
-              style={[
-                styles.breadcrumbLabel,
-                compact && styles.actionSubtitleCompact,
-              ]}
-              variant="subtitle"
-            >
-              {milestoneTitle}
-            </AppText>
-          </View>
-        </>
-      )}
-    </View>
-  );
-}
-
-/** The card one separated day action sits in (My Day, Home, habit lists). */
-export function DayActionCard({
+/** A shared list with consistent spacing between individual action cards. */
+export function DayActionList({
   children,
   style,
 }: {
@@ -194,9 +110,28 @@ export function DayActionCard({
   const { compact } = useLayoutSize();
 
   return (
+    <View style={[styles.list, compact && styles.listCompact, style]}>
+      {children}
+    </View>
+  );
+}
+
+/** The bordered surface for one task or habit. */
+export function DayActionCard({
+  children,
+  done = false,
+  style,
+}: {
+  children: ReactNode;
+  done?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { phone } = useLayoutSize();
+
+  return (
     <Card
-      style={[styles.separatedCard, compact && styles.separatedCardCompact, style]}
-      variant="default"
+      padded={false}
+      style={[styles.card, phone && styles.cardPhone, done && styles.cardDone, style]}
     >
       {children}
     </Card>
@@ -204,98 +139,81 @@ export function DayActionCard({
 }
 
 const styles = StyleSheet.create({
-  actionBody: {
-    alignItems: "center",
+  body: {
+    alignItems: "stretch",
     flex: 1,
-    flexDirection: "row",
-    gap: 18,
-    minWidth: 0,
-  },
-  actionBodyCompact: {
-    gap: 14,
-  },
-  actionBodyPhone: {
-    gap: 10,
-  },
-  actionBreadcrumb: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: 3,
-  },
-  actionBreadcrumbCompact: {
-    marginTop: 2,
-  },
-  actionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  actionIcon: {
-    alignItems: "center",
-    height: 40,
     justifyContent: "center",
-    width: 40,
+    minWidth: 0,
   },
-  actionIconCompact: {
-    height: 32,
-    width: 32,
+  card: {
+    backgroundColor: "rgba(5, 13, 20, 0.94)",
+    borderColor: colors.borderSoft,
+    paddingHorizontal: 18,
+    paddingVertical: 2,
   },
-  actionIconPhone: {
-    height: 28,
-    width: 28,
+  cardPhone: {
+    paddingHorizontal: 14,
   },
-  actionRow: {
-    alignItems: "center",
-    borderBottomColor: colors.divider,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: 18,
-    minHeight: 74,
-    paddingVertical: 14,
+  cardDone: {
+    opacity: 0.45,
   },
-  actionRowCompact: {
-    gap: 14,
-    minHeight: 60,
-    paddingVertical: 10,
+  copy: {
+    minWidth: 0,
   },
-  actionRowLast: {
-    borderBottomWidth: 0,
+  list: {
+    gap: spacing.md,
   },
-  actionSubtitle: {
-    marginTop: 3,
-  },
-  actionSubtitleCompact: {
-    fontSize: fontSizes.sm,
-    lineHeight: lineHeights.sm,
-    marginTop: 2,
-  },
-  actionTitle: {
-    flexShrink: 1,
-  },
-  actionTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
+  listCompact: {
     gap: spacing.sm,
   },
-  actionTitleCompact: {
+  trailing: {
+    alignItems: "flex-end",
+    flexShrink: 0,
+    justifyContent: "center",
+    width: 82,
+  },
+  trailingPhone: {
+    width: 70,
+  },
+  row: {
+    alignItems: "center",
+    borderBottomColor: colors.borderSoft,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 16,
+    minHeight: 78,
+    paddingVertical: 14,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowPhone: {
+    gap: 12,
+    minHeight: 72,
+    paddingVertical: 12,
+  },
+  subtitle: {
+    marginTop: 3,
+  },
+  subtitlePhone: {
+    fontSize: fontSizes.sm,
+    lineHeight: lineHeights.sm,
+  },
+  title: {
+    flexShrink: 1,
+    fontSize: fontSizes.xl,
+    lineHeight: lineHeights.xl,
+  },
+  titlePhone: {
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
   },
-  breadcrumbLabel: {
-    flexShrink: 1,
+  titleDone: {
+    textDecorationLine: "line-through",
   },
-  breadcrumbPart: {
+  titleRow: {
     alignItems: "center",
     flexDirection: "row",
-    flexShrink: 1,
-    gap: spacing.xs,
-    minWidth: 0,
-  },
-  separatedCard: {
-    borderColor: colors.accentVioletGlow,
-    paddingVertical: spacing.xs,
-  },
-  separatedCardCompact: {
-    paddingVertical: 2,
+    gap: spacing.sm,
   },
 });

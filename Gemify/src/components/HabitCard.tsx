@@ -8,7 +8,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { DayActionCard, DayActionRow } from "@/components/DayActionCard";
+import { DayActionCard } from "@/components/DayActionCard";
+import { formatStreakDays, HabitActionRow } from "@/components/HabitActionRow";
 import type { HabitGlyph, HabitVisuals } from "@/data/habitVisuals";
 import {
   AppText,
@@ -32,7 +33,6 @@ import {
   withOpacity,
 } from "@/theme/theme";
 
-const STREAK_ICON_SIZE = 14;
 const BOARD_CARD_BORDER = [
   "rgba(183, 140, 255, 0.58)",
   "rgba(245, 184, 75, 0.22)",
@@ -64,9 +64,7 @@ export type HabitCardProps = {
   visuals: HabitVisuals;
 };
 
-export function formatStreakDays(days: number): string {
-  return `${days} ${days === 1 ? "day" : "days"}`;
-}
+export { formatStreakDays } from "@/components/HabitActionRow";
 
 function HabitGlyphIcon({
   color,
@@ -89,11 +87,7 @@ function HabitGlyphIcon({
   }
 }
 
-/**
- * The phone habit card, identical on every screen and to a My Day quest card:
- * the habit's glyph, its title over its cue, a 🔥 streak tag where a quest
- * would show its +%, an optional ⋮ menu and the round check.
- */
+/** Shared focus habit card, with a separate visual for the habits board. */
 export function HabitCard({
   board = false,
   children,
@@ -224,32 +218,19 @@ export function HabitCard({
   }
 
   return (
-    <DayActionCard style={style}>
-      <DayActionRow
-        checkLabel={
-          done ? `Mark ${title} not done today` : `Mark ${title} done today`
-        }
+    <DayActionCard done={done} style={style}>
+      <HabitActionRow
         done={done}
         expanded={expanded}
-        icon={(size) => (
-          <HabitGlyphIcon color={visuals.accent} glyph={visuals.glyph} size={size} />
-        )}
         last
         menu={menuNode}
         onPress={onPress}
         onToggle={onToggleDone}
         pressLabel={`Details for the habit ${title}`}
+        streakDays={streakDays}
         subtitle={subtitle || undefined}
         title={title}
         titleAccessory={titleAccessory}
-        trailing={
-          <View style={styles.streakTag}>
-            <FlameIcon color={colors.primary} size={STREAK_ICON_SIZE} />
-            <AppText color={colors.primary} variant="labelStrong">
-              {formatStreakDays(streakDays)}
-            </AppText>
-          </View>
-        }
       />
       {children}
     </DayActionCard>
@@ -342,11 +323,5 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     width: 28,
-  },
-  /** Borderless 🔥 streak, where a quest shows its +%. */
-  streakTag: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
   },
 });
