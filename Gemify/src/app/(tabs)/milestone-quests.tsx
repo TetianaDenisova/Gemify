@@ -13,10 +13,8 @@ import Svg, { Path } from "react-native-svg";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import {
   AcceptQuestModal,
-  ActionSheet,
   QuestActionSheet,
   scheduledTimeLabel,
-  SheetActionRow,
   TextPromptModal,
   WEEKDAY_LABELS,
 } from "@/components/QuestActions";
@@ -42,6 +40,7 @@ import {
   AppButton,
   ConfirmDialog,
   AppText,
+  ActionMenuSheet,
   BackIcon,
   BulbIcon,
   CalendarIcon,
@@ -803,21 +802,18 @@ export default function MilestoneQuestsScreen() {
       />
 
       {/* Milestone picker for "Move to another milestone". */}
-      <ActionSheet
+      <ActionMenuSheet
+        eyebrow="Milestones"
         onClose={() => setMoveQuest(null)}
         title={moveQuest ? `Move “${moveQuest.title}” to…` : undefined}
         visible={moveQuest !== null}
+        options={dreamMilestones.filter((entry) => entry.id !== milestone?.id).map((entry) => ({
+          id: String(entry.id),
+          icon: MilestoneIcon,
+          label: entry.title,
+          onPress: () => { void handleMoveQuest(entry); },
+        }))}
       >
-        {dreamMilestones
-          .filter((entry) => entry.id !== milestone?.id)
-          .map((entry) => (
-            <SheetActionRow
-              icon={<MilestoneIcon color={colors.primary} size={iconSizes.lg} />}
-              key={entry.id}
-              label={entry.title}
-              onPress={() => handleMoveQuest(entry)}
-            />
-          ))}
         {dreamMilestones.filter((entry) => entry.id !== milestone?.id)
           .length === 0 ? (
           <AppText
@@ -829,7 +825,7 @@ export default function MilestoneQuestsScreen() {
             This dream has no other milestones yet.
           </AppText>
         ) : null}
-      </ActionSheet>
+      </ActionMenuSheet>
 
       {acceptQuest ? (
         <AcceptQuestModal

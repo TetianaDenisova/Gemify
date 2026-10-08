@@ -3,7 +3,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { exportBackup, pickAndImportBackup } from "@/db";
-import { AppButton, AppModal, AppText, ListItem } from "@/shared/components";
+import { ActionMenuSheet, AppButton, AppModal, AppText, ArrowRightIcon, PlusIcon, SyncIcon } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/theme";
 
@@ -80,26 +80,17 @@ export function MoreMenuSheet({
 
   return (
     <>
-      <AppModal onClose={onClose} variant="sheet" visible={visible}>
-        <View style={styles.menu}>
-          <ListItem
-            onPress={() => {
-              onClose();
-              router.push("/cloud-sync");
-            }}
-            title="Cloud sync"
-          />
-          <ListItem onPress={handleExport} title="Export data" />
-          <ListItem
-            last
-            onPress={() => {
-              onClose();
-              setConfirmVisible(true);
-            }}
-            title="Import data"
-          />
-        </View>
-      </AppModal>
+      <ActionMenuSheet
+        eyebrow="App options"
+        onClose={onClose}
+        title="Gemify"
+        visible={visible}
+        options={[
+          { id: "sync", icon: SyncIcon, label: "Cloud sync", onPress: () => { onClose(); router.push("/cloud-sync"); } },
+          { id: "export", icon: ArrowRightIcon, label: "Export data", disabled: busy, onPress: handleExport },
+          { id: "import", icon: PlusIcon, label: "Import data", disabled: busy, onPress: () => { onClose(); setConfirmVisible(true); } },
+        ]}
+      />
 
       <AppModal
         onClose={() => setConfirmVisible(false)}
@@ -147,9 +138,6 @@ export function MoreMenuSheet({
 }
 
 const styles = StyleSheet.create({
-  menu: {
-    marginTop: spacing.sm,
-  },
   modalBody: {
     marginTop: spacing.sm,
   },

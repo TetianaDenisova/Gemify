@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View, type TextInput } from "react-native";
 
 import { DatePickerModal } from "@/components/DatePickerModal";
@@ -12,6 +12,7 @@ import {
   AppInput,
   AppModal,
   AppText,
+  ActionMenuSheet,
   ArrowRightIcon,
   CalendarIcon,
   CheckIcon,
@@ -107,66 +108,6 @@ function suggestSlotKey(
   );
 }
 
-export function SheetActionRow({
-  danger = false,
-  icon,
-  label,
-  onPress,
-}: {
-  danger?: boolean;
-  icon: ReactNode;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed: isPressed }) => [
-        styles.sheetActionRow,
-        isPressed && pressed,
-      ]}
-    >
-      {icon}
-      <AppText color={danger ? colors.danger : colors.textPrimary} variant="button">
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
-/**
- * Bottom-sheet shell shared by the quest and habit action menus: violet
- * handle + border, the item title, then the caller's action rows.
- */
-export function ActionSheet({
-  children,
-  onClose,
-  title,
-  visible,
-}: {
-  children: ReactNode;
-  onClose: () => void;
-  title: string | undefined;
-  visible: boolean;
-}) {
-  return (
-    <AppModal
-      onClose={onClose}
-      panelStyle={styles.actionSheetPanel}
-      showHandle={false}
-      variant="sheet"
-      visible={visible}
-    >
-      <View style={styles.sheetHandle} />
-      <AppText numberOfLines={3} style={styles.sheetTitle} variant="titleSm">
-        {title}
-      </AppText>
-      {children}
-    </AppModal>
-  );
-}
-
 /**
  * Bottom sheet with the actions for one quest: Complete now (or "Do it
  * today" for an overdue quest), quick moves, Schedule (pick a date and time
@@ -203,68 +144,23 @@ export function QuestActionSheet({
   scheduleLabel?: string;
 }) {
   return (
-    <ActionSheet
+    <ActionMenuSheet
+      eyebrow="Quest options"
       onClose={onClose}
       title={quest?.title}
       visible={quest !== null}
-    >
-      {quest?.isDone ? null : (
-        <>
-          {quest?.overdue && onDoToday ? (
-            <SheetActionRow
-              icon={<SunHorizonIcon size={iconSizes.lg} />}
-              label="Do it today"
-              onPress={onDoToday}
-            />
-          ) : (
-            <SheetActionRow
-              icon={<CheckIcon color={colors.primary} size={iconSizes.lg} />}
-              label="Complete now"
-              onPress={onCompleteNow}
-            />
-          )}
-          {onMoveToTomorrow ? (
-            <SheetActionRow
-              icon={<ArrowRightIcon color={colors.primary} size={iconSizes.lg} />}
-              label="Move to tomorrow"
-              onPress={onMoveToTomorrow}
-            />
-          ) : null}
-          <SheetActionRow
-            icon={<CalendarIcon size={iconSizes.lg} />}
-            label={scheduleLabel}
-            onPress={onSchedule}
-          />
-          {onUnschedule ? (
-            <SheetActionRow
-              icon={<CloseIcon color={colors.textSecondary} size={iconSizes.lg} />}
-              label="Remove from schedule"
-              onPress={onUnschedule}
-            />
-          ) : null}
-          {onMoveToMilestone ? (
-            <SheetActionRow
-              icon={<MilestoneIcon color={colors.primary} size={iconSizes.lg} />}
-              label="Move to another milestone"
-              onPress={onMoveToMilestone}
-            />
-          ) : null}
-        </>
-      )}
-      <SheetActionRow
-        icon={
-          <PencilIcon size={iconSizes.lg} strokeWidth={1.7} variant="detailed" />
-        }
-        label="Edit"
-        onPress={onEdit}
-      />
-      <SheetActionRow
-        danger
-        icon={<TrashIcon size={iconSizes.lg} />}
-        label="Delete"
-        onPress={onDelete}
-      />
-    </ActionSheet>
+      options={[
+        { id: "edit", icon: PencilIcon, label: "Edit", onPress: onEdit },
+        !quest?.isDone && { id: "schedule", icon: CalendarIcon, label: scheduleLabel, onPress: onSchedule },
+        !quest?.isDone && onMoveToTomorrow && { id: "tomorrow", icon: ArrowRightIcon, label: "Move to tomorrow", onPress: onMoveToTomorrow },
+        !quest?.isDone && onUnschedule && { id: "unschedule", icon: CloseIcon, label: "Remove from schedule", onPress: onUnschedule },
+        !quest?.isDone && onMoveToMilestone && { id: "milestone", icon: MilestoneIcon, label: "Move to another milestone", onPress: onMoveToMilestone },
+        !quest?.isDone && (quest?.overdue && onDoToday ?
+          { id: "today", icon: SunHorizonIcon, label: "Do it today", onPress: onDoToday } :
+          { id: "complete", icon: CheckIcon, label: "Complete now", kind: "completion", onPress: onCompleteNow }),
+        { id: "delete", icon: TrashIcon, label: "Delete", kind: "destructive", onPress: onDelete },
+      ]}
+    />
   );
 }
 
@@ -808,9 +704,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  actionSheetPanel: {
-    borderColor: colors.accentVioletGlow,
-  },
   chipPhone: {
     height: 60,
   },
@@ -839,27 +732,6 @@ const styles = StyleSheet.create({
   },
   promptInput: {
     marginTop: spacing.lg,
-  },
-  sheetActionRow: {
-    alignItems: "center",
-    borderTopColor: "rgba(246, 232, 200, 0.13)",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: spacing.lg,
-    minHeight: 60,
-    paddingVertical: spacing.sm,
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    backgroundColor: colors.accentVioletStrong,
-    borderRadius: radius.round,
-    height: 5,
-    marginBottom: spacing.lg,
-    opacity: 0.85,
-    width: 64,
-  },
-  sheetTitle: {
-    marginBottom: spacing.lg,
   },
   timeChip: {
     alignItems: "center",

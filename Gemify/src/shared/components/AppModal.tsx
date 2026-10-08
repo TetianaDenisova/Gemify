@@ -15,6 +15,8 @@ import { radius, spacing } from "@/theme/theme";
 
 export type AppModalProps = {
   children: ReactNode;
+  /** Overrides spacing around a centered, scrollable panel. */
+  contentContainerStyle?: StyleProp<ViewStyle>;
   /** Tap on the scrim closes the modal. Default true. */
   dismissOnBackdrop?: boolean;
   /** Overrides the default max panel width (480 center / 760 sheet). */
@@ -36,6 +38,7 @@ export type AppModalProps = {
  */
 export function AppModal({
   children,
+  contentContainerStyle,
   dismissOnBackdrop = true,
   maxWidth,
   onClose,
@@ -77,7 +80,7 @@ export function AppModal({
           </View>
         ) : (
           <ScrollView
-            contentContainerStyle={styles.centerScroll}
+            contentContainerStyle={[styles.centerScroll, contentContainerStyle]}
             showsVerticalScrollIndicator={false}
             style={[styles.centerScrollView, maxWidth != null && { maxWidth }]}
           >

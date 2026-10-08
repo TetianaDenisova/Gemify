@@ -14,7 +14,7 @@ import {
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import {
-  AppButton, AppModal, ConfirmDialog, AppText, CheckIcon, DreamIcon,
+  AppButton, AppModal, ActionMenuSheet, ConfirmDialog, AppText, CheckIcon, DreamIcon,
   HistoryIcon, IconButton, PencilIcon, PlusIcon, RepeatIcon,
   ScreenScaffold, SparkIcon, TrashIcon,
 } from "@/shared/components";
@@ -192,17 +192,17 @@ export default function HabitsScreen() {
         ) : null}
       </View>
 
-      <AppModal onClose={() => setMenuHabit(null)} variant="sheet" visible={menuHabit !== null}>
-        <AppText color={colors.primary} variant="titleSm">{menuHabit?.title}</AppText>
-        <View style={styles.menuActions}>
-          <AppButton icon={<PencilIcon size={20} />} iconPosition="before" label="Edit" variant="secondary"
-            onPress={() => { if (menuHabit) handleEdit(menuHabit.id); setMenuHabit(null); }} />
-          <AppButton icon={<CheckIcon color={colors.primary} size={20} />} iconPosition="before" label="Finish habit" variant="secondary"
-            onPress={() => { if (menuHabit) void handleCompleteHabit(menuHabit.id); setMenuHabit(null); }} />
-          <AppButton icon={<TrashIcon color={colors.danger} size={20} />} iconPosition="before" label="Delete" variant="ghost" textStyle={styles.deleteLabel}
-            onPress={() => { if (menuHabit) setDeleteTarget({ id: menuHabit.id, title: menuHabit.title }); setMenuHabit(null); }} />
-        </View>
-      </AppModal>
+      <ActionMenuSheet
+        eyebrow="Habit options"
+        onClose={() => setMenuHabit(null)}
+        title={menuHabit?.title}
+        visible={menuHabit !== null}
+        options={[
+          { id: "edit", icon: PencilIcon, label: "Edit", onPress: () => { if (menuHabit) handleEdit(menuHabit.id); setMenuHabit(null); } },
+          { id: "finish", icon: CheckIcon, label: "Finish habit", kind: "completion", onPress: () => { if (menuHabit) void handleCompleteHabit(menuHabit.id); setMenuHabit(null); } },
+          { id: "delete", icon: TrashIcon, label: "Delete", kind: "destructive", onPress: () => { if (menuHabit) setDeleteTarget({ id: menuHabit.id, title: menuHabit.title }); setMenuHabit(null); } },
+        ]}
+      />
 
       <AppModal onClose={() => setCompletedOpen(false)} variant="sheet" visible={completedOpen}>
         <AppText align="center" color={colors.primary} variant="titleSm">Finished Habits</AppText>
@@ -252,8 +252,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   list: { gap: 10, paddingTop: 10 },
   emptyState: { paddingVertical: spacing.xl },
-  menuActions: { gap: spacing.sm, marginTop: spacing.lg },
-  deleteLabel: { color: colors.danger },
   manageClose: { marginTop: spacing.lg },
   manageCopy: { flex: 1, minWidth: 0 },
   manageList: { gap: spacing.md, marginTop: spacing.lg },

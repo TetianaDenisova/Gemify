@@ -1,4 +1,6 @@
 export { AppButton } from "./AppButton";
+export { ActionMenuSheet } from "./ActionMenuSheet";
+export type { ActionMenuKind, ActionMenuOption, ActionMenuSheetProps } from "./ActionMenuSheet";
 export type { AppButtonProps, AppButtonSize, AppButtonVariant } from "./AppButton";
 export { AppInput } from "./AppInput";
 export type { AppInputProps } from "./AppInput";

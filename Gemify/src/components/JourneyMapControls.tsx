@@ -1,11 +1,11 @@
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -20,11 +20,11 @@ import {
   DreamPhotoAdjuster,
   type DreamPhotoTransform,
 } from "@/components/DreamPhotoFrame";
-import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import {
   AppButton,
   AppModal,
   AppText,
+  ActionMenuSheet,
   CheckIcon,
   DotsIcon,
   IconButton,
@@ -97,6 +97,12 @@ type JourneyOverviewModalProps = {
   visionStatement: string;
 };
 
+const DREAM_OVERVIEW_GRADIENT = [
+  "rgba(8, 15, 25, 0.96)",
+  "rgba(5, 12, 21, 0.98)",
+  "rgba(7, 14, 23, 0.96)",
+] as const;
+
 function JourneyOverviewModal({
   dreamName,
   onClose,
@@ -108,69 +114,80 @@ function JourneyOverviewModal({
   visionStatement,
 }: JourneyOverviewModalProps) {
   const insets = useSafeAreaInsets();
-  const { height, phone } = useLayoutSize();
+  const { phone } = useLayoutSize();
   // The daily greeting has nothing to act on: it shows the dream and closes.
   const isIntro = variant === "intro";
   const description = visionStatement.trim();
 
   return (
     <AppModal
-      onClose={onClose}
-      panelStyle={[
-        styles.modalPanel,
-        { paddingBottom: Math.max(insets.bottom + 16, 30) },
+      contentContainerStyle={[
+        phone && styles.readOnlyModalContentPhone,
+        {
+          paddingTop: Math.max(insets.top, spacing.lg),
+          paddingBottom: Math.max(insets.bottom, spacing.lg),
+        },
       ]}
+      maxWidth={820}
+      onClose={onClose}
+      panelStyle={styles.readOnlyModalPanel}
       showHandle={false}
-      variant="sheet"
+      variant="center"
       visible={visible}
     >
-      <View style={styles.frameOuter}>
-        <View style={styles.frameInner}>
-          <View style={styles.overviewEyebrowRow}>
-            <AppText
-              align="center"
-              style={styles.overviewEyebrow}
-              variant="eyebrow"
+      <View
+        style={[
+          styles.readOnlyCardShadow,
+          phone && styles.readOnlyCardShadowPhone,
+        ]}
+      >
+        <LinearGradient
+          colors={DREAM_OVERVIEW_GRADIENT}
+          locations={[0, 0.5, 1]}
+          style={[styles.readOnlyCard, phone && styles.readOnlyCardPhone]}
+        >
+          {isIntro ? null : (
+            <Pressable
+              accessibilityLabel="Dream options"
+              accessibilityRole="button"
+              hitSlop={10}
+              onPress={onOpenMenu}
+              style={({ pressed }) => [
+                styles.readOnlyMenuButton,
+                phone && styles.readOnlyMenuButtonPhone,
+                pressed && pressedStyle,
+              ]}
             >
-              THE LIFE I&apos;M CREATING
-            </AppText>
-            {isIntro ? null : (
-              <Pressable
-                accessibilityLabel="Dream options"
-                accessibilityRole="button"
-                hitSlop={10}
-                onPress={onOpenMenu}
-                style={({ pressed }) => [
-                  styles.overviewMenuButton,
-                  pressed && pressedStyle,
-                ]}
-              >
-                <View style={styles.overviewMenuInnerEdge} pointerEvents="none" />
-                <DotsIcon color={colors.primary} size={iconSizes.md} />
-              </Pressable>
-            )}
-          </View>
-          <AppText align="center" style={styles.title} variant="title">
+              <DotsIcon color={colors.primary} size={iconSizes.md} />
+            </Pressable>
+          )}
+          <AppText
+            align="center"
+            style={[
+              styles.readOnlyEyebrow,
+              phone && styles.readOnlyEyebrowPhone,
+            ]}
+            variant="eyebrow"
+          >
+            THE LIFE I&apos;M CREATING
+          </AppText>
+          <AppText
+            align="center"
+            style={[styles.readOnlyTitle, phone && styles.readOnlyTitlePhone]}
+            variant="title"
+          >
             {dreamName}
           </AppText>
-          {/* Pure ornament above a sheet that is already tight on a phone. */}
-          {phone ? null : (
-            <View style={styles.ornamentRow}>
-              <View style={styles.ornamentLine} />
-              <SparkIcon size={iconSizes.sm} />
-              <View style={styles.ornamentLine} />
-            </View>
-          )}
 
           {photoUri ? (
             <View
               style={[
-                styles.photoFrame,
-                { maxHeight: height * (phone ? 0.24 : 0.32) },
+                styles.readOnlyPhotoFrame,
+                phone && styles.readOnlyPhotoFramePhone,
               ]}
             >
               <DreamPhoto
-                style={styles.photo}
+                style={styles.readOnlyPhoto}
                 transform={photoTransform}
                 uri={photoUri}
               />
@@ -179,14 +196,30 @@ function JourneyOverviewModal({
 
           {/* No description, no empty frame with a quote mark floating in it. */}
           {description ? (
-            <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
-              <AppText style={styles.quoteMark}>{"“"}</AppText>
-              <ScrollView
-                nestedScrollEnabled
-                style={{ maxHeight: height * (phone ? 0.22 : 0.3) }}
+            <View
+              style={[
+                styles.readOnlyQuoteRow,
+                phone && styles.readOnlyQuoteRowPhone,
+              ]}
+            >
+              <AppText
+                accessible={false}
+                style={[
+                  styles.readOnlyQuoteMark,
+                  phone && styles.readOnlyQuoteMarkPhone,
+                ]}
               >
-                <AppText style={styles.visionText}>{description}</AppText>
-              </ScrollView>
+                {"\u201C"}
+              </AppText>
+              <AppText
+                style={[
+                  styles.readOnlyVisionText,
+                  phone && styles.readOnlyVisionTextPhone,
+                ]}
+                variant="bodySerif"
+              >
+                {description}
+              </AppText>
             </View>
           ) : null}
 
@@ -194,11 +227,11 @@ function JourneyOverviewModal({
             <AppButton
               label="OK"
               onPress={onClose}
-              style={styles.overviewAction}
+              style={styles.readOnlyAction}
               variant="primary"
             />
           ) : null}
-        </View>
+        </LinearGradient>
       </View>
     </AppModal>
   );
@@ -675,40 +708,19 @@ export function JourneyMapControls({
         visionStatement={visionStatement}
       />
 
-      <ActionSheet
+      <ActionMenuSheet
+        eyebrow="Dream options"
         onClose={() => setMenuOpen(false)}
         title={dreamName}
         visible={menuOpen}
-      >
-        <SheetActionRow
-          icon={<PencilIcon size={22} strokeWidth={1.7} variant="detailed" />}
-          label="Edit dream"
-          onPress={() => runFromMenu(() => setDreamEditVisible(true))}
-        />
-        <SheetActionRow
-          icon={<MilestoneIcon color={colors.primary} size={22} />}
-          label="Edit path"
-          onPress={() => runFromMenu(onEnterEditMode)}
-        />
-        <SheetActionRow
-          icon={<SparklesIcon color={colors.primary} size={22} />}
-          label={'Check "What If" Plan'}
-          onPress={() => runFromMenu(openWhatIfPlan)}
-        />
-        <SheetActionRow
-          icon={<CheckIcon color={colors.primary} size={22} />}
-          label="Complete dream"
-          onPress={() => runFromMenu(onCompleteDream)}
-        />
-        {showDeleteDream ? (
-          <SheetActionRow
-            danger
-            icon={<TrashIcon size={22} />}
-            label="Delete"
-            onPress={() => runFromMenu(onDeleteDream)}
-          />
-        ) : null}
-      </ActionSheet>
+        options={[
+          { id: "edit", icon: PencilIcon, label: "Edit Dream", onPress: () => runFromMenu(() => setDreamEditVisible(true)) },
+          { id: "path", icon: MilestoneIcon, label: "Edit Path", onPress: () => runFromMenu(onEnterEditMode) },
+          { id: "what-if", icon: SparklesIcon, label: "What If Plan", onPress: () => runFromMenu(openWhatIfPlan) },
+          { id: "complete", icon: CheckIcon, label: "Complete Dream", kind: "completion", onPress: () => runFromMenu(onCompleteDream) },
+          showDeleteDream && { id: "delete", icon: TrashIcon, label: "Delete Dream", kind: "destructive", onPress: () => runFromMenu(onDeleteDream) },
+        ]}
+      />
 
       <DreamEditModal
         dreamName={dreamName}
@@ -737,6 +749,148 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     padding: 0,
     paddingHorizontal: spacing.md,
+  },
+  readOnlyModalPanel: {
+    backgroundColor: colors.transparent,
+    borderWidth: 0,
+    padding: 0,
+  },
+  readOnlyModalContentPhone: {
+    paddingHorizontal: 18,
+  },
+  readOnlyCardShadow: {
+    width: "100%",
+    borderRadius: 28,
+    backgroundColor: colors.backgroundSoft,
+    ...shadowStyle({
+      color: colors.background,
+      elevation: 18,
+      offsetY: 20,
+      opacity: 0.58,
+      radius: 34,
+    }),
+  },
+  readOnlyCardShadowPhone: {
+    borderRadius: 18,
+  },
+  readOnlyCard: {
+    overflow: "hidden",
+    borderColor: withOpacity(colors.textPrimary, 0.18),
+    borderRadius: 28,
+    borderWidth: 1,
+    paddingHorizontal: 32,
+    paddingBottom: 56,
+    paddingTop: 88,
+  },
+  readOnlyCardPhone: {
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    paddingTop: 52,
+  },
+  readOnlyEyebrow: {
+    alignSelf: "stretch",
+    color: colors.primary,
+    fontSize: fontSizes.md,
+    letterSpacing: 5,
+    lineHeight: lineHeights.lg,
+    textAlign: "center",
+  },
+  readOnlyEyebrowPhone: {
+    fontSize: fontSizes.xs,
+    letterSpacing: 3,
+    lineHeight: lineHeights.sm,
+  },
+  readOnlyMenuButton: {
+    alignItems: "center",
+    backgroundColor: withOpacity(colors.surfaceDeep, 0.7),
+    borderColor: withOpacity(colors.primary, 0.2),
+    borderRadius: radius.round,
+    borderWidth: 1,
+    height: 58,
+    justifyContent: "center",
+    position: "absolute",
+    right: 28,
+    top: 24,
+    width: 58,
+  },
+  readOnlyMenuButtonPhone: {
+    height: 40,
+    right: 10,
+    top: 12,
+    width: 40,
+  },
+  readOnlyTitle: {
+    color: "#FFF4DE",
+    flexShrink: 0,
+    fontFamily: fonts.serif,
+    fontSize: 56,
+    letterSpacing: 0,
+    lineHeight: 64,
+    marginBottom: 28,
+    marginTop: spacing.md,
+  },
+  readOnlyTitlePhone: {
+    fontSize: 34,
+    lineHeight: 38,
+    marginBottom: 14,
+    marginTop: 12,
+  },
+  readOnlyPhotoFrame: {
+    alignSelf: "stretch",
+    aspectRatio: 1.46,
+    backgroundColor: colors.surfaceDeep,
+    borderRadius: 24,
+    flexShrink: 0,
+    marginBottom: 56,
+    overflow: "hidden",
+  },
+  readOnlyPhotoFramePhone: {
+    borderRadius: 22,
+    marginBottom: 32,
+  },
+  readOnlyPhoto: {
+    height: "100%",
+    width: "100%",
+  },
+  readOnlyQuoteRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 32,
+    paddingHorizontal: 24,
+  },
+  readOnlyQuoteRowPhone: {
+    gap: 22,
+    paddingHorizontal: 12,
+  },
+  readOnlyQuoteMark: {
+    color: colors.primary,
+    fontFamily: fonts.serif,
+    flexShrink: 0,
+    fontSize: 76,
+    lineHeight: 72,
+    marginTop: -2,
+  },
+  readOnlyQuoteMarkPhone: {
+    fontSize: 52,
+    lineHeight: 48,
+  },
+  readOnlyVisionText: {
+    color: "#FFF4DE",
+    flex: 1,
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    letterSpacing: 0,
+    lineHeight: 42,
+    minWidth: 0,
+  },
+  readOnlyVisionTextPhone: {
+    fontSize: 18,
+    lineHeight: 26,
+  },
+  readOnlyAction: {
+    alignSelf: "stretch",
+    marginTop: spacing.lg,
   },
   frameOuter: {
     borderRadius: radius.lg,

@@ -32,6 +32,7 @@ import {
   AppInput,
   AppModal,
   AppText,
+  ActionMenuSheet,
   Badge,
   CalendarIcon,
   Card,
@@ -43,9 +44,11 @@ import {
   IconButton,
   ListItem,
   PlusIcon,
+  PencilIcon,
   ScreenScaffold,
   SparkIcon,
   SparkleGlyphIcon,
+  TrashIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -924,7 +927,7 @@ export default function MemoriesScreen() {
         maxWidth={560}
         onClose={closeDetail}
         panelStyle={styles.detailPanel}
-        visible={detailMoment !== null}
+        visible={detailMoment !== null && !detailMenuOpen}
       >
         {detailMoment ? (
           <>
@@ -948,7 +951,7 @@ export default function MemoriesScreen() {
               <IconButton
                 accessibilityLabel="Memory actions"
                 icon={<DotsIcon color={colors.primary} orientation="horizontal" />}
-                onPress={() => setDetailMenuOpen((open) => !open)}
+                onPress={() => setDetailMenuOpen(true)}
                 size="sm"
               />
               <IconButton
@@ -969,23 +972,6 @@ export default function MemoriesScreen() {
                   {detailMoment.date}
                 </AppText>
               </View>
-            ) : null}
-            {detailMenuOpen ? (
-              <Card padded={false} style={styles.detailMenu}>
-                <ListItem
-                  last
-                  onPress={() => openEditForm(detailMoment)}
-                  style={styles.detailMenuRow}
-                  title="Edit"
-                />
-                <ListItem
-                  last
-                  onPress={handleDeleteMemory}
-                  style={[styles.detailMenuRow, styles.detailMenuRowDivider]}
-                  title={confirmingDelete ? "Confirm delete" : "Delete"}
-                  titleColor={colors.danger}
-                />
-              </Card>
             ) : null}
             {detailMoment.photoUris.length > 0 ? (
               <Image
@@ -1042,6 +1028,16 @@ export default function MemoriesScreen() {
           </>
         ) : null}
       </AppModal>
+      <ActionMenuSheet
+        eyebrow="Memory options"
+        onClose={() => { setDetailMenuOpen(false); setConfirmingDelete(false); }}
+        title={detailMoment?.label}
+        visible={detailMoment !== null && detailMenuOpen}
+        options={[
+          { id: "edit", icon: PencilIcon, label: "Edit", onPress: () => { if (detailMoment) openEditForm(detailMoment); } },
+          { id: "delete", icon: TrashIcon, label: confirmingDelete ? "Confirm delete" : "Delete", kind: "destructive", onPress: handleDeleteMemory },
+        ]}
+      />
       <AppModal
         maxWidth={720}
         onClose={() => setCompletedOpen(false)}
@@ -1207,21 +1203,6 @@ const styles = StyleSheet.create({
   },
   detailHeading: {
     flex: 1,
-  },
-  detailMenu: {
-    minWidth: 176,
-    overflow: "hidden",
-    position: "absolute",
-    right: spacing.xl,
-    top: 72,
-    zIndex: 20,
-  },
-  detailMenuRow: {
-    paddingHorizontal: spacing.md,
-  },
-  detailMenuRowDivider: {
-    borderTopColor: colors.borderSoft,
-    borderTopWidth: 1,
   },
   detailPanel: {
     padding: spacing.xl,

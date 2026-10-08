@@ -3,7 +3,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { ActionSheet, SheetActionRow } from "@/components/QuestActions";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
   createHabit,
@@ -30,6 +29,7 @@ import {
   AppInput,
   ConfirmDialog,
   AppText,
+  ActionMenuSheet,
   Card,
   CheckIcon,
   ChevronIcon,
@@ -802,20 +802,18 @@ export default function CreateHabitScreen() {
       />
 
       {/* Milestone picker for the "Add as task" starter quest. */}
-      <ActionSheet
+      <ActionMenuSheet
+        eyebrow="Milestones"
         onClose={() => setTaskMilestones(null)}
         title="Add the task to which milestone?"
         visible={taskMilestones !== null}
-      >
-        {(taskMilestones ?? []).map((milestone) => (
-          <SheetActionRow
-            icon={<MilestoneIcon color={colors.primary} size={22} />}
-            key={milestone.id}
-            label={milestone.title}
-            onPress={() => handleTaskMilestonePicked(milestone)}
-          />
-        ))}
-      </ActionSheet>
+        options={(taskMilestones ?? []).map((milestone) => ({
+          id: String(milestone.id),
+          icon: MilestoneIcon,
+          label: milestone.title,
+          onPress: () => { void handleTaskMilestonePicked(milestone); },
+        }))}
+      />
     </ScreenScaffold>
   );
 }
