@@ -247,20 +247,10 @@ function TimelineMomentItem({
         align="center"
         numberOfLines={2}
         style={styles.timelineName}
-        variant="pill"
+        variant={milestoneCompleted ? "caption" : "pill"}
       >
-        {milestoneCompleted ? "Complited" : moment.label}
+        {moment.label}
       </AppText>
-      {milestoneCompleted ? (
-        <AppText
-          align="center"
-          numberOfLines={2}
-          style={styles.timelineMilestoneName}
-          variant="caption"
-        >
-          {moment.label}
-        </AppText>
-      ) : null}
       <AppText
         align="center"
         color={colors.textSecondary}
@@ -1544,9 +1534,6 @@ const styles = StyleSheet.create({
   },
   timelineName: {
     marginTop: spacing.sm,
-  },
-  timelineMilestoneName: {
-    marginTop: 1,
   },
   timelineRow: {
     flexDirection: "row",

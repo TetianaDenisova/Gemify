@@ -89,7 +89,9 @@ export function DayActionRow({
       {menu}
       <Checkbox
         accessibilityLabel={checkLabel}
-        borderColor={done ? colors.primary : "#807F7B"}
+        appearance="outline"
+        borderColor="#807F7B"
+        checkColor="#E6E4DE"
         checked={done}
         onPress={onToggle}
         shape="circle"

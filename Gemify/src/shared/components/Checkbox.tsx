@@ -31,6 +31,7 @@ export type CheckboxProps = {
    */
   appearance?: "solid" | "outline" | "glow";
   borderColor?: string;
+  checkColor?: string;
   checked: boolean;
   onPress?: () => void;
   shape?: "circle" | "square";
@@ -46,6 +47,7 @@ export function Checkbox({
   accessibilityLabel,
   appearance = "solid",
   borderColor,
+  checkColor,
   checked,
   onPress,
   shape = "circle",
@@ -91,7 +93,7 @@ export function Checkbox({
       ) : null}
       {checked ? (
         <CheckIcon
-          color={outline ? colors.primary : undefined}
+          color={checkColor ?? (outline ? colors.primary : undefined)}
           size={Math.round(size * 0.6)}
         />
       ) : null}
