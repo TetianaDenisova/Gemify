@@ -1,4 +1,6 @@
 import { getDatabase } from "./database";
+import { PremiumRequiredError, requireCreationAllowance } from "@/subscription/entitlements";
+import { getSubscriptionState, initializeSubscription } from "@/subscription/store";
 import type {
   Habit,
   HabitCompletionRecord,
@@ -52,20 +54,26 @@ export async function createHabit(input: NewHabit): Promise<Habit> {
   }
 
   const db = await getDatabase();
+  await initializeSubscription();
   let habitId = 0;
 
   await db.withTransactionAsync(async () => {
     const inserted = await db.runAsync(
       `INSERT INTO habits (dream_id, title, cue, time_block_key, goal_days)
-       VALUES (?, ?, ?, ?, ?)`,
+       SELECT ?, ?, ?, ?, ? WHERE ? = 1 OR
+         (SELECT COUNT(*) FROM habits WHERE is_archived = 0 AND is_completed = 0) < 1`,
       [
         input.dreamId,
         title,
         input.cue?.trim() || null,
         input.timeOfDay ?? null,
         input.goalDays ?? 24,
+        getSubscriptionState().premium ? 1 : 0,
       ],
     );
+    if (inserted.changes === 0) {
+      throw new PremiumRequiredError("Basic includes 1 active habit. Upgrade to Premium for unlimited habits.");
+    }
     habitId = inserted.lastInsertRowId;
 
     for (const weekday of new Set(input.scheduleDays ?? [])) {
@@ -141,6 +149,13 @@ export async function updateHabit(
   id: number,
   patch: HabitPatch,
 ): Promise<Habit | null> {
+  if (patch.isArchived === false || patch.isCompleted === false) {
+    const current = await getHabitById(id);
+    if (current && (current.isArchived || current.isCompleted) &&
+      !(patch.isArchived ?? current.isArchived) && !(patch.isCompleted ?? current.isCompleted)) {
+      await requireCreationAllowance("habit", (await getHabits()).length);
+    }
+  }
   const assignments: string[] = [];
   const params: (string | number | null)[] = [];
 

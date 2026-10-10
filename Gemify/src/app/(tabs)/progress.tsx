@@ -608,14 +608,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     ...textGlow(colors.primaryGlow, 12),
   },
-  /** Wide crop of the destination art (source is ~1.55:1) under the copy. */
+  /** Shallow crop of the destination art under the copy. */
   forecastArt: {
-    aspectRatio: 1.7,
+    aspectRatio: 2.1,
     width: "100%",
   },
   /** Shallower crop on a phone, so the banner never eats the first chart. */
   forecastArtPhone: {
-    aspectRatio: 1.9,
+    aspectRatio: 2.6,
   },
   /**
    * Opaque, art-matched ground: the artwork's dark sky dissolves into the
@@ -626,14 +626,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   forecastCopy: {
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
   },
   forecastCopyPhone: {
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
   },
   forecastDate: {
     ...textGlow(colors.primaryGlow, 12),

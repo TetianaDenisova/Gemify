@@ -12,7 +12,6 @@ import { BlockIconArt } from "@/components/TimeBlockTabs";
 import { habitVisualsFor } from "@/data/habitVisuals";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
 import type { DreamSummary } from "@/db";
-import { useCloudSync } from "@/hooks/useCloudSync";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { habitIconForId } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
@@ -26,13 +25,11 @@ import {
   Card,
   ChevronIcon,
   DreamIcon,
-  IconButton,
   MilestoneIcon,
   PlusIcon,
   ScreenScaffold,
   SectionHeader,
   SparkIcon,
-  SyncIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { radius, spacing } from "@/theme/theme";
@@ -70,6 +67,8 @@ function NextMoveCard({
   message: string;
   onPress: () => void;
 }) {
+  const { phone } = useLayoutSize();
+
   return (
     <Card padded={false} style={[styles.currentBlock, styles.nextMoveCard]}>
       <Image
@@ -83,15 +82,17 @@ function NextMoveCard({
         start={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.nextMoveCopy}>
+      <View style={[styles.nextMoveCopy, phone && styles.nextMoveCopyPhone]}>
         <AppText color={colors.textPrimary} variant="body">
           {message}
         </AppText>
         <AppButton
+          density={phone ? "compact" : "default"}
           icon={<ArrowRightIcon size={20} />}
           label={buttonLabel}
           onPress={onPress}
           style={styles.nextMoveButton}
+          textStyle={phone && styles.nextMoveButtonLabelPhone}
           variant="secondary"
         />
       </View>
@@ -143,7 +144,6 @@ export default function HomeScreen() {
     useDayQuestBlocks(today);
 
   const { habits: habitViews, setCompletion } = useHabitWeek();
-  const cloudSync = useCloudSync();
 
 
   // The whole focus/next-block derivation is pure computation over the loaded
@@ -338,20 +338,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenScaffold tabClearance topInset>
-      <HomeHeader
-        action={
-          // Only an invitation to connect: once the device is signed in the
-          // syncing is automatic, and Cloud sync stays in the ⋮ menu.
-          cloudSync.ready && !cloudSync.signedIn ? (
-            <IconButton
-              accessibilityLabel="Set up cloud sync"
-              icon={<SyncIcon />}
-              onPress={() => router.push("/cloud-sync")}
-            />
-          ) : undefined
-        }
-        greeting={greetingForNow(new Date())}
-      />
+      <HomeHeader greeting={greetingForNow(new Date())} />
 
       <SectionHeader
         action={{
@@ -584,7 +571,7 @@ export default function HomeScreen() {
         <NextMoveCard
           buttonLabel="Plan my week"
           message={"A few focused steps can move\nyour dreams forward."}
-          onPress={() => router.navigate("/sprint")}
+          onPress={() => router.navigate({ pathname: "/my-day", params: { mode: "week" } })}
         />
       ) : null}
         </>
@@ -685,6 +672,13 @@ const styles = StyleSheet.create({
   nextMoveButton: {
     backgroundColor: colors.transparent,
     borderRadius: radius.round,
+    maxWidth: "100%",
+  },
+  nextMoveButtonLabelPhone: {
+    flexShrink: 1,
+    fontSize: 18,
+    letterSpacing: 0,
+    lineHeight: 24,
   },
   nextMoveCard: {
     minHeight: 180,
@@ -698,5 +692,9 @@ const styles = StyleSheet.create({
     maxWidth: "68%",
     padding: spacing.lg,
     zIndex: 1,
+  },
+  nextMoveCopyPhone: {
+    maxWidth: "100%",
+    padding: spacing.md,
   },
 });

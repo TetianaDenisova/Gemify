@@ -48,6 +48,7 @@ export {
   SunHorizonIcon,
   SyncIcon,
   TrashIcon,
+  UserIcon,
 } from "./icons";
 export type {
   ChevronDirection,

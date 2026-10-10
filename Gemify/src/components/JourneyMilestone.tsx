@@ -1,20 +1,11 @@
 import { Image } from "expo-image";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
+import { useReducedMotion } from "react-native-reanimated";
 
 import { JourneyMilestoneLabel } from "@/components/JourneyMilestoneLabel";
 import type { JourneyMilestoneData } from "@/data/journeyMilestones";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
-import { colors } from "@/theme/colors";
 
 export type JourneyMilestoneLabelSide = "left" | "right";
 
@@ -59,6 +50,7 @@ const MAP_EDGE_PADDING = 6;
 const CIRCLE_ASPECT_RATIO = 1536 / 1024;
 const CIRCLE_SOURCE = require("../../assets/journey-top/circle.png");
 const CIRCLE_INACTIVE_SOURCE = require("../../assets/journey-top/circle-inactive.png");
+const CIRCLE_PULSE_SOURCE = require("../../assets/journey-top/milestone_pulse.webp");
 const LABEL_WIDTH = 148;
 const LABEL_RING_OVERLAP = 18;
 
@@ -135,29 +127,7 @@ export const JourneyMilestone = memo(function JourneyMilestone({
 }: JourneyMilestoneProps) {
   const { phone } = useLayoutSize();
   const reducedMotion = useReducedMotion();
-  const light = useSharedValue(0);
-  const showLight = animateLight && emphasis === "open";
-
-  useEffect(() => {
-    light.value = 0;
-    if (showLight && !reducedMotion) {
-      light.value = withRepeat(
-        withTiming(1, {
-          duration: 1600,
-          easing: Easing.inOut(Easing.sin),
-        }),
-        -1,
-        true,
-      );
-    }
-
-    return () => cancelAnimation(light);
-  }, [light, reducedMotion, showLight]);
-
-  const lightStyle = useAnimatedStyle(() => ({
-    opacity: reducedMotion ? 0.5 : 0.25 + light.value * 0.5,
-    transform: [{ scale: 1 + light.value * 0.16 }],
-  }));
+  const showPulse = animateLight && emphasis === "open" && !reducedMotion;
 
   const {
     groupHeight,
@@ -247,29 +217,18 @@ export const JourneyMilestone = memo(function JourneyMilestone({
         ]}
       >
         <Image
+          autoplay={showPulse}
           contentFit="contain"
-          // Every open step stays fully illuminated; completed ones recede.
           source={
-            emphasis === "completed" ? CIRCLE_INACTIVE_SOURCE : CIRCLE_SOURCE
+            emphasis === "completed"
+              ? CIRCLE_INACTIVE_SOURCE
+              : showPulse
+                ? CIRCLE_PULSE_SOURCE
+                : CIRCLE_SOURCE
           }
           style={{ width: ringWidth, height: ringHeight }}
+          useAppleWebpCodec={false}
         />
-        {showLight ? (
-          <Animated.View
-            accessible={false}
-            style={[
-              styles.light,
-              // Match the luminous oval on the stone, including its image padding.
-              {
-                left: ringWidth * 0.15,
-                top: ringHeight * 0.19,
-                width: ringWidth * 0.65,
-                height: ringHeight * 0.44,
-              },
-              lightStyle,
-            ]}
-          />
-        ) : null}
       </Pressable>
     </View>
   );
@@ -298,13 +257,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
-  },
-  light: {
-    position: "absolute",
-    pointerEvents: "none",
-    borderRadius: "50%",
-    borderWidth: 1.5,
-    borderColor: colors.primaryBright,
-    boxShadow: `0 0 12px 4px ${colors.primaryGlow}`,
   },
 });

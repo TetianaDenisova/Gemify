@@ -37,15 +37,15 @@ export const layout = {
   screenPaddingH: 22,
   /** Height of the floating tab bar in (tabs)/_layout. */
   tabBarHeight: 72,
-  /** Phone-tier tab bar height — icons only, no labels. */
-  tabBarHeightPhone: 56,
+  /** Phone-tier tab bar height, with icons and short labels. */
+  tabBarHeightPhone: 64,
   /** Bottom clearance so scroll content is not hidden behind the tab bar. */
   tabBarClearance: 72 + spacing.sm * 2,
   /** Minimum touch target for interactive elements. */
   minTouchTarget: 44,
 } as const;
 
-/** Height of the tab bar on the active tier (phone drops the labels). */
+/** Height of the tab bar on the active tier. */
 export function tabBarHeightFor(phone: boolean): number {
   return phone ? layout.tabBarHeightPhone : layout.tabBarHeight;
 }

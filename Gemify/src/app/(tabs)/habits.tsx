@@ -11,6 +11,7 @@ import {
   type Dream, type Habit as DbHabit, type HabitDetailSection,
 } from "@/db";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
+import { PremiumRequiredError } from "@/subscription/entitlements";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import {
   AppButton, AppModal, ActionMenuSheet, ConfirmDialog, AppText, CheckIcon, DreamIcon,
@@ -123,6 +124,10 @@ export default function HabitsScreen() {
       refreshCompleted();
     } catch (cause) {
       console.error("Failed to restore the habit", cause);
+      if (cause instanceof PremiumRequiredError) {
+        setCompletedOpen(false);
+        router.push("/account-subscription");
+      }
     }
   }
 

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useRouter } from "expo-router";
+import { useSubscription } from "@/hooks/useSubscription";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -197,6 +199,8 @@ function SignedIn({
   sync: ReturnType<typeof useCloudSync>;
 }) {
   const { lastResult } = sync;
+  const subscription = useSubscription();
+  const router = useRouter();
 
   return (
     <View style={styles.form}>
@@ -216,7 +220,8 @@ function SignedIn({
         disabled={sync.busy || busy}
         label={sync.busy ? "Syncing…" : "Sync now"}
         onPress={() => {
-          void sync.sync();
+          if (subscription.premium) void sync.sync();
+          else router.push("/account-subscription");
         }}
       />
 

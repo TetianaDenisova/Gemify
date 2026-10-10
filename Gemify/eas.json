@@ -3,6 +3,18 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "premium-test": {
+      "extends": "personal",
+      "env": {
+        "APP_VARIANT": "personal",
+        "EXPO_PUBLIC_PREMIUM_TEST_MODE": "true"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_PREMIUM_TEST_MODE": "false"
+      }
+    },
     "personal": {
       "distribution": "internal",
       "android": {

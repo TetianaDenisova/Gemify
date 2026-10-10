@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { getDatabase } from "@/db";
+import { requirePremium } from "@/subscription/entitlements";
 
 import { PAGE_SIZE, SYNC_TABLE } from "./config";
 import {
@@ -60,9 +61,21 @@ const LAST_SYNC_KEY = "last_synced_at";
 const EPOCH = "1970-01-01T00:00:00Z";
 
 let inFlight: Promise<SyncResult> | null = null;
+let syncPaused = false;
+
+/** Drain a running sync before account deletion starts. */
+export async function withSyncPaused<T>(task: () => Promise<T>): Promise<T> {
+  if (syncPaused) throw new Error("Account deletion is already in progress.");
+  syncPaused = true;
+  try {
+    await inFlight?.catch(() => undefined);
+    return await task();
+  } finally { syncPaused = false; }
+}
 
 /** Runs a sync, or joins the one already running. */
 export function runSync(): Promise<SyncResult> {
+  if (syncPaused) return Promise.reject(new Error("Sync is paused while deleting your account."));
   if (!inFlight) {
     inFlight = syncOnce().finally(() => {
       inFlight = null;
@@ -72,6 +85,7 @@ export function runSync(): Promise<SyncResult> {
 }
 
 async function syncOnce(): Promise<SyncResult> {
+  await requirePremium("Upgrade to Premium to sync across devices.");
   const supabase = getSupabase();
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;

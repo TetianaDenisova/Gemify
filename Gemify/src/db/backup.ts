@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { finishRestoreForSync } from "@/sync/localStore";
 
 import { getDatabase } from "./database";
+import { requirePremium } from "@/subscription/entitlements";
 import { LATEST_SCHEMA_VERSION } from "./migrations";
 
 /**
@@ -357,6 +358,7 @@ async function buildBackupDocument(): Promise<BackupDocument> {
  * (save to Files / Drive / send anywhere), a plain download on web.
  */
 export async function exportBackup(): Promise<void> {
+  await requirePremium("Upgrade to Premium to export data.");
   const document = await buildBackupDocument();
   const json = JSON.stringify(document);
   const fileName = `gemify-backup-${document.exportedAt.slice(0, 10)}.json`;
@@ -410,6 +412,7 @@ export async function exportBackup(): Promise<void> {
  * for invalid files.
  */
 export async function pickAndImportBackup(): Promise<ImportSummary | null> {
+  await requirePremium("Upgrade to Premium to import data.");
   const DocumentPicker = await import("expo-document-picker");
   const result = await DocumentPicker.getDocumentAsync({
     // Broad list: files saved through messengers/drive often lose their

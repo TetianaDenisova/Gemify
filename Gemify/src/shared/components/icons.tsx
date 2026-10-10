@@ -8,6 +8,24 @@ export type IconProps = {
   strokeWidth?: number;
 };
 
+export function UserIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Circle cx={12} cy={8} r={4} stroke={color} strokeWidth={strokeWidth} />
+      <Path
+        d="M5 21v-2a7 7 0 0 1 14 0v2"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function BackIcon({
   color = colors.primary,
   size = 24,

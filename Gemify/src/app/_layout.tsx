@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { initDatabase } from "@/db";
 import { useAutoSync } from "@/hooks/useCloudSync";
+import { observeSubscription } from "@/subscription/store";
 import { colors } from "@/theme/colors";
 
 /**
@@ -34,6 +35,8 @@ export default function RootLayout() {
 
   // Syncs on open, every few minutes while the app is up, and on the way out.
   useAutoSync();
+
+  useEffect(observeSubscription, []);
 
   useEffect(() => {
     initDatabase().catch((cause) => {

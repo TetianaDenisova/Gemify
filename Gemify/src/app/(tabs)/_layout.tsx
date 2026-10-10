@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { menuIcons, type MenuTab } from "@/data/menuIcons";
@@ -13,17 +13,28 @@ import { useBottomInset } from "@/hooks/useBottomInset";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { colors } from "@/theme/colors";
+import { UserIcon } from "@/shared/components";
 import { layout, tabBarHeightFor, typography } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
-  /** No label under the icon on phones, so it centers itself in the bar. */
   phone: boolean;
-  tab: MenuTab | "habits" | "memories";
+  tab: MenuTab | "habits" | "memories" | "account";
 }
 
 function TabIcon({ focused, phone, tab }: TabIconProps) {
   const iconStyle = phone ? styles.tabIconPhone : styles.tabIcon;
+
+  if (tab === "account") {
+    return (
+      <View style={iconStyle}>
+        <UserIcon
+          color={focused ? colors.primary : colors.textMuted}
+          size={phone ? 24 : 28}
+        />
+      </View>
+    );
+  }
 
   if (tab === "memories") {
     const tint = focused ? colors.primary : colors.textMuted;
@@ -99,8 +110,6 @@ function TabIcon({ focused, phone, tab }: TabIconProps) {
 
 export default function TabLayout() {
   const bottomInset = useBottomInset();
-  // Six tabs share 402 pt on a phone (~67 pt each), so the labels go and the
-  // bar drops to 56 pt. Tablets keep the 72 pt bar with its labels.
   const { phone } = useLayoutSize();
   const [unseenRewards, setUnseenRewards] = useState(0);
 
@@ -127,7 +136,8 @@ export default function TabLayout() {
         headerTitleStyle: { color: colors.textPrimary },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarShowLabel: !phone,
+        tabBarShowLabel: true,
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: [
           styles.tabBar,
           {
@@ -158,9 +168,9 @@ export default function TabLayout() {
         name="my-day"
         options={{
           headerShown: false,
-          tabBarAccessibilityLabel: "Today",
-          tabBarLabel: "Today",
-          title: "My Day",
+          tabBarAccessibilityLabel: "Plan",
+          tabBarLabel: "Plan",
+          title: "Plan",
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} phone={phone} tab="today" />
           ),
@@ -190,12 +200,8 @@ export default function TabLayout() {
         name="sprint"
         options={{
           headerShown: false,
-          tabBarAccessibilityLabel: "Weekly Plan",
-          tabBarLabel: "Weekly Plan",
+          href: null,
           title: "Weekly Plan",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} phone={phone} tab="sprint" />
-          ),
         }}
       />
       <Tabs.Screen
@@ -229,6 +235,18 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="account-subscription"
+        options={{
+          headerShown: false,
+          tabBarAccessibilityLabel: "Profile",
+          tabBarLabel: "Profile",
+          title: "Account & Subscription",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} phone={phone} tab="account" />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -251,16 +269,17 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
 
-  /** No label to sit under, so the icon centers in a 44 pt touch target. */
   tabBarItemPhone: {
     justifyContent: "center",
     minHeight: layout.minTouchTarget,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
 
   tabBarLabel: {
     ...typography.micro,
+    letterSpacing: 0,
     marginTop: 0,
+    minWidth: 50,
   },
 
   rewardBadge: {
@@ -277,8 +296,8 @@ const styles = StyleSheet.create({
   },
 
   tabIconPhone: {
-    width: 28,
-    height: 28,
-    marginBottom: 0,
+    width: 24,
+    height: 24,
+    marginBottom: 2,
   },
 });

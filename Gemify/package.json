@@ -8,6 +8,7 @@
     "expo-asset": "~56.0.17",
     "expo-document-picker": "~56.0.4",
     "expo-file-system": "~56.0.10",
+    "expo-iap": "^6.0.0",
     "expo-image": "~56.0.11",
     "expo-image-picker": "~56.0.24",
     "expo-linear-gradient": "~56.0.4",
@@ -36,6 +37,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "test:subscription": "node --test tests/subscription.test.cjs",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

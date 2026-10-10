@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { PremiumRequiredError } from "@/subscription/entitlements";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -410,6 +411,12 @@ export default function CreateHabitScreen() {
       handleBack();
     } catch (cause) {
       console.error("Failed to save the habit", cause);
+      if (cause instanceof PremiumRequiredError) {
+        setFormError(cause.message);
+        setSaving(false);
+        router.push("/account-subscription");
+        return;
+      }
       setFormError("Something went wrong while saving. Please try again.");
       setSaving(false);
     }

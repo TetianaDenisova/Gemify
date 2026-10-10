@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FEELING_STATES } from "@/data/feelingStates";
 import { createDream } from "@/db";
+import { PremiumRequiredError } from "@/subscription/entitlements";
 import { persistMemoryPhoto } from "@/utils/memoryPhotos";
 import {
   AppInput,
@@ -70,6 +71,12 @@ export default function StateScreen() {
         params: { dreamId: String(dream.id), edit: "1" },
       });
     } catch (error) {
+      if (error instanceof PremiumRequiredError) {
+        setSaveError(error.message);
+        setSaving(false);
+        router.push("/account-subscription");
+        return;
+      }
       console.error("Failed to save the dream", error);
       setSaveError("Something went wrong while saving. Please try again.");
       setSaving(false);

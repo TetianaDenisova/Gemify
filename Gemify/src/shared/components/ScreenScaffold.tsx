@@ -100,8 +100,7 @@ export function ScreenScaffold({
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const { compact, phone } = useLayoutSize();
-  // The clearance tracks the active bar: 88 pt over the tablet's 72 pt bar
-  // (exactly layout.tabBarClearance), 72 pt over the phone's 56 pt one.
+  // Keep scroll content above the tab bar on both phone and tablet.
   const tabBarHeight = tabBarHeightFor(phone);
 
   const paddingBottom = tabClearance

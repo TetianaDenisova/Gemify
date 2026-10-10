@@ -1,4 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
+import { PremiumRequiredError, requireCreationAllowance } from "@/subscription/entitlements";
+import { getSubscriptionState, initializeSubscription } from "@/subscription/store";
 
 import { getDatabase } from "./database";
 import type { Dream, DreamPatch, FeelingState, NewDream } from "./types";
@@ -54,13 +56,19 @@ export async function createDream(input: NewDream): Promise<Dream> {
   }
 
   const db = await getDatabase();
+  await initializeSubscription();
   let dreamId = 0;
 
   await db.withTransactionAsync(async () => {
     const inserted = await db.runAsync(
-      "INSERT INTO dreams (title, vision_statement, photo_uri) VALUES (?, ?, ?)",
-      [title, input.visionStatement?.trim() || null, input.photoUri ?? null],
+      `INSERT INTO dreams (title, vision_statement, photo_uri)
+       SELECT ?, ?, ? WHERE ? = 1 OR
+         (SELECT COUNT(*) FROM dreams WHERE is_archived = 0 AND is_completed = 0) < 1`,
+      [title, input.visionStatement?.trim() || null, input.photoUri ?? null, getSubscriptionState().premium ? 1 : 0],
     );
+    if (inserted.changes === 0) {
+      throw new PremiumRequiredError("Basic includes 1 active dream. Upgrade to Premium for unlimited dreams.");
+    }
     dreamId = inserted.lastInsertRowId;
 
     if (input.feelingStates?.length) {
@@ -296,6 +304,13 @@ export async function updateDream(
   id: number,
   patch: DreamPatch,
 ): Promise<Dream | null> {
+  if (patch.isArchived === false || patch.isCompleted === false) {
+    const current = await getDreamById(id);
+    if (current && (current.isArchived || current.isCompleted) &&
+      !(patch.isArchived ?? current.isArchived) && !(patch.isCompleted ?? current.isCompleted)) {
+      await requireCreationAllowance("dream", (await getDreams()).length);
+    }
+  }
   const assignments: string[] = [];
   const params: (string | number | null)[] = [];
 
