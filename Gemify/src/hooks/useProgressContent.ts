@@ -2,8 +2,10 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 
 import type {
+  DreamForecastEntry,
   FulfillmentPoint,
   FulfillmentRange,
+  FulfillmentTab,
   ProgressContent,
   TimelineMoment as ProgressTimelineMoment,
   TimelineIconKey,
@@ -13,13 +15,16 @@ import {
   getDreamsWithCompleted,
   getForecastProjection,
   getHabitCompletions,
+  getHabits,
   getHabitsByDream,
   getHabitScheduleDays,
   getMilestones,
   getQuestsByDream,
+  getQuestsForActiveDreams,
   getTimelineMoments,
   saveForecastProjection,
   type Dream,
+  type Habit,
   type HabitCompletionRecord,
   type Milestone,
   type Quest,
@@ -60,6 +65,24 @@ type HabitProgress = {
   /** First day with stored habit history; avoids inventing earlier misses. */
   trackingStart: string;
 };
+
+async function loadHabitProgress(habits: Habit[]): Promise<HabitProgress[]> {
+  const historyStart = sixMonthBuckets()[0].start;
+  const today = toDateKey(new Date());
+  return Promise.all(
+    habits.map(async (habit) => {
+      const [scheduleDays, completions] = await Promise.all([
+        getHabitScheduleDays(habit.id),
+        getHabitCompletions(habit.id, historyStart, today),
+      ]);
+      return {
+        completions,
+        scheduleDays,
+        trackingStart: completions[0]?.date ?? today,
+      };
+    }),
+  );
+}
 
 function weekBuckets(): Bucket[] {
   const monday = startOfWeek(new Date());
@@ -248,6 +271,94 @@ function completionRange(
   };
 }
 
+function completionTab(quests: Quest[], habits: HabitProgress[]): FulfillmentTab {
+  return {
+    key: "daily",
+    label: "Quest & Habit Completion",
+    chart: "bars",
+    ranges: [
+      completionRange(
+        quests, habits, weekBuckets(), "week", "Week", "Weekly Average",
+      ),
+      completionRange(
+        quests, habits, monthBuckets(), "month", "Month", "Monthly Average",
+      ),
+      completionRange(
+        quests, habits, sixMonthBuckets(), "6months", "6 Months", "6-Month Average",
+      ),
+    ],
+  };
+}
+
+/** General activity statistics across all active dreams. */
+export function useProgressStatsContent() {
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [habits, setHabits] = useState<HabitProgress[]>([]);
+  const [forecasts, setForecasts] = useState<DreamForecastEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [dreams, questList, habitList] = await Promise.all([
+        getDreams(),
+        getQuestsForActiveDreams(),
+        getHabits(),
+      ]);
+      const activeDreamIds = new Set(dreams.map((dream) => dream.id));
+      const habitProgress = await loadHabitProgress(
+        habitList.filter((habit) => activeDreamIds.has(habit.dreamId)),
+      );
+      setQuests(questList);
+      setHabits(habitProgress);
+      const dreamForecasts = await Promise.all(
+        dreams.map(async (dream) => {
+          const milestones = await getMilestones(dream.id);
+          const milestoneIds = new Set(milestones.map((milestone) => milestone.id));
+          const projection = await projectDreamForecast(
+            dream.id,
+            questList.filter((quest) => milestoneIds.has(quest.milestoneId)),
+            milestones,
+          );
+          return { dreamId: dream.id, title: dream.title, date: projection.date };
+        }),
+      );
+      setForecasts(dreamForecasts.sort((left, right) => {
+        if (left.date === right.date) return left.dreamId - right.dreamId;
+        if (left.date === null) return 1;
+        if (right.date === null) return -1;
+        return left.date.localeCompare(right.date);
+      }));
+    } catch (cause) {
+      console.error("Failed to load general progress data", cause);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useRefreshOnSync(refresh);
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
+  const content = useMemo(
+    () => ({
+      title: "Progress",
+      forecasts,
+      fulfillmentTabs: [completionTab(quests, habits)],
+      hasChartData:
+        quests.some((quest) => quest.isDone && quest.scheduledDate !== null) ||
+        habits.some(({ completions }) =>
+          completions.some((record) => record.status === "done"),
+        ),
+    }),
+    [forecasts, habits, quests],
+  );
+
+  return { content, loading, refresh };
+}
+
 
 /** "December 14" — the year only earns its place outside the current one. */
 function formatDay(dateKey: string, today: Date): string {
@@ -318,11 +429,11 @@ function forecastCopy(
  * src/domain/forecast.ts, and the cache is per-device (nothing synced,
  * nothing backed up — it is derived from the quests themselves).
  */
-async function projectForecast(
+async function projectDreamForecast(
   dreamId: number,
   quests: Quest[],
   milestones: Milestone[],
-): Promise<ProgressContent["forecast"]> {
+): Promise<DreamForecast> {
   const today = new Date();
   const previous = await getForecastProjection(dreamId);
   const projection = forecastCompletion({
@@ -335,7 +446,18 @@ async function projectForecast(
   const shown = projection.reason === "projected" ? projection.date : null;
   if (shown !== previous) await saveForecastProjection(dreamId, shown);
 
-  return forecastCopy(projection, today);
+  return projection;
+}
+
+async function projectForecast(
+  dreamId: number,
+  quests: Quest[],
+  milestones: Milestone[],
+): Promise<ProgressContent["forecast"]> {
+  return forecastCopy(
+    await projectDreamForecast(dreamId, quests, milestones),
+    new Date(),
+  );
 }
 
 function toProgressMoment(
@@ -369,12 +491,12 @@ export type UseProgressContentResult = {
 };
 
 /**
- * Builds the ProgressContent view-model the Progress screen renders, from
+ * Builds a dream-specific ProgressContent view-model from
  * real dreams, quests and timeline moments. `goalKey` is the selected dream id
  * as a string ("" or unknown falls back to the first dream).
  *
  * `includeCompleted` keeps finished dreams in the list — the Memories screen
- * wants them (their memories are the point), the Progress screen does not.
+ * wants them (their memories are the point).
  */
 export function useProgressContent(
   goalKey: string,
@@ -420,21 +542,7 @@ export function useProgressContent(
           getTimelineMoments(resolved.id),
           getHabitsByDream(resolved.id),
         ]);
-      const historyStart = sixMonthBuckets()[0].start;
-      const today = toDateKey(new Date());
-      const habitProgress = await Promise.all(
-        habitList.map(async (habit) => {
-          const [scheduleDays, completions] = await Promise.all([
-            getHabitScheduleDays(habit.id),
-            getHabitCompletions(habit.id, historyStart, today),
-          ]);
-          return {
-            completions,
-            scheduleDays,
-            trackingStart: completions[0]?.date ?? today,
-          };
-        }),
-      );
+      const habitProgress = await loadHabitProgress(habitList);
       setMilestones(milestoneList);
       setQuests(questList);
       setHabits(habitProgress);
@@ -498,37 +606,7 @@ export function useProgressContent(
             ),
           ],
         },
-        {
-          key: "daily",
-          label: "Quest & Habit Completion",
-          chart: "bars",
-          ranges: [
-            completionRange(
-              quests,
-              habits,
-              week,
-              "week",
-              "Week",
-              "Weekly Average",
-            ),
-            completionRange(
-              quests,
-              habits,
-              month,
-              "month",
-              "Month",
-              "Monthly Average",
-            ),
-            completionRange(
-              quests,
-              habits,
-              sixMonths,
-              "6months",
-              "6 Months",
-              "6-Month Average",
-            ),
-          ],
-        },
+        completionTab(quests, habits),
       ],
       overallLabel: "Overall Goal Progress",
       hasChartData:

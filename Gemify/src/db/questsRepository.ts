@@ -91,6 +91,21 @@ export async function getQuestsByDream(dreamId: number): Promise<Quest[]> {
   return rows.map(toQuest);
 }
 
+/** Every quest across active dreams, independent of the selected dream. */
+export async function getQuestsForActiveDreams(): Promise<Quest[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<QuestRow>(
+    `SELECT q.id, q.milestone_id, q.title, q.is_active, q.is_done, q.created_at,
+            q.scheduled_date, q.scheduled_time, q.is_planned, q.completed_at
+     FROM quests q
+     JOIN milestones m ON m.id = q.milestone_id
+     JOIN dreams d ON d.id = m.dream_id
+     WHERE d.is_archived = 0 AND d.is_completed = 0
+     ORDER BY q.id`,
+  );
+  return rows.map(toQuest);
+}
+
 export async function getQuestById(id: number): Promise<Quest | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<QuestRow>(`${SELECT_QUEST} WHERE id = ?`, [

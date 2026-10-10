@@ -13,16 +13,15 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 
+import { DreamForecastCard } from "@/components/DreamForecastCard";
 import type { FulfillmentPoint } from "@/data/progressData";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
-import { useProgressContent } from "@/hooks/useProgressContent";
+import { useProgressStatsContent } from "@/hooks/useProgressContent";
 import {
   AppText,
   Card,
   ChevronIcon,
-  ListItem,
   ScreenScaffold,
-  SparkleGlyphIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -59,7 +58,6 @@ const CHART_GRID_STROKE = "rgba(246, 232, 200, 0.13)";
 const BAR_FILL = "url(#questBarFill)";
 
 const NO_PROGRESS_ART = require("../../data/images/no-progress.png");
-const WILL_ACHIEVE_ART = require("../../../assets/will-achieve.png");
 
 function QuestBarsChart({
   compact,
@@ -239,56 +237,15 @@ function QuestBarsChart({
 export default function ProgressScreen() {
   const { compact, phone } = useLayoutSize();
 
-  const [goalKey, setGoalKey] = useState("");
-  const { content: progressContent } = useProgressContent(goalKey);
+  const { content: progressContent, loading } = useProgressStatsContent();
   const { fulfillmentTabs } = progressContent;
   const barsTab =
     fulfillmentTabs.find((tab) => tab.chart === "bars") ?? fulfillmentTabs[0];
-  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
   const [rangeKey, setRangeKey] = useState(barsTab.ranges[0].key);
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
 
-  const selectedGoal =
-    progressContent.goals.find((goal) => goal.key === goalKey) ??
-    progressContent.goals[0];
   const barsRange =
     barsTab.ranges.find((range) => range.key === rangeKey) ?? barsTab.ranges[0];
-  const { forecast } = progressContent;
-
-  const goalPicker = (
-    <Card padded={false} style={styles.goalPicker} variant="glass">
-      <ListItem
-        accessibilityLabel="Choose goal"
-        last
-        leading={<SparkleGlyphIcon size={18} />}
-        minHeight={phone ? controlsPhone.button.section.minHeight : undefined}
-        onPress={() => setGoalPickerOpen((open) => !open)}
-        style={styles.goalPickerRow}
-        title={selectedGoal.label}
-        trailing={<ChevronIcon color={colors.textSecondary} size={18} strokeWidth={1.8} />}
-      />
-      {goalPickerOpen
-        ? progressContent.goals
-            .filter((goal) => goal.key !== selectedGoal.key)
-            .map((goal) => (
-              <ListItem
-                key={goal.key}
-                last
-                minHeight={
-                  phone ? controlsPhone.button.section.minHeight : undefined
-                }
-                onPress={() => {
-                  setGoalKey(goal.key);
-                  setGoalPickerOpen(false);
-                }}
-                style={styles.goalOption}
-                title={goal.label}
-                titleColor={colors.textSecondary}
-              />
-            ))
-        : null}
-    </Card>
-  );
 
   const rangePicker = (
     <View style={styles.rangeRow}>
@@ -390,7 +347,7 @@ export default function ProgressScreen() {
               style={styles.emptyCaption}
               variant="body"
             >
-              Complete your first quest to reveal your progress.
+              Complete your first quest or habit to reveal your progress.
             </AppText>
           </View>
       ) : (
@@ -467,34 +424,7 @@ export default function ProgressScreen() {
       )}
       </Card>
 
-      {goalPicker}
-
-      {progressContent.hasChartData && forecast ? (
-        <Card padded={false} style={styles.forecastCard} variant="glass">
-          <View
-            style={[
-              styles.forecastCopy,
-              phone && styles.forecastCopyPhone,
-            ]}
-          >
-            <AppText variant={phone ? "pill" : "titleSm"}>
-              {forecast.headline}
-            </AppText>
-            <AppText
-              color={colors.primary}
-              style={styles.forecastDate}
-              variant={phone ? "titleSm" : "cardTitle"}
-            >
-              {forecast.date}
-            </AppText>
-          </View>
-          <Image
-            contentFit="cover"
-            source={WILL_ACHIEVE_ART}
-            style={[styles.forecastArt, phone && styles.forecastArtPhone]}
-          />
-        </Card>
-      ) : null}
+      <DreamForecastCard forecasts={progressContent.forecasts} loading={loading} />
     </ScreenScaffold>
   );
 }
@@ -614,51 +544,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     ...textGlow(colors.primaryGlow, 12),
   },
-  /** Shallow crop of the destination art under the copy. */
-  forecastArt: {
-    aspectRatio: 2.1,
-    width: "100%",
-  },
-  /** Shallower crop on a phone, so the banner never eats the first chart. */
-  forecastArtPhone: {
-    aspectRatio: 2.6,
-  },
-  /**
-   * Opaque, art-matched ground: the artwork's dark sky dissolves into the
-   * copy above it, so the banner reads as one image with a headline.
-   */
-  forecastCard: {
-    backgroundColor: colors.background,
-    overflow: "hidden",
-  },
-  forecastCopy: {
-    paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  forecastCopyPhone: {
-    paddingBottom: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  forecastDate: {
-    ...textGlow(colors.primaryGlow, 12),
-  },
-  goalOption: {
-    borderTopColor: colors.borderSoft,
-    borderTopWidth: 1,
-    paddingHorizontal: spacing.md,
-  },
-  goalPicker: {
-    backgroundColor: colors.surfaceDeep,
-    borderColor: colors.borderFaint,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
-  goalPickerRow: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -712,7 +597,6 @@ const styles = StyleSheet.create({
   rangeRow: {
     zIndex: 20,
   },
-  /** Same shape as the goal picker above the banner: one full-width row. */
   rangeTrigger: {
     alignItems: "center",
     backgroundColor: colors.surfaceDeep,
