@@ -20,7 +20,7 @@ export function DreamForecastCard({ forecasts, loading }: DreamForecastCardProps
       <View style={styles.artHeader}>
         <Image
           contentFit="cover"
-          contentPosition="bottom"
+          contentPosition="center"
           source={FORECAST_ART}
           style={StyleSheet.absoluteFill}
         />

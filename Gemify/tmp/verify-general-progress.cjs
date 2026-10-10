@@ -51,8 +51,8 @@ async function main() {
         ['Become a Millionaire', 'Mar 18, 2027'],
         ['Build My Dream Life', 'Apr 18, 2027'],
       ]) {
-        const titleBox = await page.getByText(title, { exact: true }).boundingBox();
-        const dateBox = await page.getByText(date, { exact: true }).boundingBox();
+        const titleBox = await card.getByText(title, { exact: true }).boundingBox();
+        const dateBox = await card.getByText(date, { exact: true }).boundingBox();
         assert(titleBox.x + titleBox.width <= dateBox.x, `Title and date overlap at ${width}px`);
         assert(dateBox.x + dateBox.width <= cardBox.x + cardBox.width);
       }
