@@ -142,7 +142,7 @@ export function IllustratedHabitCard({
                 {/sleep|night/i.test(habit.time) ? <ClockIcon color={METADATA_COLOR} size={19} /> : <SunHorizonIcon color={METADATA_COLOR} size={19} />}
                 <AppText color={METADATA_COLOR} style={styles.metaText} variant="bodySmall">{habit.time}</AppText>
               </View>
-              {habit.dreamTitle ? (
+              {expanded && habit.dreamTitle ? (
                 <View style={styles.metadataItem}>
                   <DreamIcon color={METADATA_COLOR} size={18} />
                   <AppText color={METADATA_COLOR} style={styles.metaText} variant="bodySmall">{habit.dreamTitle}</AppText>
