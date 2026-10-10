@@ -35,6 +35,7 @@ export {
   GearIcon,
   HistoryIcon,
   ImageIcon,
+  LockIcon,
   MeditateIcon,
   MilestoneIcon,
   MinusIcon,

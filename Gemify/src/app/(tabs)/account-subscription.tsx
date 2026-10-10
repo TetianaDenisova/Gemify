@@ -79,25 +79,10 @@ export default function AccountSubscriptionScreen() {
       <ScreenScaffold style={styles.transparent} topInset tabClearance contentStyle={styles.content}>
         <ScreenHeader leftAction={null} style={styles.header} centerSlot={
           <AppText align="center" style={[styles.headerTitle, phone && styles.headerTitlePhone]}>
-            Account & Subscription
+            Subscription & Account
           </AppText>
         } />
-        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Account</AppText>
-        <View style={styles.account}>
-          <View style={styles.avatar}><DreamIcon size={32} color={colors.accentViolet} /></View>
-          <View style={styles.accountIdentity}>
-            <AppText style={styles.accountName}>{account.ready ? name : "Loading account..."}</AppText>
-            <AppText color={colors.textSecondary} variant="bodySmall" style={styles.email}>
-              {account.email ?? "Not signed in"}
-            </AppText>
-          </View>
-          <Pressable accessibilityRole="button" disabled={busy || !account.ready}
-            onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
-            style={({ pressed }) => [styles.authButton, (pressed || busy) && styles.dimmed]}>
-            <AppText style={styles.authLabel}>{accountBusy ? "Please wait" : account.signedIn ? "Log out" : "Sign in"}</AppText>
-          </Pressable>
-        </View>
-
+        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Subscription</AppText>
         {subscription.testMode && (
           <View style={styles.testRow}>
             <View style={styles.flex}>
@@ -110,7 +95,6 @@ export default function AccountSubscriptionScreen() {
           </View>
         )}
 
-        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Subscription</AppText>
         <View style={[styles.plan, subscription.premium && styles.premiumPlan]}>
           <Image source={BACKGROUND} resizeMode="cover" style={[StyleSheet.absoluteFill, styles.planArt]} />
           <LinearGradient colors={["rgba(3, 7, 12, 0.68)", "rgba(3, 7, 12, 0.96)"]} style={StyleSheet.absoluteFill} />
@@ -176,6 +160,22 @@ export default function AccountSubscriptionScreen() {
             </View>
           </View>
         )}
+
+        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Account</AppText>
+        <View style={styles.account}>
+          <View style={styles.avatar}><DreamIcon size={32} color={colors.accentViolet} /></View>
+          <View style={styles.accountIdentity}>
+            <AppText style={styles.accountName}>{account.ready ? name : "Loading account..."}</AppText>
+            <AppText color={colors.textSecondary} variant="bodySmall" style={styles.email}>
+              {account.email ?? "Not signed in"}
+            </AppText>
+          </View>
+          <Pressable accessibilityRole="button" disabled={busy || !account.ready}
+            onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
+            style={({ pressed }) => [styles.authButton, (pressed || busy) && styles.dimmed]}>
+            <AppText style={styles.authLabel}>{accountBusy ? "Please wait" : account.signedIn ? "Log out" : "Sign in"}</AppText>
+          </Pressable>
+        </View>
 
         {subscription.premium && (
           <View style={styles.dataSection}>

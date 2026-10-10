@@ -16,6 +16,7 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { habitIconForId } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
   AppButton,
@@ -25,6 +26,7 @@ import {
   Card,
   ChevronIcon,
   DreamIcon,
+  LockIcon,
   MilestoneIcon,
   PlusIcon,
   ScreenScaffold,
@@ -140,6 +142,8 @@ export default function HomeScreen() {
   const { phone } = useLayoutSize();
   const today = todayKey();
   const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
+  const subscription = useSubscription();
+  const addGoalLocked = !subscription.premium && dreams.length > 0;
   const { blocks, completedQuests, toggleQuest, totalQuests } =
     useDayQuestBlocks(today);
 
@@ -342,24 +346,28 @@ export default function HomeScreen() {
 
       <SectionHeader
         action={{
-          icon: <PlusIcon size={14} />,
+          accessibilityLabel: addGoalLocked ? "Add Goal, Premium required" : "Add Goal",
+          icon: addGoalLocked ? <LockIcon size={14} /> : <PlusIcon size={14} />,
           label: "Add Goal",
-          onPress: () => router.push("/create-goal"),
+          onPress: () => router.push(addGoalLocked ? "/account-subscription" : "/create-goal"),
         }}
         style={styles.sectionHeader}
         title="YOUR GOALS"
         variant="eyebrow"
       />
 
-      {dreams.map((dream) => (
+      {dreams.map((dream, index) => (
         <GoalCard
           goal={toGoal(dream)}
           key={dream.id}
+          locked={!subscription.premium && index > 0}
           onPress={() =>
-            router.push({
-              pathname: "/journey-map",
-              params: { dreamId: String(dream.id) },
-            })
+            !subscription.premium && index > 0
+              ? router.push("/account-subscription")
+              : router.push({
+                  pathname: "/journey-map",
+                  params: { dreamId: String(dream.id) },
+                })
           }
         />
       ))}

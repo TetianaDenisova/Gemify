@@ -5,12 +5,13 @@ import { Pressable, StyleSheet, View } from "react-native";
 import type { Goal, ThemeColor } from "@/data/homeTypes";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { goalImages } from "@/data/images";
-import { AppText, ProgressRing } from "@/shared/components";
+import { AppText, LockIcon, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { pressed, radius, shadows, spacing } from "@/theme/theme";
 
 interface GoalCardProps {
   goal: Goal;
+  locked?: boolean;
   onPress?: (goal: Goal) => void;
 }
 
@@ -73,13 +74,14 @@ function getThemeColor(themeColor: ThemeColor) {
   return themeColor === "gold" ? colors.primary : colors.primarySoft;
 }
 
-export function GoalCard({ goal, onPress }: GoalCardProps) {
+export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
   const accentColor = getThemeColor(goal.themeColor);
   const { phone } = useLayoutSize();
   const ringSize = phone ? RING_SIZE_PHONE : RING_SIZE;
 
   return (
     <Pressable
+      accessibilityLabel={locked ? `${goal.title}, Premium required` : goal.title}
       accessibilityRole="button"
       onPress={() => onPress?.(goal)}
       style={({ pressed: isPressed }) => [
@@ -127,16 +129,20 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         </View>
 
         <View style={[styles.progressColumn, { width: ringSize }]}>
-          {/* Always a percentage — a fresh dream reads "0%", in the same
-              spot as every other card, so the list stays consistent. */}
-          <ProgressRing
-            backgroundColor={colors.surfaceDeep}
-            color={accentColor}
-            labelColor={accentColor}
-            size={ringSize}
-            strokeWidth={2}
-            value={goal.progressPercent}
-          />
+          {locked ? (
+            <View style={[styles.lock, { height: ringSize, width: ringSize }]}>
+              <LockIcon color={colors.primary} size={phone ? 26 : 30} />
+            </View>
+          ) : (
+            <ProgressRing
+              backgroundColor={colors.surfaceDeep}
+              color={accentColor}
+              labelColor={accentColor}
+              size={ringSize}
+              strokeWidth={2}
+              value={goal.progressPercent}
+            />
+          )}
         </View>
       </View>
     </Pressable>
@@ -211,6 +217,10 @@ const styles = StyleSheet.create({
   },
 
   progressColumn: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lock: {
     alignItems: "center",
     justifyContent: "center",
   },

@@ -8,6 +8,24 @@ export type IconProps = {
   strokeWidth?: number;
 };
 
+export function LockIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Rect height={10} rx={2} stroke={color} strokeWidth={strokeWidth} width={16} x={4} y={11} />
+      <Path
+        d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"
+        stroke={color}
+        strokeLinecap="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function UserIcon({
   color = colors.primary,
   size = 24,
