@@ -51,7 +51,7 @@ import {
   ChevronIcon,
   IconButton,
   PlusIcon,
-  ScreenHeader,
+  TabScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
@@ -256,7 +256,7 @@ export function WeekPlanView({
   const [pickerQuests, setPickerQuests] = useState<QuestWithBreadcrumb[]>([]);
   const [addTarget, setAddTarget] = useState<QuestWithBreadcrumb | null>(null);
 
-  const { height: windowHeight, phone, width: windowWidth } = useLayoutSize();
+  const { compact, height: windowHeight, phone, width: windowWidth } = useLayoutSize();
   const ghostWidth = Math.min(windowWidth - spacing.lg * 2, 360);
   // The copy and Add quest button overlay the artwork; the week strip and day
   // heading sit above it, so it takes a bit less height than on My Day.
@@ -604,12 +604,8 @@ export function WeekPlanView({
         tabClearance
         topInset
       >
-        <ScreenHeader
-          centerSlot={
-            <AppText color={colors.primary} numberOfLines={1} variant="screenTitle">
-              Week
-            </AppText>
-          }
+        <TabScreenHeader
+          title="Week"
           leftAction={{
             accessibilityLabel: "Open calendar",
             icon: <CalendarIcon size={22} strokeWidth={1.7} />,
@@ -620,9 +616,9 @@ export function WeekPlanView({
               mode="week"
               onSelectMode={onSelectMode}
               onTimeBlocksChanged={loadBoard}
+              size={compact ? "sm" : "md"}
             />
           }
-          style={styles.header}
         />
 
         <View style={[styles.weekStrip, phone && styles.weekStripPhone]}>
@@ -982,10 +978,6 @@ const styles = StyleSheet.create({
     left: 0,
     position: "absolute",
     right: 0,
-  },
-  header: {
-    marginBottom: spacing.md,
-    paddingHorizontal: 0,
   },
   questCardDragging: {
     opacity: 0.35,

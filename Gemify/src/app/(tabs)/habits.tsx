@@ -16,10 +16,10 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 import {
   AppButton, AppModal, ActionMenuSheet, ConfirmDialog, AppText, CheckIcon, DreamIcon,
   HistoryIcon, IconButton, PencilIcon, PlusIcon, RepeatIcon,
-  ScreenScaffold, SparkIcon, TrashIcon,
+  ScreenScaffold, SparkIcon, TabScreenHeader, TrashIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { radius, spacing, textGlow } from "@/theme/theme";
+import { radius, spacing } from "@/theme/theme";
 
 const HABITS_BACKGROUND = ["#020A12", "#030B15", "#020912"] as const;
 
@@ -145,23 +145,19 @@ export default function HabitsScreen() {
 
   return (
     <ScreenScaffold backgroundGradient={HABITS_BACKGROUND} tabClearance topInset>
-      <View style={[styles.header, compact && styles.headerCompact]}>
-        <IconButton accessibilityLabel="Finished habits" icon={<HistoryIcon size={compact ? 22 : 25} />}
-          onPress={() => setCompletedOpen(true)} size={compact ? "sm" : "md"} />
-        <View style={styles.titleBlock}>
-          <AppText align="center" color={colors.primary} numberOfLines={1}
-            adjustsFontSizeToFit style={[styles.title, compact && styles.titleCompact]} variant="screenTitle">
-            My Habits
-          </AppText>
-          <View pointerEvents="none" style={styles.ornament}>
-            <View style={styles.ornamentLine} />
-            <SparkIcon size={compact ? 20 : 26} />
-            <View style={styles.ornamentLine} />
-          </View>
-        </View>
-        <IconButton accessibilityLabel="Add habit" icon={<PlusIcon size={compact ? 26 : 30} />}
-          onPress={() => router.push("/create-habit")} size={compact ? "sm" : "md"} />
-      </View>
+      <TabScreenHeader
+        title="My Habits"
+        leftAction={{
+          accessibilityLabel: "Finished habits",
+          icon: <HistoryIcon size={compact ? 20 : 22} />,
+          onPress: () => setCompletedOpen(true),
+        }}
+        rightAction={{
+          accessibilityLabel: "Add habit",
+          icon: <PlusIcon size={20} />,
+          onPress: () => router.push("/create-habit"),
+        }}
+      />
 
       <View accessibilityRole="tablist" style={styles.tabs}>
         {(["today", "all"] as const).map((value) => (
@@ -241,13 +237,6 @@ export default function HabitsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 102 },
-  headerCompact: { minHeight: 88 },
-  titleBlock: { flex: 1, paddingHorizontal: spacing.sm },
-  title: { fontSize: 40, lineHeight: 48, fontWeight: "400", letterSpacing: 0, ...textGlow("rgba(245, 184, 75, 0.18)", 8) },
-  titleCompact: { fontSize: 32, lineHeight: 40 },
-  ornament: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center", marginTop: 4 },
-  ornamentLine: { backgroundColor: colors.primaryDark, flex: 1, height: 1, maxWidth: 78 },
   tabs: { flexDirection: "row", borderBottomColor: "#172130", borderBottomWidth: 1, marginTop: 8 },
   tab: { flex: 1, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", minHeight: 48, borderBottomWidth: 2, borderBottomColor: "transparent" },
   selectedTab: { borderBottomColor: colors.primary },

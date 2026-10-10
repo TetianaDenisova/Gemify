@@ -37,7 +37,7 @@ import {
   CalendarIcon,
   Card,
   PlusIcon,
-  ScreenHeader,
+  TabScreenHeader,
   ScreenScaffold,
 } from "@/shared/components";
 import { useLayoutSize } from "@/hooks/useLayoutSize";
@@ -311,10 +311,7 @@ export function DayPlanView({ date, onSelectDate, onSelectMode }: DayPlanViewPro
         tabClearance
         topInset
       >
-        <ScreenHeader
-          centerSlot={phone && !isToday ? (
-            <AppText align="center" variant="titleSm">{headerTitle}</AppText>
-          ) : undefined}
+        <TabScreenHeader
           leftAction={{
             accessibilityLabel: "Open calendar",
             icon: <CalendarIcon size={compact ? 20 : 24} />,
@@ -325,11 +322,9 @@ export function DayPlanView({ date, onSelectDate, onSelectMode }: DayPlanViewPro
               mode="day"
               onSelectMode={onSelectMode}
               onTimeBlocksChanged={refresh}
+              size={compact ? "sm" : "md"}
             />
           }
-          style={styles.header}
-          // A tagline costs a whole line under the title on every visit.
-          subtitle={phone ? undefined : "Focus only on what matters now."}
           title={headerTitle}
         />
 
@@ -598,9 +593,6 @@ const styles = StyleSheet.create({
     left: 0,
     position: "absolute",
     right: 0,
-  },
-  header: {
-    paddingHorizontal: 0,
   },
   progressFooter: {
     left: 0,

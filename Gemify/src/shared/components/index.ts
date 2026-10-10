@@ -70,6 +70,8 @@ export { ProgressRing } from "./ProgressRing";
 export type { ProgressRingProps } from "./ProgressRing";
 export { ScreenHeader } from "./ScreenHeader";
 export type { ScreenHeaderAction, ScreenHeaderProps } from "./ScreenHeader";
+export { TabScreenHeader } from "./TabScreenHeader";
+export type { TabScreenHeaderProps } from "./TabScreenHeader";
 export { ScreenScaffold } from "./ScreenScaffold";
 export type { ScreenScaffoldProps } from "./ScreenScaffold";
 export { SectionHeader } from "./SectionHeader";

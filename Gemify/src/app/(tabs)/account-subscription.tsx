@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { useCloudSync } from "@/hooks/useCloudSync";
-import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useSubscription } from "@/hooks/useSubscription";
 import { exportBackup, pickAndImportBackup } from "@/db";
 import { notifySyncApplied } from "@/sync/events";
@@ -12,7 +11,7 @@ import { deleteAccount } from "@/sync/account";
 import { signOut } from "@/sync";
 import {
   AppButton, AppModal, AppText, ArrowRightIcon, CheckIcon, CloseIcon,
-  DreamIcon, PlusIcon, ScreenHeader, ScreenScaffold, SyncIcon, TrashIcon,
+  DreamIcon, PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon,
 } from "@/shared/components";
 import { PRIVACY_URL, TERMS_URL } from "@/subscription/config";
 import { colors } from "@/theme/colors";
@@ -31,7 +30,6 @@ const BASIC_FEATURES = [
 
 export default function AccountSubscriptionScreen() {
   const router = useRouter();
-  const { phone } = useLayoutSize();
   const account = useCloudSync();
   const subscription = useSubscription();
   const [accountBusy, setAccountBusy] = useState(false);
@@ -77,11 +75,7 @@ export default function AccountSubscriptionScreen() {
           style={StyleSheet.absoluteFill}
         />
       <ScreenScaffold style={styles.transparent} topInset tabClearance contentStyle={styles.content}>
-        <ScreenHeader leftAction={null} style={styles.header} centerSlot={
-          <AppText align="center" style={[styles.headerTitle, phone && styles.headerTitlePhone]}>
-            Subscription & Account
-          </AppText>
-        } />
+        <TabScreenHeader title="Account" />
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Subscription</AppText>
         {subscription.testMode && (
           <View style={styles.testRow}>
@@ -264,9 +258,6 @@ const styles = StyleSheet.create({
   background: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
   transparent: { backgroundColor: "transparent" },
   content: { maxWidth: 660 },
-  header: { paddingHorizontal: 0 },
-  headerTitle: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 38, color: "#FFF2D9", flexShrink: 1 },
-  headerTitlePhone: { fontSize: 22, lineHeight: 28 },
   sectionLabel: { marginBottom: 12, marginTop: 16 },
   account: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 14, padding: 18, backgroundColor: "rgba(3, 8, 15, 0.91)", borderColor: colors.border, borderWidth: 1, borderRadius: radius.card },
   avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: "#554468", backgroundColor: "#110E1C", alignItems: "center", justifyContent: "center" },

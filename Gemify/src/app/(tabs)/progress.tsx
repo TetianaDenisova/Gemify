@@ -22,6 +22,7 @@ import {
   Card,
   ChevronIcon,
   ScreenScaffold,
+  TabScreenHeader,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import {
@@ -295,25 +296,7 @@ export default function ProgressScreen() {
 
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
-      <View
-        style={[
-          styles.header,
-          compact && styles.headerCompact,
-          phone && styles.headerPhone,
-        ]}
-      >
-        <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
-          <AppText
-            align="center"
-            color={colors.primary}
-            numberOfLines={1}
-            style={[styles.title, compact && styles.titleCompact]}
-            variant="screenTitle"
-          >
-            {progressContent.title}
-          </AppText>
-        </View>
-      </View>
+      <TabScreenHeader title={progressContent.title} />
 
       {progressContent.hasChartData ? rangePicker : null}
 
@@ -544,19 +527,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     ...textGlow(colors.primaryGlow, 12),
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 92,
-  },
-  headerCompact: {
-    minHeight: 72,
-  },
-  /** The title is the only thing in this row — it needs no 72 pt band. */
-  headerPhone: {
-    minHeight: 52,
-  },
   panelDivider: {
     alignSelf: "stretch",
     backgroundColor: "rgba(133, 149, 199, 0.46)",
@@ -655,19 +625,5 @@ const styles = StyleSheet.create({
   summaryValueCompact: {
     fontSize: fontSizes.screenTitle,
     lineHeight: lineHeights.screenTitle,
-  },
-  title: {
-    ...textGlow(colors.primaryGlow, 12),
-  },
-  titleBlock: {
-    flex: 1,
-    paddingHorizontal: 18,
-  },
-  titleBlockCompact: {
-    paddingHorizontal: spacing.sm,
-  },
-  titleCompact: {
-    fontSize: fontSizes.cardTitle,
-    lineHeight: lineHeights.cardTitle,
   },
 });

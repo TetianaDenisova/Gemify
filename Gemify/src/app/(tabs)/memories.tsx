@@ -46,6 +46,7 @@ import {
   PlusIcon,
   PencilIcon,
   ScreenScaffold,
+  TabScreenHeader,
   SparkIcon,
   SparkleGlyphIcon,
   TrashIcon,
@@ -59,7 +60,6 @@ import {
   radius,
   shadowStyle,
   spacing,
-  textGlow,
 } from "@/theme/theme";
 import { toDateKey, todayKey } from "@/utils/dates";
 import { deleteMemoryPhotos, persistMemoryPhoto } from "@/utils/memoryPhotos";
@@ -564,32 +564,19 @@ export default function MemoriesScreen() {
 
   return (
     <ScreenScaffold contentStyle={styles.content} tabClearance topInset>
-      <View style={[styles.header, compact && styles.headerCompact]}>
-        {/* Finished dreams live behind this, like finished habits do. */}
-        <IconButton
-          accessibilityLabel="Completed dreams"
-          icon={<HistoryIcon size={compact ? 20 : 22} />}
-          onPress={() => setCompletedOpen(true)}
-          size={compact ? "sm" : "md"}
-        />
-        <View style={[styles.titleBlock, compact && styles.titleBlockCompact]}>
-          <AppText
-            align="center"
-            color={colors.primary}
-            numberOfLines={1}
-            style={[styles.title, compact && styles.titleCompact]}
-            variant="screenTitle"
-          >
-            Memories
-          </AppText>
-        </View>
-        <IconButton
-          accessibilityLabel="Add a memory"
-          icon={<PlusIcon size={20} />}
-          onPress={() => openAddForm()}
-          size={compact ? "sm" : "md"}
-        />
-      </View>
+      <TabScreenHeader
+        title="Memories"
+        leftAction={{
+          accessibilityLabel: "Completed dreams",
+          icon: <HistoryIcon size={compact ? 20 : 22} />,
+          onPress: () => setCompletedOpen(true),
+        }}
+        rightAction={{
+          accessibilityLabel: "Add a memory",
+          icon: <PlusIcon size={20} />,
+          onPress: () => openAddForm(),
+        }}
+      />
 
       <Card padded={false} style={styles.goalPicker} variant="glass">
         <ListItem
@@ -1346,15 +1333,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 92,
-  },
-  headerCompact: {
-    minHeight: 72,
-  },
   headerSpacer: {
     width: 56,
   },
@@ -1536,19 +1514,5 @@ const styles = StyleSheet.create({
     borderStyle: "dotted",
     borderTopWidth: 2,
     position: "absolute",
-  },
-  title: {
-    ...textGlow(colors.primaryGlow, 12),
-  },
-  titleBlock: {
-    flex: 1,
-    paddingHorizontal: 18,
-  },
-  titleBlockCompact: {
-    paddingHorizontal: spacing.sm,
-  },
-  titleCompact: {
-    fontSize: fontSizes.cardTitle,
-    lineHeight: lineHeights.cardTitle,
   },
 });

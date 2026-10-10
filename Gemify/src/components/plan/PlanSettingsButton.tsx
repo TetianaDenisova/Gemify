@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   GearIcon,
   IconButton,
+  type IconButtonSize,
 } from "@/shared/components";
 
 export type PlanMode = "day" | "week";
@@ -14,12 +15,14 @@ type PlanSettingsButtonProps = {
   mode: PlanMode;
   onSelectMode: (mode: PlanMode) => void;
   onTimeBlocksChanged: () => void;
+  size?: IconButtonSize;
 };
 
 export function PlanSettingsButton({
   mode,
   onSelectMode,
   onTimeBlocksChanged,
+  size,
 }: PlanSettingsButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [blockSettingsOpen, setBlockSettingsOpen] = useState(false);
@@ -31,6 +34,7 @@ export function PlanSettingsButton({
         accessibilityLabel="Open plan settings"
         icon={<GearIcon size={22} />}
         onPress={() => setMenuOpen(true)}
+        size={size}
       />
       <ActionMenuSheet
         eyebrow="Plan settings"
