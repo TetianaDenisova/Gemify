@@ -188,6 +188,7 @@ function QuestBarsChart({
                 style={[
                   styles.barPercentLabel,
                   compact && styles.barPercentLabelCompact,
+                  phone && styles.barPercentLabelPhone,
                   {
                     left: bar.center - valueLabelWidth / 2,
                     top: bar.top - 20,
@@ -221,6 +222,7 @@ function QuestBarsChart({
               style={[
                 styles.barAxisLabel,
                 compact && styles.barAxisLabelCompact,
+                phone && styles.barAxisLabelPhone,
                 { left: bar.center - axisLabelWidth / 2, width: axisLabelWidth },
               ]}
               variant="pill"
@@ -356,11 +358,13 @@ export default function ProgressScreen() {
         </View>
       </View>
 
-      {goalPicker}
+      {progressContent.hasChartData ? rangePicker : null}
 
-
+      <Card variant="glass">
+        <AppText color={colors.primary} style={styles.cardTitle} variant="title">
+          {barsTab.label}
+        </AppText>
       {!progressContent.hasChartData ? (
-        <Card variant="glass">
           <View
             style={[styles.emptyState, compact && styles.emptyStateCompact]}
           >
@@ -389,43 +393,8 @@ export default function ProgressScreen() {
               Complete your first quest to reveal your progress.
             </AppText>
           </View>
-        </Card>
       ) : (
         <>
-          {/* The finish date the current pace points at, over the
-              destination art — the reason the charts below matter. Absent
-              until the dream has a completed quest to predict from. */}
-          {forecast ? (
-            <Card padded={false} style={styles.forecastCard} variant="glass">
-              <View
-                style={[
-                  styles.forecastCopy,
-                  phone && styles.forecastCopyPhone,
-                ]}
-              >
-                <AppText variant={phone ? "pill" : "titleSm"}>
-                  {forecast.headline}
-                </AppText>
-                <AppText
-                  color={colors.primary}
-                  style={styles.forecastDate}
-                  variant={phone ? "titleSm" : "cardTitle"}
-                >
-                  {forecast.date}
-                </AppText>
-              </View>
-              <Image
-                contentFit="cover"
-                source={WILL_ACHIEVE_ART}
-                style={[styles.forecastArt, phone && styles.forecastArtPhone]}
-              />
-            </Card>
-          ) : null}
-
-          {rangePicker}
-
-          <Card variant="glass">
-            <AppText style={styles.cardTitle} variant="title">{barsTab.label}</AppText>
             <View
               style={[
                 styles.chartRow,
@@ -494,9 +463,38 @@ export default function ProgressScreen() {
                 )
               ) : null}
             </View>
-          </Card>
         </>
       )}
+      </Card>
+
+      {goalPicker}
+
+      {progressContent.hasChartData && forecast ? (
+        <Card padded={false} style={styles.forecastCard} variant="glass">
+          <View
+            style={[
+              styles.forecastCopy,
+              phone && styles.forecastCopyPhone,
+            ]}
+          >
+            <AppText variant={phone ? "pill" : "titleSm"}>
+              {forecast.headline}
+            </AppText>
+            <AppText
+              color={colors.primary}
+              style={styles.forecastDate}
+              variant={phone ? "titleSm" : "cardTitle"}
+            >
+              {forecast.date}
+            </AppText>
+          </View>
+          <Image
+            contentFit="cover"
+            source={WILL_ACHIEVE_ART}
+            style={[styles.forecastArt, phone && styles.forecastArtPhone]}
+          />
+        </Card>
+      ) : null}
     </ScreenScaffold>
   );
 }
@@ -512,6 +510,10 @@ const styles = StyleSheet.create({
   barAxisLabelCompact: {
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
+  },
+  barAxisLabelPhone: {
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
   },
   barsCanvas: {
     height: BAR_TOP_PAD + CHART_PLOT_HEIGHT + CHART_X_LABEL_HEIGHT,
@@ -537,6 +539,10 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xs,
     lineHeight: lineHeights.xs,
   },
+  barPercentLabelPhone: {
+    fontSize: fontSizes.xxs,
+    lineHeight: lineHeights.xxs,
+  },
   cardTitle: {
     fontSize: fontSizes.xxl,
     fontWeight: "500",
@@ -554,7 +560,7 @@ const styles = StyleSheet.create({
     lineHeight: lineHeights.xs,
     position: "absolute",
     textAlign: "right",
-    width: CHART_Y_AXIS_WIDTH - 8,
+    width: CHART_Y_AXIS_WIDTH - 2,
   },
   chartTickLabelPhone: {
     width: CHART_Y_AXIS_WIDTH_PHONE - 2,
@@ -562,7 +568,7 @@ const styles = StyleSheet.create({
   chartRow: {
     flexDirection: "row",
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   chartRowCompact: {
     gap: spacing.sm,

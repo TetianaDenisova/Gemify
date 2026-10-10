@@ -8,7 +8,7 @@ async function setPremium(page, premium) {
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
   const toggle = page.getByRole('switch', { name: 'Test Premium', exact: true });
   await toggle.waitFor();
-  if ((await toggle.getAttribute('aria-checked') === 'true') !== premium) await toggle.click();
+  if ((await toggle.isChecked()) !== premium) await toggle.click();
   await page.getByText(premium ? 'Premium' : 'Basic', { exact: true }).waitFor();
 }
 
@@ -41,7 +41,7 @@ async function main() {
     await page.getByRole('button', { name: 'Add Goal', exact: true }).click();
     await page.getByLabel('Name your dream', { exact: true }).waitFor();
     console.log('BASIC EMPTY PASS: first dream creation available');
-    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.goBack();
     const [firstId] = await createDreams(page, ['First dream']);
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
     await page.getByRole('tab', { name: 'Home', exact: true }).click();
@@ -51,7 +51,7 @@ async function main() {
     await page.getByRole('button', { name: 'First dream', exact: true }).click();
     await page.waitForURL(`**/journey-map?dreamId=${firstId}`);
     console.log('BASIC ONE PASS: first dream opens; Add Goal locked');
-    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.goBack();
     await setPremium(page, true);
     const [secondId] = await createDreams(page, ['Second dream', 'Third dream']);
     await setPremium(page, false);
@@ -76,7 +76,7 @@ async function main() {
     await page.getByRole('button', { name: 'Second dream', exact: true }).click();
     await page.waitForURL(`**/journey-map?dreamId=${secondId}`);
     console.log('PREMIUM PASS: all rings and dream access restored; Add Goal available');
-    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.goBack();
     await setPremium(page, false);
     for (const width of [320, 390, 820, 1280]) {
       await page.setViewportSize({ width, height: width >= 820 ? 1100 : 844 });
