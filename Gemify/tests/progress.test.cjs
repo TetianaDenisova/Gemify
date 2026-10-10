@@ -10,7 +10,7 @@ const ts = require("typescript");
 function load(relative, dependencies, globals = {}) {
   const compiled = ts.transpileModule(
     fs.readFileSync(path.join(__dirname, "..", relative), "utf8"),
-    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } },
   ).outputText;
   const exports = {};
   vm.runInNewContext(compiled, {
@@ -64,12 +64,15 @@ function fixture() {
     }
   }
   const dates = load("src/utils/dates.ts", {}, { Date: FixedDate });
+  const forecast = load("src/domain/forecast.ts", { "@/utils/dates": dates }, { Date: FixedDate });
   const states = [];
   let cursor = 0;
   let onFocus;
   let onSync;
   const data = {
-    dreams: [{ id: 1 }, { id: 2 }],
+    dreams: [{ id: 1, title: "First dream" }, { id: 2, title: "Second dream" }],
+    milestones: [],
+    savedForecasts: new Map(),
     quests: [
       { id: 1, isDone: true, scheduledDate: "2026-10-05" },
       { id: 2, isDone: false, scheduledDate: "2026-10-07" },
@@ -105,17 +108,14 @@ function fixture() {
         return data.completions;
       },
       getDreamsWithCompleted: async () => [{ id: 1 }, { id: 4, isCompleted: true }],
-      getMilestones: async () => [],
+      getMilestones: async (dreamId) => data.milestones.filter((milestone) => milestone.dreamId === dreamId),
       getQuestsByDream: async (id) => { data.dreamLoads.push(id); return []; },
       getTimelineMoments: async () => [],
       getHabitsByDream: async () => [],
-      getForecastProjection: async () => null,
-      saveForecastProjection: async () => assert.fail("No forecast should be saved"),
+      getForecastProjection: async (dreamId) => data.savedForecasts.get(dreamId) ?? null,
+      saveForecastProjection: async (dreamId, date) => { data.savedForecasts.set(dreamId, date); },
     },
-    "@/domain/forecast": {
-      dreamWeights: () => ({ shares: new Map() }),
-      forecastCompletion: () => ({ reason: "no-quests" }),
-    },
+    "@/domain/forecast": forecast,
     "@/hooks/useRefreshOnSync": { useRefreshOnSync: (callback) => { onSync = callback; } },
     "@/utils/dates": dates,
   }, { Date: FixedDate });
@@ -171,4 +171,60 @@ test("Memories still loads its selected completed dream", async () => {
   assert.equal(result.dreamId, 4);
   assert.deepEqual(app.data.dreamLoads, [4]);
   assert.equal(result.content.goals.some((goal) => goal.key === "4"), true);
+});
+
+test("forecasts use each dream's own pace, retain pending dreams, and sort by full date", async () => {
+  const app = fixture();
+  app.data.dreams.push({ id: 3, title: "New dream" });
+  app.data.habits = [];
+  app.data.milestones = [
+    { id: 11, dreamId: 1, status: "active" },
+    { id: 22, dreamId: 2, status: "active" },
+  ];
+  app.data.quests = [
+    { id: 1, milestoneId: 11, isActive: true, isDone: true, completedAt: "2026-10-07", scheduledDate: "2026-10-07" },
+    { id: 2, milestoneId: 11, isActive: true, isDone: false, completedAt: null, scheduledDate: "2027-01-18" },
+    { id: 3, milestoneId: 22, isActive: true, isDone: true, completedAt: "2026-10-06", scheduledDate: "2026-10-06" },
+    { id: 4, milestoneId: 22, isActive: true, isDone: false, completedAt: null, scheduledDate: "2026-11-06" },
+  ];
+  await app.render().refresh();
+  const forecasts = app.render().content.forecasts;
+  assert.deepEqual(Array.from(forecasts, (entry) => [entry.dreamId, entry.title, entry.date]), [
+    [2, "Second dream", "2026-11-06"],
+    [1, "First dream", "2027-01-18"],
+    [3, "New dream", null],
+  ]);
+  assert.equal(app.data.savedForecasts.get(1), "2027-01-18");
+  assert.equal(app.data.savedForecasts.get(2), "2026-11-06");
+  assert.deepEqual(app.data.dreamLoads, []);
+});
+
+test("forecast card displays the year and pending state without menu controls", () => {
+  const element = (type, props) => ({ type, props });
+  const { DreamForecastCard } = load("src/components/DreamForecastCard.tsx", {
+    "react/jsx-runtime": { jsx: element, jsxs: element },
+    "expo-image": { Image: "Image" },
+    "expo-linear-gradient": { LinearGradient: "LinearGradient" },
+    "react-native": { StyleSheet: { create: (styles) => styles, absoluteFill: {} }, View: "View" },
+    "@/shared/components": { AppText: "AppText", Card: "Card" },
+    "@/theme/colors": { colors: {} },
+    "@/theme/theme": { spacing: {} },
+    "../../assets/will-achieve.png": "castle.png",
+  });
+  const root = DreamForecastCard({ forecasts: [
+    { dreamId: 1, title: "Become a Millionaire", date: "2027-03-02" },
+    { dreamId: 2, title: "Build My Dream Life", date: null },
+  ], loading: false });
+  const strings = [];
+  const types = [];
+  function walk(node) {
+    if (typeof node === "string") strings.push(node);
+    else if (Array.isArray(node)) node.forEach(walk);
+    else if (node?.props) { types.push(node.type); walk(node.props.children); }
+  }
+  walk(root);
+  assert.ok(strings.includes("Dream Forecast"));
+  assert.ok(strings.includes("Mar 2, 2027"));
+  assert.ok(strings.includes("Pending"));
+  assert.equal(types.includes("Pressable"), false);
 });

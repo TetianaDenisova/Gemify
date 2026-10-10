@@ -20,6 +20,13 @@ export interface AchievementForecast {
   eta: string;
 }
 
+export interface DreamForecastEntry {
+  dreamId: number;
+  title: string;
+  /** Local YYYY-MM-DD estimate; null until enough history exists. */
+  date: string | null;
+}
+
 export interface TimelineMoment {
   key: string;
   /** Formatted display date, e.g. "Aug 23, 2026". */
