@@ -14,3 +14,15 @@ export const goalImages: Record<GoalImageKey, ImageSourcePropType> = {
   dream_bg_9: require("../../../assets/images/main-dream-bg/dream-bg-9.png"),
   dream_bg_10: require("../../../assets/images/main-dream-bg/dream-bg-10.png"),
 };
+
+export const mainDreamBackgrounds: readonly ImageSourcePropType[] = [
+  goalImages.dream_bg_1,
+  goalImages.dream_bg_2,
+  goalImages.dream_bg_4,
+  goalImages.dream_bg_5,
+  require("../../../assets/images/main-dream-bg/dream-bg-6.png"),
+  goalImages.dream_bg_7,
+  goalImages.dream_bg_8,
+  goalImages.dream_bg_9,
+  goalImages.dream_bg_10,
+];

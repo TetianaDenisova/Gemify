@@ -4,8 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { toBoardHabit, type BoardHabit } from "@/components/HabitBoardCard";
 import { IllustratedHabitCard } from "@/components/IllustratedHabitCard";
-import { goalImages } from "@/data/images";
-import type { GoalImageKey } from "@/data/homeTypes";
+import { mainDreamBackgrounds } from "@/data/images";
 import {
   deleteHabit, getCompletedHabits, getDreams, getHabitDoneCount,
   setHabitDetailCheck, updateHabit,
@@ -22,11 +21,12 @@ import { colors } from "@/theme/colors";
 import { radius, spacing, textGlow } from "@/theme/theme";
 
 const HABITS_BACKGROUND = ["#020A12", "#030B15", "#020912"] as const;
-// The same dream artwork order used by the Home screen.
-const DREAM_ART: readonly GoalImageKey[] = [
-  "dream_bg_5", "dream_bg_8", "dream_bg_2", "dream_bg_7",
-  "dream_bg_9", "dream_bg_4", "dream_bg_10", "dream_bg_1",
-];
+
+function habitBackground(habitId: number) {
+  // Mix the stable ID so edits, filtering, and completion never reshuffle photos.
+  const hash = Math.imul(habitId, 0x9e3779b1) >>> 0;
+  return mainDreamBackgrounds[hash % mainDreamBackgrounds.length];
+}
 
 export default function HabitsScreen() {
   const router = useRouter();
@@ -57,23 +57,21 @@ export default function HabitsScreen() {
   }, [refreshCompleted]));
 
   const rows = useMemo(() => {
-    const dreamsById = new Map(dreams.map((dream, index) => [dream.id, { dream, index }]));
+    const dreamsById = new Map(dreams.map((dream) => [dream.id, dream]));
     return habitViews
       .filter((view) => tab === "all" || view.scheduleDays.includes(activeDayIndex))
       .sort((left, right) =>
         Number(left.weekProgress[activeDayIndex] === "done") - Number(right.weekProgress[activeDayIndex] === "done") ||
         left.timeOrder - right.timeOrder || left.habit.title.localeCompare(right.habit.title))
       .map((view, index) => {
-        const entry = dreamsById.get(view.habit.dreamId);
+        const dream = dreamsById.get(view.habit.dreamId);
         return {
           habit: {
             ...toBoardHabit(view, index, colors.primary),
             time: view.habit.cue?.trim() || view.timeLabel,
-            dreamTitle: entry?.dream.title,
+            dreamTitle: dream?.title,
           },
-          dream: entry?.dream,
-          imageSource: entry?.dream.photoUri ? { uri: entry.dream.photoUri } :
-            goalImages[DREAM_ART[(entry?.index ?? view.habit.dreamId) % DREAM_ART.length]],
+          imageSource: habitBackground(view.habit.id),
           checkedSections: view.todayDetailChecks,
         };
       });
@@ -174,9 +172,9 @@ export default function HabitsScreen() {
       </View>
 
       <View style={styles.list}>
-        {rows.map(({ habit, dream, imageSource, checkedSections }) => (
+        {rows.map(({ habit, imageSource, checkedSections }) => (
           <IllustratedHabitCard activeDayIndex={activeDayIndex} checkedSections={checkedSections}
-            compact={compact} dream={dream} expanded={expandedHabit === habit.id}
+            compact={compact} expanded={expandedHabit === habit.id}
             habit={habit} imageSource={imageSource} key={habit.id}
             onDateToggle={(date, status) => setCompletion(habit.id, date, status === "done" ? null : "done")}
             onDetailToggle={(section) => void handleDetailToggle(habit, section)}
