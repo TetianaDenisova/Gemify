@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -26,6 +27,7 @@ import {
   AppText,
   ActionMenuSheet,
   CheckIcon,
+  CloseIcon,
   DotsIcon,
   IconButton,
   MilestoneIcon,
@@ -102,6 +104,8 @@ const DREAM_OVERVIEW_GRADIENT = [
   "rgba(5, 12, 21, 0.98)",
   "rgba(7, 14, 23, 0.96)",
 ] as const;
+
+const DREAM_PHOTO_PLACEHOLDER = require("../../assets/add_photo_of_your_dream.png");
 
 function JourneyOverviewModal({
   dreamName,
@@ -239,7 +243,6 @@ function JourneyOverviewModal({
 type DreamEditModalProps = {
   dreamName: string;
   onClose: () => void;
-  onDelete: () => void;
   onSave: (
     dreamName: string,
     visionStatement: string,
@@ -248,8 +251,6 @@ type DreamEditModalProps = {
   ) => void;
   photoTransform: DreamPhotoTransform;
   photoUri: string | null;
-  /** Hidden in the goal-creation flow, where the dream doesn't exist yet. */
-  showDelete: boolean;
   visible: boolean;
   visionStatement: string;
 };
@@ -262,29 +263,30 @@ type DreamEditModalProps = {
 function DreamEditModal({
   dreamName,
   onClose,
-  onDelete,
   onSave,
   photoTransform,
   photoUri,
-  showDelete,
   visible,
   visionStatement,
 }: DreamEditModalProps) {
   const insets = useSafeAreaInsets();
-  const { height, phone } = useLayoutSize();
+  const { phone } = useLayoutSize();
   const nameInputRef = useRef<TextInput>(null);
+  const visionInputRef = useRef<TextInput>(null);
+  const [nameHeight, setNameHeight] = useState(0);
+  const [visionHeight, setVisionHeight] = useState(0);
   const [draftName, setDraftName] = useState(dreamName);
   const [draftVision, setDraftVision] = useState(visionStatement);
   const [draftPhotoUri, setDraftPhotoUri] = useState(photoUri);
   const [draftTransform, setDraftTransform] = useState(photoTransform);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [wasVisible, setWasVisible] = useState(false);
 
   // Reset the drafts each time the modal opens.
   if (visible !== wasVisible) {
     setWasVisible(visible);
-    setConfirmDelete(false);
     if (visible) {
+      setNameHeight(0);
+      setVisionHeight(0);
       setDraftName(dreamName);
       setDraftVision(visionStatement);
       setDraftPhotoUri(photoUri);
@@ -330,31 +332,65 @@ function DreamEditModal({
 
   return (
     <AppModal
-      onClose={onClose}
-      panelStyle={[
-        styles.modalPanel,
-        { paddingBottom: Math.max(insets.bottom + 16, 30) },
+      contentContainerStyle={[
+        phone && styles.editModalContentPhone,
+        {
+          paddingTop: Math.max(insets.top, spacing.xl),
+          paddingBottom: Math.max(insets.bottom, spacing.xl),
+        },
       ]}
+      maxWidth={820}
+      onClose={onClose}
+      panelStyle={styles.readOnlyModalPanel}
       showHandle={false}
-      variant="sheet"
+      variant="center"
       visible={visible}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.frameOuter}>
-          <View style={styles.frameInner}>
-            <AppText align="center" variant="eyebrow">
+        <LinearGradient colors={DREAM_OVERVIEW_GRADIENT} style={styles.frameOuter}>
+          <Pressable
+            accessibilityLabel="Close dream editor"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.editCloseButton,
+              pressed && pressedStyle,
+            ]}
+          >
+            <CloseIcon color={colors.textPrimary} size={iconSizes.md} />
+          </Pressable>
+          <View pointerEvents="none" style={styles.editTopOrnament}>
+            <SparkIcon size={28} />
+          </View>
+          <View style={[styles.frameInner, phone && styles.frameInnerPhone]}>
+            <AppText
+              align="center"
+              style={[styles.editEyebrow, phone && styles.editEyebrowPhone]}
+              variant="eyebrow"
+            >
               THE LIFE I&apos;M CREATING
             </AppText>
             <View style={styles.titleRow}>
               <TextInput
+                accessibilityLabel="Dream name"
+                multiline
                 onChangeText={setDraftName}
+                onContentSizeChange={(event) =>
+                  setNameHeight(event.nativeEvent.contentSize.height)
+                }
                 placeholder="Your Dream Name"
                 placeholderTextColor={colors.textPlaceholder}
                 ref={nameInputRef}
+                scrollEnabled={false}
                 selectionColor={colors.primary}
-                style={styles.dreamNameInput}
+                style={[
+                  styles.dreamNameInput,
+                  phone && styles.dreamNameInputPhone,
+                  { height: Math.max(phone ? 44 : 64, nameHeight) },
+                ]}
                 value={draftName}
               />
               <Pressable
@@ -367,25 +403,11 @@ function DreamEditModal({
                   pressed && pressedStyle,
                 ]}
               >
-                <PencilIcon color={colors.primary} size={iconSizes.sm} />
+                <PencilIcon color={colors.textPrimary} size={iconSizes.sm} />
               </Pressable>
             </View>
-            {phone ? null : (
-              <View style={styles.ornamentRow}>
-                <View style={styles.ornamentLine} />
-                <SparkIcon size={iconSizes.sm} />
-                <View style={styles.ornamentLine} />
-              </View>
-            )}
-
             {draftPhotoUri ? (
-              <>
-                <View
-                  style={[
-                    styles.photoFrame,
-                    { maxHeight: height * (phone ? 0.22 : 0.28) },
-                  ]}
-                >
+                <View style={styles.photoFrame}>
                   <DreamPhotoAdjuster
                     onChange={setDraftTransform}
                     style={StyleSheet.absoluteFill}
@@ -431,19 +453,6 @@ function DreamEditModal({
                     />
                   </Pressable>
                 </View>
-                {/* The − / + buttons sit on the frame; dragging is
-                    discoverable without being told. */}
-                {phone ? null : (
-                  <AppText
-                    align="center"
-                    color={colors.textMuted}
-                    style={styles.photoHint}
-                    variant="caption"
-                  >
-                    Drag the photo to choose its focus, zoom with − / +
-                  </AppText>
-                )}
-              </>
             ) : (
               <Pressable
                 accessibilityLabel="Add a dream photo"
@@ -451,64 +460,58 @@ function DreamEditModal({
                 onPress={pickDreamPhoto}
                 style={({ pressed }) => [
                   styles.photoFrame,
-                  { maxHeight: height * (phone ? 0.22 : 0.28) },
+                  styles.photoPlaceholderFrame,
                   pressed && pressedStyle,
                 ]}
               >
-                <View style={styles.photoPlaceholder}>
-                  <AppText color={colors.textMuted} variant="bodySmall">
-                    Add a photo of your dream
-                  </AppText>
-                </View>
-                <View style={styles.photoEditBadge}>
-                  <PencilIcon
-                    color={colors.textOnPrimary}
-                    size={iconSizes.sm}
-                  />
-                </View>
+                <Image
+                  contentFit="contain"
+                  source={DREAM_PHOTO_PLACEHOLDER}
+                  style={StyleSheet.absoluteFill}
+                />
               </Pressable>
             )}
 
             <View style={[styles.visionCard, phone && styles.visionCardPhone]}>
-              <AppText style={styles.quoteMark}>{"“"}</AppText>
+              <AppText
+                accessible={false}
+                style={[styles.quoteMark, phone && styles.quoteMarkPhone]}
+              >
+                {"\u201C"}
+              </AppText>
               <TextInput
+                accessibilityLabel="Dream description"
                 multiline
                 onChangeText={setDraftVision}
+                onContentSizeChange={(event) =>
+                  setVisionHeight(event.nativeEvent.contentSize.height)
+                }
                 placeholder="Describe the life you are creating…"
                 placeholderTextColor={colors.textPlaceholder}
-                style={styles.visionInput}
+                ref={visionInputRef}
+                scrollEnabled={false}
+                selectionColor={colors.primary}
+                style={[
+                  styles.visionInput,
+                  phone && styles.visionInputPhone,
+                  { height: Math.max(phone ? 84 : 126, visionHeight) },
+                ]}
                 value={draftVision}
               />
-            </View>
-
-            {showDelete ? (
-              <View
-                style={[
-                  styles.dreamActionsRow,
-                  // Two 17 pt labels do not share 370 pt — stack them.
-                  phone && styles.dreamActionsRowPhone,
+              <Pressable
+                accessibilityLabel="Edit the dream description"
+                accessibilityRole="button"
+                hitSlop={10}
+                onPress={() => visionInputRef.current?.focus()}
+                style={({ pressed }) => [
+                  styles.visionEditButton,
+                  pressed && pressedStyle,
                 ]}
               >
-                <AppButton
-                  density="compact"
-                  label="Delete Dream"
-                  onPress={() => setConfirmDelete(true)}
-                  style={[styles.dreamActionButton, styles.deleteButton]}
-                  textStyle={[styles.actionLabel, styles.deleteLabel]}
-                  variant="secondary"
-                />
-                <AppButton
-                  density="compact"
-                  disabled={!canSave}
-                  label="Save Changes"
-                  onPress={() =>
-                  onSave(draftName.trim(), draftVision.trim(), draftPhotoUri, draftTransform)
-                }
-                  style={styles.dreamActionButton}
-                  textStyle={styles.actionLabel}
-                />
-              </View>
-            ) : (
+                <PencilIcon color={colors.primary} size={iconSizes.sm} />
+              </Pressable>
+            </View>
+
               <AppButton
                 disabled={!canSave}
                 label="Save Changes"
@@ -516,49 +519,14 @@ function DreamEditModal({
                   onSave(draftName.trim(), draftVision.trim(), draftPhotoUri, draftTransform)
                 }
                 style={styles.dreamSaveButton}
-                textStyle={styles.actionLabel}
+                textStyle={[styles.saveLabel, phone && styles.saveLabelPhone]}
               />
-            )}
+          </View>
+          <View pointerEvents="none" style={styles.editBottomOrnament}>
+            <SparkIcon size={28} />
           </View>
 
-          {confirmDelete ? (
-            <View style={styles.confirmOverlay}>
-              <View style={styles.confirmCard}>
-                <AppText align="center" variant="titleSm">
-                  Delete this dream?
-                </AppText>
-                <AppText
-                  align="center"
-                  style={styles.confirmBody}
-                  variant="bodySerif"
-                >
-                  Your dream name and vision statement will be cleared.
-                </AppText>
-                <View style={styles.confirmActionsRow}>
-                  <AppButton
-                    density="compact"
-                    label="Cancel"
-                    onPress={() => setConfirmDelete(false)}
-                    style={styles.dreamActionButton}
-                    textStyle={styles.actionLabel}
-                    variant="secondary"
-                  />
-                  <AppButton
-                    density="compact"
-                    label="Delete"
-                    onPress={() => {
-                      setConfirmDelete(false);
-                      onDelete();
-                    }}
-                    style={[styles.dreamActionButton, styles.deleteButton]}
-                    textStyle={[styles.actionLabel, styles.deleteLabel]}
-                    variant="secondary"
-                  />
-                </View>
-              </View>
-            </View>
-          ) : null}
-        </View>
+        </LinearGradient>
       </KeyboardAvoidingView>
     </AppModal>
   );
@@ -725,17 +693,12 @@ export function JourneyMapControls({
       <DreamEditModal
         dreamName={dreamName}
         onClose={() => setDreamEditVisible(false)}
-        onDelete={() => {
-          setDreamEditVisible(false);
-          onDeleteDream();
-        }}
         onSave={(nextName, nextVision, nextPhotoUri, nextTransform) => {
           onSaveDream(nextName, nextVision, nextPhotoUri, nextTransform);
           setDreamEditVisible(false);
         }}
         photoTransform={photoTransform}
         photoUri={photoUri}
-        showDelete={showDeleteDream}
         visible={dreamEditVisible}
         visionStatement={visionStatement}
       />
@@ -744,11 +707,20 @@ export function JourneyMapControls({
 }
 
 const styles = StyleSheet.create({
-  modalPanel: {
+  editModalContentPhone: {
+    paddingHorizontal: 12,
+  },
+  editCloseButton: {
+    alignItems: "center",
     backgroundColor: colors.transparent,
     borderWidth: 0,
-    padding: 0,
-    paddingHorizontal: spacing.md,
+    height: 40,
+    justifyContent: "center",
+    position: "absolute",
+    right: 10,
+    top: 8,
+    width: 40,
+    zIndex: 1,
   },
   readOnlyModalPanel: {
     backgroundColor: colors.transparent,
@@ -893,45 +865,61 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   frameOuter: {
-    borderRadius: radius.lg,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surfaceCard,
-    padding: spacing.xs,
+    padding: 5,
     ...shadows.softDark,
   },
   frameInner: {
-    borderRadius: radius.card,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.borderFaint,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: 28,
+    paddingVertical: 44,
   },
-  title: {
-    marginTop: spacing.xs,
+  frameInnerPhone: {
+    paddingHorizontal: 14,
+    paddingVertical: 26,
+    paddingTop: 42,
   },
-  ornamentRow: {
+  editEyebrow: {
+    color: colors.primary,
+    fontSize: fontSizes.md,
+    letterSpacing: 5,
+    lineHeight: lineHeights.lg,
+  },
+  editEyebrowPhone: {
+    fontSize: 13,
+    letterSpacing: 3,
+    lineHeight: 20,
+  },
+  editTopOrnament: {
     alignItems: "center",
-    alignSelf: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: -15,
   },
-  ornamentLine: {
-    width: 72,
-    height: 1,
-    backgroundColor: colors.border,
+  editBottomOrnament: {
+    alignItems: "center",
+    bottom: -15,
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   /** The dream image frame: gold edge and soft glow, as on the See Dream step. */
   photoFrame: {
     alignSelf: "stretch",
-    aspectRatio: 1.45,
+    aspectRatio: 1.58,
     backgroundColor: colors.surfaceDeep,
     borderColor: colors.primary,
     borderRadius: radius.card,
     borderWidth: 1.5,
-    marginBottom: spacing.md,
+    flexShrink: 0,
+    marginBottom: spacing.lg,
+    marginHorizontal: 10,
     overflow: "hidden",
     ...shadowStyle({
       color: colors.primary,
@@ -940,19 +928,10 @@ const styles = StyleSheet.create({
       radius: 22,
     }),
   },
-  photo: {
-    height: "100%",
-    width: "100%",
-  },
-  photoPlaceholder: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  /** How-to line under the adjustable photo. */
-  photoHint: {
-    marginBottom: spacing.md,
-    marginTop: -spacing.xs,
+  photoPlaceholderFrame: {
+    aspectRatio: 838 / 493,
+    backgroundColor: colors.transparent,
+    borderWidth: 0,
   },
   /** Quiet − / + pair opposite the pencil badge. */
   photoZoomControls: {
@@ -986,29 +965,42 @@ const styles = StyleSheet.create({
     ...shadows.softDark,
   },
   visionCardPhone: {
-    padding: spacing.md,
+    gap: 20,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 40,
   },
   visionCard: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md,
+    gap: 28,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: withOpacity(colors.textPrimary, 0.25),
     backgroundColor: colors.surfaceDeep,
-    padding: spacing.lg,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 44,
   },
   quoteMark: {
     color: colors.primary,
     fontFamily: fonts.serif,
-    fontSize: fontSizes.stat,
-    lineHeight: lineHeights.stat,
+    flexShrink: 0,
+    fontSize: 60,
+    lineHeight: 56,
   },
-  visionText: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.xl,
+  quoteMarkPhone: {
+    fontSize: 46,
+    lineHeight: 44,
+  },
+  visionEditButton: {
+    alignItems: "center",
+    bottom: 12,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: 14,
+    width: 28,
   },
   overviewEyebrowRow: {
     alignItems: "center",
@@ -1058,84 +1050,70 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dreamSaveButton: {
-    marginTop: spacing.lg,
-  },
-  dreamActionButton: {
-    flex: 1,
-  },
-  deleteButton: {
-    borderColor: colors.danger,
-  },
-  deleteLabel: {
-    color: colors.danger,
-  },
-  dreamActionsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  dreamActionsRowPhone: {
-    flexDirection: "column",
-  },
-  confirmOverlay: {
-    ...StyleSheet.absoluteFill,
-    alignItems: "center",
-    backgroundColor: colors.scrim,
-    borderRadius: radius.lg,
-    justifyContent: "center",
-    padding: spacing.lg,
-    zIndex: 10,
-  },
-  confirmCard: {
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.border,
-    borderRadius: radius.card,
+    borderColor: colors.primaryBright,
+    borderRadius: 22,
     borderWidth: 1,
-    padding: spacing.lg,
-    width: "100%",
-    ...shadows.softDark,
-  },
-  confirmBody: {
-    marginTop: spacing.sm,
-  },
-  confirmActionsRow: {
-    flexDirection: "row",
-    gap: spacing.md,
+    marginHorizontal: 6,
     marginTop: spacing.lg,
+  },
+  saveLabel: {
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    fontWeight: "700",
+    lineHeight: 36,
+  },
+  saveLabelPhone: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   /** Input fills the row; the pencil floats at its right edge. */
   titleRow: {
     justifyContent: "center",
-    marginTop: spacing.xs,
+    marginBottom: 18,
+    marginTop: 12,
   },
   titleEditButton: {
-    bottom: 0,
+    alignItems: "center",
+    height: 44,
     justifyContent: "center",
     position: "absolute",
     right: 0,
-    top: 0,
+    top: 2,
+    width: 28,
   },
   dreamNameInput: {
     ...typography.title,
     ...inputFocusReset,
-    borderBottomColor: colors.borderSoft,
-    borderBottomWidth: 1,
-    paddingBottom: 2,
+    color: "#FFF4DE",
+    fontSize: 52,
+    letterSpacing: 0,
+    lineHeight: 60,
+    paddingBottom: 0,
     // Keeps long names clear of the pencil on both sides of the centering.
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 28,
     paddingTop: 0,
     textAlign: "center",
+    textAlignVertical: "top",
+  },
+  dreamNameInputPhone: {
+    fontSize: 36,
+    lineHeight: 42,
   },
   visionInput: {
     ...typography.bodySerif,
     ...inputFocusReset,
     flex: 1,
-    color: colors.textPrimary,
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.xl,
-    minHeight: 120,
+    color: "#FFF4DE",
+    fontSize: 28,
+    letterSpacing: 0,
+    lineHeight: 42,
+    minWidth: 0,
     padding: 0,
     textAlignVertical: "top",
+  },
+  visionInputPhone: {
+    fontSize: 20,
+    lineHeight: 28,
   },
   actionsRow: {
     flexDirection: "row",

@@ -81,9 +81,17 @@ export function AppModal({
         ) : (
           <ScrollView
             contentContainerStyle={[styles.centerScroll, contentContainerStyle]}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             style={[styles.centerScrollView, maxWidth != null && { maxWidth }]}
           >
+            {/* The scroll content covers the scrim, so it needs its own backdrop. */}
+            <Pressable
+              accessibilityLabel="Close"
+              disabled={!dismissOnBackdrop}
+              onPress={onClose}
+              style={StyleSheet.absoluteFill}
+            />
             <View
               style={[
                 styles.centerPanel,
