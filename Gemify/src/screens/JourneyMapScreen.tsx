@@ -1290,6 +1290,9 @@ export function GoalJourneyMapScreen() {
     () => dbMilestones.map(toJourneyData),
     [dbMilestones],
   );
+  const nextMilestoneId = milestones.find(
+    (milestone) => !milestone.completed,
+  )?.id;
   // On a phone, completed steps settle at the bottom of the path and the open
   // ones climb toward the castle. Only the drawing order changes — ids, badge
   // numbers and "STEP n OF m" keep the real sequence. Edit mode keeps pure
@@ -1562,6 +1565,7 @@ export function GoalJourneyMapScreen() {
           <>
             {displayMilestones.map((milestone, index) => (
               <JourneyMilestone
+                animateLight={milestone.id === nextMilestoneId}
                 emphasis={milestone.completed ? "completed" : "open"}
                 imageHeight={imageHeight}
                 imageWidth={imageWidth}
