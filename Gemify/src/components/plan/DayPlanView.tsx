@@ -556,6 +556,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   emptyBlockButton: {
+    backgroundColor: colors.secondaryDark,
+    borderColor: colors.primary,
     marginTop: spacing.lg,
     minWidth: 220,
   },
@@ -565,6 +567,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   emptyBlockCard: {
+    backgroundColor: colors.secondaryDark,
+    borderColor: colors.border,
     marginTop: spacing.md,
     paddingVertical: spacing.lg,
   },
@@ -579,8 +583,8 @@ const styles = StyleSheet.create({
   },
   /** The phone empty state is a plain card — no photo behind the copy. */
   emptyBlockPlain: {
-    backgroundColor: colors.surfaceCard,
-    borderColor: colors.borderSoft,
+    backgroundColor: colors.secondaryDark,
+    borderColor: colors.border,
     borderWidth: 1,
     justifyContent: "center",
   },

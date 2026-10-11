@@ -45,6 +45,7 @@ export function TodayProgressCard({
           glow
           height={7}
           style={[styles.bar, phone && styles.barPhone]}
+          trackColor="#292E3A"
           value={percent}
         />
       </View>
@@ -85,9 +86,12 @@ const styles = StyleSheet.create({
   // match the flat tab bar it sits on.
   card: {
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: colors.secondaryDark,
+    borderColor: colors.borderSoft,
     borderRadius: 0,
     borderWidth: 0,
+    borderBottomWidth: 1,
+    borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.lg,
     overflow: "hidden",

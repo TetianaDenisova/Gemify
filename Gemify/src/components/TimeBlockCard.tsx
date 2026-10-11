@@ -276,10 +276,10 @@ export function TimeBlockCard({
       {showHeader ? (
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionBadge, compact && styles.sectionBadgeCompact]}>
-            <BlockIconArt color={colors.accentViolet} icon={block.icon} size={compact ? 17 : 20} />
+            <BlockIconArt color={colors.primaryBright} icon={block.icon} size={compact ? 17 : 20} />
           </View>
           <AppText
-            color={colors.accentViolet}
+            color={colors.textPrimary}
             style={[styles.sectionLabel, compact && styles.sectionLabelCompact]}
             variant="sectionTitle"
           >
@@ -420,8 +420,8 @@ const styles = StyleSheet.create({
   },
   sectionBadge: {
     alignItems: "center",
-    backgroundColor: "rgba(24, 14, 42, 0.7)",
-    borderColor: colors.accentVioletGlow,
+    backgroundColor: "rgba(245, 184, 75, 0.08)",
+    borderColor: colors.primary,
     borderRadius: 22,
     borderWidth: 1,
     height: 44,

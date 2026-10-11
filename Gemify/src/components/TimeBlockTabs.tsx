@@ -91,7 +91,7 @@ function TimeTab({
     >
       <View style={styles.timeTabIconWrap}>
         <BlockIconArt
-          color={active ? colors.accentViolet : colors.primary}
+          color={active ? colors.primaryBright : colors.primary}
           icon={block.icon}
           size={compact ? 22 : 28}
         />
@@ -104,7 +104,7 @@ function TimeTab({
             ]}
           >
             <AppText
-              color={active ? colors.textPrimary : colors.textSecondary}
+              color={active ? colors.textOnPrimary : colors.textSecondary}
               variant="caption"
             >
               {questCount}
@@ -113,7 +113,7 @@ function TimeTab({
         ) : null}
       </View>
       <AppText
-        color={active ? colors.accentViolet : colors.primary}
+        color={active ? colors.primaryBright : colors.primary}
         numberOfLines={1}
         style={compact && styles.timeTabLabelCompact}
         variant="pill"
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
     top: -8,
   },
   countBadgeActive: {
-    backgroundColor: colors.accentVioletStrong,
-    borderColor: colors.accentVioletStrong,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   countBadgeCompact: {
     height: 19,
@@ -297,8 +297,8 @@ const styles = StyleSheet.create({
   },
   tabsRow: {
     alignItems: "center",
-    backgroundColor: colors.surfaceDeep,
-    borderColor: colors.borderSoft,
+    backgroundColor: colors.background,
+    borderColor: colors.borderFaint,
     borderRadius: radius.round,
     borderWidth: 1,
     flexDirection: "row",
@@ -322,8 +322,8 @@ const styles = StyleSheet.create({
     width: 132,
   },
   timeTabActive: {
-    backgroundColor: "rgba(114, 70, 190, 0.16)",
-    borderColor: colors.accentViolet,
+    backgroundColor: "rgba(245, 184, 75, 0.1)",
+    borderColor: colors.primary,
   },
   timeTabCompact: {
     gap: 4,
