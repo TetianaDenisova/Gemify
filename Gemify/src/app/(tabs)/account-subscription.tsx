@@ -67,14 +67,7 @@ export default function AccountSubscriptionScreen() {
 
   return (
     <>
-      <View style={styles.screen}>
-        <Image source={BACKGROUND} resizeMode="cover" style={styles.background} />
-        <LinearGradient
-          colors={["rgba(2, 5, 12, 0.25)", "rgba(2, 5, 12, 0.7)", "#030810", "#030810"]}
-          locations={[0, 0.25, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      <ScreenScaffold style={styles.transparent} topInset tabClearance contentStyle={styles.content}>
+      <ScreenScaffold topInset tabClearance contentStyle={styles.content}>
         <TabScreenHeader title="Account" />
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Subscription</AppText>
         {subscription.testMode && (
@@ -200,7 +193,6 @@ export default function AccountSubscriptionScreen() {
           </>
         )}
       </ScreenScaffold>
-      </View>
 
       <AppModal visible={importOpen && subscription.premium} onClose={() => { if (!accountBusy) setImportOpen(false); }}>
         <AppText variant="cardTitle">Import dreams?</AppText>
@@ -254,9 +246,6 @@ export default function AccountSubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#030810" },
-  background: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
-  transparent: { backgroundColor: "transparent" },
   content: { maxWidth: 660 },
   sectionLabel: { marginBottom: 12, marginTop: 16 },
   account: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 14, padding: 18, backgroundColor: "rgba(3, 8, 15, 0.91)", borderColor: colors.border, borderWidth: 1, borderRadius: radius.card },
