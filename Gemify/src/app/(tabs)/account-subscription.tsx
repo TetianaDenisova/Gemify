@@ -12,7 +12,7 @@ import { deleteAccount } from "@/sync/account";
 import { signOut } from "@/sync";
 import {
   AppButton, AppModal, AppText, ArrowRightIcon, CheckIcon, CloseIcon,
-  DreamIcon, PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon,
+  PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon, UserIcon,
 } from "@/shared/components";
 import { PREMIUM_MONTHLY_PRICE, PRIVACY_URL, TERMS_URL } from "@/subscription/config";
 import { colors } from "@/theme/colors";
@@ -62,7 +62,6 @@ export default function AccountSubscriptionScreen() {
     void runAction(subscription.manage);
   }
 
-  const name = account.email?.split("@")[0] || "Your account";
   const showingPremium = selectedPlan === "premium";
   const isCurrentPlan = showingPremium === subscription.premium;
   const features = showingPremium
@@ -105,15 +104,15 @@ export default function AccountSubscriptionScreen() {
           })}
         </View>
 
-        <View style={[styles.plan, showingPremium && styles.premiumPlan]}>
+        <View style={styles.plan}>
           <Image source={BACKGROUND} contentFit="cover" contentPosition={showingPremium ? "top" : "center"}
             style={StyleSheet.absoluteFill} accessible={false} />
           <LinearGradient colors={["rgba(3, 7, 12, 0.64)", "rgba(3, 7, 12, 0.12)"]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
           <LinearGradient colors={["rgba(3, 7, 12, 0.08)", "rgba(3, 7, 12, 0.76)"]} style={StyleSheet.absoluteFill} />
-          <View style={[styles.planHeading, showingPremium && styles.premiumHeading]}>
-            <AppText style={[styles.planName, styles.planTitle]} numberOfLines={showingPremium ? 1 : undefined}
-              adjustsFontSizeToFit={showingPremium} minimumFontScale={0.7}>
+          <View style={styles.planHeading}>
+            <AppText style={[styles.planName, styles.planTitle]} numberOfLines={1}
+              adjustsFontSizeToFit minimumFontScale={0.7}>
               {showingPremium ? "Premium" : "Basic"}
             </AppText>
             {showingPremium && (
@@ -122,15 +121,15 @@ export default function AccountSubscriptionScreen() {
               </View>
             )}
             {!showingPremium && (!subscription.ready || isCurrentPlan) && (
-              <View style={styles.status}>
-                <AppText style={styles.statusLabel} color={colors.primaryBright}>
+              <View style={styles.priceBadge}>
+                <AppText style={styles.priceBadgeLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {!subscription.ready ? "Checking..." : "Current plan"}
                 </AppText>
               </View>
             )}
           </View>
           <AppText style={styles.planPrice}>{showingPremium ? "Monthly subscription" : "Free"}</AppText>
-          <View style={[styles.features, showingPremium && styles.premiumFeatures]}>
+          <View style={styles.features}>
             {features.map((feature) => (
               <View key={feature.label} style={styles.feature}>
                 {feature.available ? <CheckIcon color={colors.primaryBright} size={21} /> : <CloseIcon color="#96958E" size={21} />}
@@ -188,18 +187,20 @@ export default function AccountSubscriptionScreen() {
 
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Account</AppText>
         <View style={styles.account}>
-          <View style={styles.avatar}><DreamIcon size={32} color={colors.accentViolet} /></View>
-          <View style={styles.accountIdentity}>
-            <AppText style={styles.accountName}>{account.ready ? name : "Loading account..."}</AppText>
-            <AppText color={colors.textSecondary} variant="bodySmall" style={styles.email}>
-              {account.email ?? "Not signed in"}
-            </AppText>
+          <View style={styles.avatar} accessible={false}>
+            <UserIcon size={25} color={colors.primaryBright} strokeWidth={1.7} />
           </View>
-          <Pressable accessibilityRole="button" disabled={busy || !account.ready}
+          <AppText selectable={account.ready && !!account.email} color={colors.textPrimary} style={styles.email}>
+            {account.ready ? account.email ?? "Not signed in" : "Loading account..."}
+          </AppText>
+        </View>
+
+        <View style={styles.authActions}>
+          <AppButton label={accountBusy ? "Please wait" : account.signedIn ? "Log out" : "Sign in"}
+            variant="secondary" disabled={busy || !account.ready}
+            icon={accountBusy ? <ActivityIndicator color={colors.primaryBright} /> : undefined}
             onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
-            style={({ pressed }) => [styles.authButton, (pressed || busy) && styles.dimmed]}>
-            <AppText style={styles.authLabel}>{accountBusy ? "Please wait" : account.signedIn ? "Log out" : "Sign in"}</AppText>
-          </Pressable>
+            style={styles.authButton} textStyle={styles.authLabel} />
         </View>
 
         {subscription.premium && (
@@ -230,6 +231,7 @@ export default function AccountSubscriptionScreen() {
             </Pressable>
           </>
         )}
+
       </ScreenScaffold>
 
       <AppModal visible={importOpen && subscription.premium} onClose={() => { if (!accountBusy) setImportOpen(false); }}>
@@ -286,13 +288,12 @@ export default function AccountSubscriptionScreen() {
 const styles = StyleSheet.create({
   content: { maxWidth: 660 },
   sectionLabel: { marginBottom: 12, marginTop: 16 },
-  account: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 14, padding: 18, backgroundColor: "rgba(3, 8, 15, 0.91)", borderColor: colors.border, borderWidth: 1, borderRadius: radius.card },
-  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: "#554468", backgroundColor: "#110E1C", alignItems: "center", justifyContent: "center" },
-  accountIdentity: { flexGrow: 1, flexShrink: 1, flexBasis: 120, minWidth: 0 },
-  accountName: { fontFamily: fonts.serif, fontSize: 23, lineHeight: 28 },
-  email: { marginTop: 4 },
-  authButton: { minHeight: 44, paddingHorizontal: 18, borderWidth: 1, borderColor: colors.primary, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  authLabel: { fontFamily: fonts.serif, fontSize: 17, lineHeight: 22 },
+  account: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 18, paddingHorizontal: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.borderSoft },
+  avatar: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(245, 184, 75, 0.08)", alignItems: "center", justifyContent: "center" },
+  email: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24 },
+  authActions: { marginTop: 16 },
+  authButton: { minHeight: 52, borderColor: colors.border, borderRadius: 12, backgroundColor: "rgba(245, 184, 75, 0.04)" },
+  authLabel: { fontSize: 16, lineHeight: 22, textAlign: "center" },
   testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   flex: { flex: 1, minWidth: 0 },
   planSwitcher: { flexDirection: "row", borderWidth: 1, borderColor: "#A77C35", borderRadius: radius.round, backgroundColor: "rgba(3, 7, 12, 0.9)", marginBottom: 14 },
@@ -301,19 +302,14 @@ const styles = StyleSheet.create({
   planTabFill: { borderRadius: radius.round },
   planTabLabel: { fontSize: 13, lineHeight: 20, fontWeight: "600", textTransform: "uppercase", textAlign: "center" },
   tabPressed: { opacity: 0.8 },
-  plan: { minHeight: 296, padding: 24, borderWidth: 1, borderColor: "#A77C35", borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
-  premiumPlan: { minHeight: 300, borderColor: colors.primary, paddingTop: 12 },
+  plan: { minHeight: 300, padding: 24, borderWidth: 1, borderColor: colors.primary, borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
   priceBadge: { maxWidth: "50%", flexShrink: 1, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "rgba(81, 55, 17, 0.75)", ...shadowStyle({ color: colors.primary, opacity: 0.3, radius: 8 }) },
   priceBadgeLabel: { fontFamily: fonts.serif, fontSize: 17, lineHeight: 22, color: colors.primaryBright },
-  planHeading: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 10 },
-  premiumHeading: { flexWrap: "nowrap", alignItems: "center" },
+  planHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   planTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 0 },
   planName: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 43, color: "#F5EEDB" },
   planPrice: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 26, color: colors.textPrimary },
-  status: { paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: colors.primary, borderRadius: 10, marginTop: 3, maxWidth: "100%", backgroundColor: "rgba(81, 55, 17, 0.65)" },
-  statusLabel: { fontFamily: fonts.serif, fontSize: 16, lineHeight: 21 },
-  features: { gap: 9, marginTop: 22 },
-  premiumFeatures: { gap: 12, marginTop: 24 },
+  features: { gap: 12, marginTop: 24 },
   feature: { flexDirection: "row", alignItems: "center", gap: 14 },
   featureLabel: { fontSize: 16, lineHeight: 22, flex: 1 },
   planActions: { gap: 12, marginTop: 18 },
