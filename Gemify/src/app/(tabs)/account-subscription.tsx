@@ -18,7 +18,7 @@ import { PREMIUM_MONTHLY_PRICE, PRIVACY_URL, TERMS_URL } from "@/subscription/co
 import { colors } from "@/theme/colors";
 import { fonts, radius, shadowStyle, spacing } from "@/theme/theme";
 
-const BACKGROUND = require("../../../subscription-bg.png");
+const BACKGROUND = require("../../../assets/subscription/subscription-bg.png");
 const PLANS = [
   { value: "premium", label: "Premium" },
   { value: "standard", label: "Standard" },

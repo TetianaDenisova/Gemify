@@ -55,8 +55,8 @@ import {
   typography,
 } from "@/theme/theme";
 
-const BACKGROUND = require("../../assets/create-goal/risk-plan-background.png");
-const RISK_IMAGE = require("../../assets/create-goal/risk-image.png");
+const BACKGROUND = require("../../assets/risk-plan/risk-plan-background.png");
+const RISK_IMAGE = require("../../assets/risk-plan/risk-image.png");
 
 type RiskPlan = {
   actions: readonly string[];

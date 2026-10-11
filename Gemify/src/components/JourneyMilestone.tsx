@@ -48,9 +48,9 @@ const PHONE_RING_MIN_WIDTH = 58;
 const PHONE_RING_MAX_WIDTH = 78;
 const MAP_EDGE_PADDING = 6;
 const CIRCLE_ASPECT_RATIO = 1536 / 1024;
-const CIRCLE_SOURCE = require("../../assets/journey-top/circle.png");
-const CIRCLE_INACTIVE_SOURCE = require("../../assets/journey-top/circle-inactive.png");
-const CIRCLE_PULSE_SOURCE = require("../../assets/journey-top/milestone_pulse.webp");
+const CIRCLE_SOURCE = require("../../assets/journey/circle.png");
+const CIRCLE_INACTIVE_SOURCE = require("../../assets/journey/circle-inactive.png");
+const CIRCLE_PULSE_SOURCE = require("../../assets/journey/milestone_pulse.webp");
 const LABEL_WIDTH = 148;
 const LABEL_RING_OVERLAP = 18;
 

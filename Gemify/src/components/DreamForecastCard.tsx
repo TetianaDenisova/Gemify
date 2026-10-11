@@ -7,7 +7,7 @@ import { AppText, Card } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/theme";
 
-const FORECAST_ART = require("../../assets/will-achieve.png");
+const FORECAST_ART = require("../../assets/home/will-achieve.png");
 
 type DreamForecastCardProps = {
   forecasts: readonly DreamForecastEntry[];

@@ -6,7 +6,7 @@ import { AppText, Card, ProgressBar } from "@/shared/components";
 import { colors } from "@/theme/colors";
 import { radius, shadowStyle, spacing } from "@/theme/theme";
 
-const PORTAL_ART_SOURCE = require("../../../assets/sprint-door-icon.png");
+const PORTAL_ART_SOURCE = require("../../../assets/home/sprint-door-icon.png");
 
 interface TodayProgressCardProps {
   completedActions: number;

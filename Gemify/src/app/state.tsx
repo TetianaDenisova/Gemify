@@ -23,7 +23,7 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import { fonts, fontSizes, iconSizes, pressed, spacing } from "@/theme/theme";
 
-const BACKGROUND = require("../../assets/state_background.png");
+const BACKGROUND = require("../../assets/state/state_background.png");
 const CONTINUE_BUTTON = require("../../assets/state/continue-btn.png");
 const MAX_SELECTIONS = 3;
 

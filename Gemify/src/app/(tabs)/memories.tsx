@@ -78,8 +78,8 @@ const turnLead = (itemWidth: number) =>
 const TIMELINE_TURN_WIDTH = 36;
 const MAX_MEMORY_PHOTOS = 5;
 
-const MEMORIES_BACK = require("../../../assets/images/memory-custle.png");
-const MILESTONE_COMPLETED_SOURCE = require("../../../assets/ml-complited-default.png");
+const MEMORIES_BACK = require("../../../assets/memories/memory-custle.png");
+const MILESTONE_COMPLETED_SOURCE = require("../../../assets/memories/ml-complited-default.png");
 
 const goldTint = { glow: colors.primaryGlow, main: colors.primary };
 

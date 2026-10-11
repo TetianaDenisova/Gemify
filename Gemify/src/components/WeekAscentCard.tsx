@@ -14,7 +14,7 @@ import {
 import { colors } from "@/theme/colors";
 import { pressed, radius, spacing, textGlow } from "@/theme/theme";
 
-const ASCENT_ART = require("../../assets/images/road-progress.png");
+const ASCENT_ART = require("../../assets/progress/road-progress.png");
 
 function DiamondIcon({ color = colors.primary, size = 16 }: { color?: string; size?: number }) {
   return (

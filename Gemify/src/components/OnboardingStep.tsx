@@ -14,7 +14,7 @@ import {
 import { colors } from "@/theme/colors";
 import { fontSizes, layout, lineHeights, spacing } from "@/theme/theme";
 
-const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
+const ENTERING_BACKGROUND = require("../../assets/dreams/entering.png");
 
 export type OnboardingStepProps = {
   /** The step's form controls; a function form receives the compact-layout flag. */

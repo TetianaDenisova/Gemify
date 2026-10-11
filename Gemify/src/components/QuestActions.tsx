@@ -38,7 +38,7 @@ import {
 } from "@/theme/theme";
 import { addDays, toDateKey, todayKey } from "@/utils/dates";
 
-const ACCEPT_STAR_SOURCE = require("../../assets/images/accept-star.png");
+const ACCEPT_STAR_SOURCE = require("../../assets/quests/accept-star.png");
 
 /**
  * A time-of-day option in the accept modal — one shared My Day time block.

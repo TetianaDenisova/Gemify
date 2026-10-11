@@ -135,8 +135,8 @@ type MilestoneModalProps = {
   stepCount: number;
 };
 
-const JOURNEY_MAP_SOURCE = require("../../assets/journey-top/level2.png");
-const PLUS_SOURCE = require("../../assets/plus.png");
+const JOURNEY_MAP_SOURCE = require("../../assets/journey/level2.png");
+const PLUS_SOURCE = require("../../assets/journey/plus.png");
 const PLUS_IMAGE_SIZE = 52;
 const PLUS_TOUCH_SIZE = 60;
 const GUIDED_HINT_WIDTH = 276;

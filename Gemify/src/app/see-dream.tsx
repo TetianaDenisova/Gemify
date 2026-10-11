@@ -19,7 +19,7 @@ import { colors } from "@/theme/colors";
 import { layout, pressed, radius, shadowStyle, spacing } from "@/theme/theme";
 
 /** Same night-sky art as the describe-dream step, for a continuous flow. */
-const ENTERING_BACKGROUND = require("../../assets/create-goal/entering.png");
+const ENTERING_BACKGROUND = require("../../assets/dreams/entering.png");
 
 function GalleryGlyph({ color = colors.primary, size = 22 }: { color?: string; size?: number }) {
   return (

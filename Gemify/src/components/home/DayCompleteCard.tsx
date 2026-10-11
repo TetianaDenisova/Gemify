@@ -9,7 +9,7 @@ import { radius, spacing } from "@/theme/theme";
 // Floating-island night art cropped from the dream backgrounds set; its edges
 // fade to the same near-black navy as the card backing, so it bleeds off the
 // left edge seamlessly.
-const ISLAND_ART = require("../../../assets/images/day-complete-island.png");
+const ISLAND_ART = require("../../../assets/home/day-complete-island.png");
 const ISLAND_ASPECT_RATIO = 882 / 809;
 
 /** Solid backing matched to the art's near-black edges (same as GoalCard). */

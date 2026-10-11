@@ -51,7 +51,7 @@ import {
 } from "@/theme/theme";
 import { addDays, toDateKey, todayKey } from "@/utils/dates";
 
-const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
+const EMPTY_SPACE_SOURCE = require("../../../assets/plan/empty-space.png");
 
 /** Extra scroll clearance so content is not hidden behind the fixed footer. */
 const FOOTER_CLEARANCE = 150;

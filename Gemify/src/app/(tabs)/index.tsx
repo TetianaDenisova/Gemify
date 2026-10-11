@@ -38,7 +38,7 @@ import { radius, spacing } from "@/theme/theme";
 import { todayKey } from "@/utils/dates";
 
 // Same enchanted-forest path art as the Milestone Quests hero.
-const NEXT_MOVE_ART = require("../../data/images/tree-milestone-header.png");
+const NEXT_MOVE_ART = require("../../../assets/milestones/tree-milestone-header.png");
 
 /** Left-to-right shade so the copy reads over the art's dark edge. */
 const NEXT_MOVE_SHADE = [

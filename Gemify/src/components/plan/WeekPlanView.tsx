@@ -64,7 +64,7 @@ import { addDays, startOfWeek, toDateKey, todayKey } from "@/utils/dates";
 /** Bespoke night-sky gradient behind the sprint board. */
 const SPRINT_BACKGROUND = ["#02050D", "#060716", "#080617", "#030712"] as const;
 
-const EMPTY_SPACE_SOURCE = require("../../../assets/images/empty-space.png");
+const EMPTY_SPACE_SOURCE = require("../../../assets/plan/empty-space.png");
 
 /** How long a press must be held before a quest card lifts into a drag. */
 const DRAG_ACTIVATION_MS = 220;

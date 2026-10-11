@@ -105,7 +105,7 @@ const DREAM_OVERVIEW_GRADIENT = [
   "rgba(7, 14, 23, 0.96)",
 ] as const;
 
-const DREAM_PHOTO_PLACEHOLDER = require("../../assets/add_photo_of_your_dream.png");
+const DREAM_PHOTO_PLACEHOLDER = require("../../assets/dreams/add_photo_of_your_dream.png");
 
 function JourneyOverviewModal({
   dreamName,

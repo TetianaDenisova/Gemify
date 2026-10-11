@@ -66,8 +66,8 @@ import {
 } from "@/theme/theme";
 import { toDateKey } from "@/utils/dates";
 
-const TREE_MILESTONE_HEADER_SOURCE = require("../../data/images/tree-milestone-header.png");
-const MILESTONE_DOOR_SOURCE = require("../../../assets/create-goal/milestone-door.png");
+const TREE_MILESTONE_HEADER_SOURCE = require("../../../assets/milestones/tree-milestone-header.png");
+const MILESTONE_DOOR_SOURCE = require("../../../assets/milestones/milestone-door.png");
 
 type PromptState =
   | { kind: "quest" }

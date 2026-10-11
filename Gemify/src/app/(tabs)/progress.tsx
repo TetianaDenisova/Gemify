@@ -58,7 +58,7 @@ const CHART_GRID_STROKE = "rgba(246, 232, 200, 0.13)";
 /** Gradient id of the gold bar fill, defined inside the bars chart. */
 const BAR_FILL = "url(#questBarFill)";
 
-const NO_PROGRESS_ART = require("../../data/images/no-progress.png");
+const NO_PROGRESS_ART = require("../../../assets/progress/no-progress.png");
 
 function QuestBarsChart({
   compact,

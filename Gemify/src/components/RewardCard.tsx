@@ -16,8 +16,8 @@ import {
   pressed,
 } from "@/theme/theme";
 
-const CLOSED_PRESENT = require("../../assets/reward/closed-present-icon-glow.svg");
-const OPEN_PRESENT = require("../../assets/reward/open-present-icon.svg");
+const CLOSED_PRESENT = require("../../assets/rewards/closed-present-icon-glow.svg");
+const OPEN_PRESENT = require("../../assets/rewards/open-present-icon.svg");
 
 function CollectedCheck() {
   return (
