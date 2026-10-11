@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Switch, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -13,12 +14,15 @@ import {
   AppButton, AppModal, AppText, ArrowRightIcon, CheckIcon, CloseIcon,
   DreamIcon, PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon,
 } from "@/shared/components";
-import { PRIVACY_URL, TERMS_URL } from "@/subscription/config";
+import { PREMIUM_MONTHLY_PRICE, PRIVACY_URL, TERMS_URL } from "@/subscription/config";
 import { colors } from "@/theme/colors";
-import { fonts, radius, spacing } from "@/theme/theme";
+import { fonts, radius, shadowStyle, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../../subscription-bg.png");
-const UPGRADE_ART = require("../../../assets/btn-upgrade-to-premium.png");
+const PLANS = [
+  { value: "premium", label: "Premium" },
+  { value: "standard", label: "Standard" },
+] as const;
 const PREMIUM_FEATURES = ["Unlimited Dreams", "Unlimited Habits", "Sync across devices", "Import & export data"];
 const BASIC_FEATURES = [
   { label: "1 active Dream", available: true },
@@ -32,6 +36,7 @@ export default function AccountSubscriptionScreen() {
   const router = useRouter();
   const account = useCloudSync();
   const subscription = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState<"premium" | "standard">("premium");
   const [accountBusy, setAccountBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -58,9 +63,12 @@ export default function AccountSubscriptionScreen() {
   }
 
   const name = account.email?.split("@")[0] || "Your account";
-  const features = subscription.premium
+  const showingPremium = selectedPlan === "premium";
+  const isCurrentPlan = showingPremium === subscription.premium;
+  const features = showingPremium
     ? PREMIUM_FEATURES.map((label) => ({ label, available: true }))
     : BASIC_FEATURES;
+  const premiumPrice = `${subscription.price ?? PREMIUM_MONTHLY_PRICE}/month`;
   const renewal = subscription.expiresAt
     ? `${subscription.willRenew === false ? "Available until" : subscription.willRenew ? "Renews" : "Next billing date"} ${new Date(subscription.expiresAt).toLocaleDateString()}`
     : null;
@@ -82,48 +90,78 @@ export default function AccountSubscriptionScreen() {
           </View>
         )}
 
-        <View style={[styles.plan, subscription.premium && styles.premiumPlan]}>
-          <Image source={BACKGROUND} resizeMode="cover" style={[StyleSheet.absoluteFill, styles.planArt]} />
-          <LinearGradient colors={["rgba(3, 7, 12, 0.68)", "rgba(3, 7, 12, 0.96)"]} style={StyleSheet.absoluteFill} />
-          <View style={styles.planHeading}>
-            <View style={styles.flex}>
-              <AppText style={styles.planName}>{subscription.premium ? "Premium" : "Basic"}</AppText>
-              <AppText style={styles.planPrice}>
-                {subscription.source === "test" ? "Free testing access" : subscription.premium && subscription.price ? `${subscription.price} / month` : subscription.premium ? "Apple subscription" : "Free"}
-              </AppText>
-            </View>
-            <View style={[styles.status, subscription.premium && styles.activeStatus]}>
-              {subscription.premium && <CheckIcon size={16} color={colors.accentGreen} />}
-              <AppText style={styles.statusLabel} color={subscription.premium ? "#CBEA9A" : colors.textSecondary}>
-                {!subscription.ready ? "Checking..." : subscription.source === "test" ? "Test access" : subscription.premium ? "Active" : "Current plan"}
-              </AppText>
-            </View>
+        <View accessibilityRole="tablist" style={styles.planSwitcher}>
+          {PLANS.map((plan) => {
+            const selected = selectedPlan === plan.value;
+            return (
+              <Pressable key={plan.value} accessibilityRole="tab" accessibilityLabel={plan.label}
+                accessibilityState={{ selected }} onPress={() => setSelectedPlan(plan.value)}
+                style={({ pressed }) => [styles.planTab, selected && styles.selectedPlanTab, pressed && styles.tabPressed]}>
+                {selected && <LinearGradient colors={["rgba(245, 184, 75, 0.24)", "rgba(245, 184, 75, 0.07)", "rgba(245, 184, 75, 0.2)"]}
+                  style={[StyleSheet.absoluteFill, styles.planTabFill]} />}
+                <AppText style={styles.planTabLabel} color={selected ? colors.primaryBright : colors.textSecondary}>{plan.label}</AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.plan, showingPremium && styles.premiumPlan]}>
+          <Image source={BACKGROUND} contentFit="cover" contentPosition={showingPremium ? "top" : "center"}
+            style={StyleSheet.absoluteFill} accessible={false} />
+          <LinearGradient colors={["rgba(3, 7, 12, 0.64)", "rgba(3, 7, 12, 0.12)"]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={["rgba(3, 7, 12, 0.08)", "rgba(3, 7, 12, 0.76)"]} style={StyleSheet.absoluteFill} />
+          <View style={[styles.planHeading, showingPremium && styles.premiumHeading]}>
+            <AppText style={[styles.planName, styles.planTitle]} numberOfLines={showingPremium ? 1 : undefined}
+              adjustsFontSizeToFit={showingPremium} minimumFontScale={0.7}>
+              {showingPremium ? "Premium" : "Basic"}
+            </AppText>
+            {showingPremium && (
+              <View style={styles.priceBadge}>
+                <AppText style={styles.priceBadgeLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{premiumPrice}</AppText>
+              </View>
+            )}
+            {!showingPremium && (!subscription.ready || isCurrentPlan) && (
+              <View style={styles.status}>
+                <AppText style={styles.statusLabel} color={colors.primaryBright}>
+                  {!subscription.ready ? "Checking..." : "Current plan"}
+                </AppText>
+              </View>
+            )}
           </View>
-          <View style={styles.features}>
+          <AppText style={styles.planPrice}>{showingPremium ? "Monthly subscription" : "Free"}</AppText>
+          <View style={[styles.features, showingPremium && styles.premiumFeatures]}>
             {features.map((feature) => (
               <View key={feature.label} style={styles.feature}>
-                {feature.available ? <CheckIcon color={colors.primaryBright} size={23} /> : <CloseIcon color={colors.textMuted} size={23} />}
-                <AppText style={styles.featureLabel} color={feature.available ? "#EEECE5" : "#A8A4AC"}>{feature.label}</AppText>
+                {feature.available ? <CheckIcon color={colors.primaryBright} size={21} /> : <CloseIcon color="#96958E" size={21} />}
+                <AppText style={styles.featureLabel} color={feature.available ? "#EEECE5" : "#AAA69C"}>{feature.label}</AppText>
               </View>
             ))}
           </View>
-          {renewal && <AppText variant="caption" color={colors.textSecondary} style={styles.renewal}>{renewal}</AppText>}
-          {subscription.premium ? (
+        </View>
+
+        {(subscription.premium || showingPremium) && <View style={styles.planActions}>
+          {showingPremium && (
+            <Pressable accessibilityRole="button"
+              accessibilityLabel={subscription.premium ? "Current plan" : "Upgrade to Premium"}
+              accessibilityState={{ disabled: subscription.premium || busy || !subscription.ready, busy: !subscription.premium && subscription.busy }}
+              disabled={subscription.premium || busy || !subscription.ready} onPress={() => void subscription.upgrade()}
+              style={({ pressed }) => [styles.upgrade, !subscription.premium && (pressed || busy || !subscription.ready) && styles.dimmed]}>
+              <LinearGradient colors={["#FFE89D", "#F9CD65", "#DFA849", "#B47C2A"]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upgradeFill}>
+                {!subscription.premium && subscription.busy && <ActivityIndicator color={colors.textOnPrimary} />}
+                <AppText style={styles.upgradeLabel}>
+                  {subscription.premium ? "Current plan" : "Upgrade to Premium"}
+                </AppText>
+              </LinearGradient>
+            </Pressable>
+          )}
+          {subscription.premium && renewal && <AppText variant="caption" color={colors.textSecondary}>{renewal}</AppText>}
+          {subscription.premium && (
             <AppButton label="Manage subscription" variant="secondary" icon={<ArrowRightIcon size={20} />}
               disabled={busy} onPress={handleManage} style={styles.manageButton} />
-          ) : (
-            <>
-              {!subscription.testMode && subscription.price && <AppText align="center" variant="bodySmall" color={colors.primaryBright}>{subscription.price} / month</AppText>}
-              <Pressable accessibilityRole="button" accessibilityLabel="Upgrade to Premium"
-                accessibilityState={{ disabled: busy || !subscription.ready, busy: subscription.busy }}
-                disabled={busy || !subscription.ready} onPress={() => void subscription.upgrade()}
-                style={({ pressed }) => [styles.upgrade, (pressed || busy) && styles.dimmed]}>
-                <Image source={UPGRADE_ART} resizeMode="contain" style={styles.upgradeArt} accessible={false} />
-                {subscription.busy && <ActivityIndicator style={StyleSheet.absoluteFill} color={colors.primaryBright} />}
-              </Pressable>
-            </>
           )}
-        </View>
+        </View>}
 
         {subscription.error && (
           <View style={styles.errorRow}>
@@ -255,24 +293,34 @@ const styles = StyleSheet.create({
   email: { marginTop: 4 },
   authButton: { minHeight: 44, paddingHorizontal: 18, borderWidth: 1, borderColor: colors.primary, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   authLabel: { fontFamily: fonts.serif, fontSize: 17, lineHeight: 22 },
-  testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
+  testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   flex: { flex: 1, minWidth: 0 },
-  plan: { padding: 22, borderWidth: 1, borderColor: "#69616C", borderRadius: radius.card, overflow: "hidden", backgroundColor: "#060B13" },
-  premiumPlan: { borderColor: colors.primaryBright },
-  planArt: { width: "100%", height: "100%" },
-  planHeading: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  planSwitcher: { flexDirection: "row", borderWidth: 1, borderColor: "#A77C35", borderRadius: radius.round, backgroundColor: "rgba(3, 7, 12, 0.9)", marginBottom: 14 },
+  planTab: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent", borderRadius: radius.round },
+  selectedPlanTab: { borderColor: colors.primary, ...shadowStyle({ color: colors.primary, opacity: 0.3, radius: 10 }) },
+  planTabFill: { borderRadius: radius.round },
+  planTabLabel: { fontSize: 13, lineHeight: 20, fontWeight: "600", textTransform: "uppercase", textAlign: "center" },
+  tabPressed: { opacity: 0.8 },
+  plan: { minHeight: 296, padding: 24, borderWidth: 1, borderColor: "#A77C35", borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
+  premiumPlan: { minHeight: 300, borderColor: colors.primary, paddingTop: 12 },
+  priceBadge: { maxWidth: "50%", flexShrink: 1, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "rgba(81, 55, 17, 0.75)", ...shadowStyle({ color: colors.primary, opacity: 0.3, radius: 8 }) },
+  priceBadgeLabel: { fontFamily: fonts.serif, fontSize: 17, lineHeight: 22, color: colors.primaryBright },
+  planHeading: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 10 },
+  premiumHeading: { flexWrap: "nowrap", alignItems: "center" },
+  planTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 0 },
   planName: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 43, color: "#F5EEDB" },
-  planPrice: { fontFamily: fonts.serif, fontSize: 19, lineHeight: 26, marginTop: 3 },
-  status: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: "#94909B", borderRadius: 12, marginTop: 4, flexShrink: 1 },
-  activeStatus: { backgroundColor: "rgba(52, 65, 32, 0.75)", borderColor: "#B5D66C" },
-  statusLabel: { fontFamily: fonts.serif, fontSize: 14, lineHeight: 19, flexShrink: 1 },
-  features: { gap: 14, marginTop: 28, marginBottom: 24 },
-  feature: { flexDirection: "row", alignItems: "center", gap: 16 },
-  featureLabel: { fontSize: 17, lineHeight: 23, flex: 1 },
-  renewal: { marginBottom: 16 },
+  planPrice: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 26, color: colors.textPrimary },
+  status: { paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: colors.primary, borderRadius: 10, marginTop: 3, maxWidth: "100%", backgroundColor: "rgba(81, 55, 17, 0.65)" },
+  statusLabel: { fontFamily: fonts.serif, fontSize: 16, lineHeight: 21 },
+  features: { gap: 9, marginTop: 22 },
+  premiumFeatures: { gap: 12, marginTop: 24 },
+  feature: { flexDirection: "row", alignItems: "center", gap: 14 },
+  featureLabel: { fontSize: 16, lineHeight: 22, flex: 1 },
+  planActions: { gap: 12, marginTop: 18 },
   manageButton: { borderColor: colors.primary, borderRadius: 12, backgroundColor: "rgba(2, 5, 8, 0.8)" },
-  upgrade: { width: "100%", aspectRatio: 3, minHeight: 70 },
-  upgradeArt: { width: "100%", height: "100%" },
+  upgrade: { width: "100%", padding: 3, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "#6D4B1C", ...shadowStyle({ color: colors.primary, opacity: 0.45, radius: 14 }) },
+  upgradeFill: { minHeight: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "#FFF0B0", borderRadius: radius.round },
+  upgradeLabel: { flexShrink: 1, fontFamily: fonts.serif, fontSize: 23, lineHeight: 30, color: colors.textOnPrimary, textAlign: "center" },
   dimmed: { opacity: 0.5 },
   errorRow: { marginTop: 16 },
   dataSection: { marginTop: 16 },

@@ -3,7 +3,10 @@
 Gemify uses Apple in-app purchases through `expo-iap` (StoreKit 2). Stripe is
 not used. The monthly subscription product defaults to
 `com.gemify.app.premium.monthly`; set `EXPO_PUBLIC_APPLE_PREMIUM_PRODUCT_ID`
-to use another product ID. The UI reads the localized price from Apple.
+to use another product ID. The UI reads the localized price from Apple, falling
+back to `PREMIUM_MONTHLY_PRICE` in `src/subscription/config.ts` (`$19/month`)
+when a store price is unavailable. This display fallback does not set the Apple
+product's billing price.
 
 Account & Subscription is the last bottom-navigation tab, after Memories.
 Premium's Data section contains Cloud sync, Export data and Import data.

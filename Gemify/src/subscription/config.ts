@@ -4,5 +4,7 @@ export const PREMIUM_TEST_MODE =
 export const PREMIUM_PRODUCT_ID =
   process.env.EXPO_PUBLIC_APPLE_PREMIUM_PRODUCT_ID || "com.gemify.app.premium.monthly";
 
+export const PREMIUM_MONTHLY_PRICE = "$19";
+
 export const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 export const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
