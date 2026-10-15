@@ -208,7 +208,8 @@ function repositories(testMode) {
   };
   const dreams = load("src/db/dreamsRepository.ts", dependencies);
   const habits = load("src/db/habitsRepository.ts", dependencies);
-  return { ...f, database, dreams, habits };
+  const quests = load("src/db/questsRepository.ts", { "./database": dependencies["./database"] });
+  return { ...f, database, dreams, habits, quests };
 }
 
 test("SQLite Basic limit rejects concurrent dream creation without inserting a second record", async () => {
@@ -296,6 +297,76 @@ test("restoring an archived completed dream makes it active again", async () => 
     assert.equal(restored.isCompleted, false);
     assert.equal(restored.completedAt, null);
     assert.equal((await f.dreams.getArchivedDreams()).length, 0);
+  } finally { f.database.close(); }
+});
+
+test("dream archive hides related quests and habits across boards and restores their original state", async () => {
+  const f = repositories(true);
+  try {
+    f.database.exec(`
+      CREATE TABLE milestones (id INTEGER PRIMARY KEY, dream_id INTEGER, title TEXT, sequence_number INTEGER);
+      CREATE TABLE quests (
+        id INTEGER PRIMARY KEY, milestone_id INTEGER, title TEXT, is_active INTEGER,
+        is_done INTEGER, created_at TEXT, scheduled_date TEXT, scheduled_time TEXT,
+        is_planned INTEGER, completed_at TEXT
+      );
+    `);
+    const dream = await f.dreams.createDream({ title: "Archive me" });
+    const other = await f.dreams.createDream({ title: "Keep visible" });
+    f.database.prepare("INSERT INTO milestones VALUES (1, ?, 'First', 0), (2, ?, 'Second', 0)").run(dream.id, other.id);
+    f.database.exec(`
+      INSERT INTO quests VALUES
+        (1, 1, 'Scheduled', 1, 0, '2026-10-01', '2026-10-14', '09:00', 1, NULL),
+        (2, 1, 'Done', 1, 1, '2026-10-01', '2026-10-14', NULL, 1, '2026-10-14'),
+        (3, 1, 'Available', 1, 0, '2026-10-01', NULL, NULL, 0, NULL),
+        (4, 1, 'Backlog', 1, 0, '2026-10-01', NULL, NULL, 1, NULL),
+        (5, 2, 'Other scheduled', 1, 0, '2026-10-01', '2026-10-14', NULL, 1, NULL),
+        (6, 2, 'Other available', 1, 0, '2026-10-01', NULL, NULL, 0, NULL),
+        (7, 2, 'Other backlog', 1, 0, '2026-10-01', NULL, NULL, 1, NULL);
+    `);
+    const habit = await f.habits.createHabit({ dreamId: dream.id, title: "Practice" });
+    const ownArchived = await f.habits.createHabit({ dreamId: dream.id, title: "Already archived" });
+    const completed = await f.habits.createHabit({ dreamId: dream.id, title: "Already completed" });
+    const otherHabit = await f.habits.createHabit({ dreamId: other.id, title: "Other practice" });
+    await f.habits.updateHabit(ownArchived.id, { isArchived: true });
+    await f.habits.updateHabit(completed.id, { isCompleted: true });
+
+    const ids = (rows) => Array.from(rows, (row) => row.id);
+    const reads = [
+      () => f.quests.getScheduledQuests("2026-10-14"),
+      () => f.quests.getSchedulableQuests(),
+      () => f.quests.getUnscheduledQuests(),
+      () => f.quests.getOverdueQuests("2026-10-15"),
+      () => f.quests.getQuests(1),
+      () => f.quests.getQuestsByDream(dream.id),
+      () => f.quests.getQuestsForActiveDreams(),
+      () => f.habits.getHabits(),
+      () => f.habits.getHabitsByDream(dream.id),
+      () => f.habits.getCompletedHabits(),
+    ];
+    const before = await Promise.all(reads.map(async (read) => ids(await read())));
+    assert.deepEqual(before, [[1, 2, 5], [3, 6], [4, 7], [1, 5], [1, 2, 3, 4],
+      [1, 2, 3, 4], [1, 2, 3, 4, 5, 6, 7], [habit.id, otherHabit.id], [habit.id], [completed.id]]);
+    const questSnapshot = f.database.prepare("SELECT * FROM quests ORDER BY id").all();
+    const habitSnapshot = f.database.prepare("SELECT * FROM habits ORDER BY id").all();
+
+    await f.dreams.updateDream(dream.id, { isArchived: true });
+    const hidden = await Promise.all(reads.map(async (read) => ids(await read())));
+    assert.deepEqual(hidden, [[5], [6], [7], [5], [], [], [5, 6, 7], [otherHabit.id], [], []]);
+    assert.equal((await f.quests.getScheduledQuestCounts("2026-10-01", "2026-10-31")).get("2026-10-14"), 1);
+    assert.deepEqual(f.database.prepare("SELECT * FROM quests ORDER BY id").all(), questSnapshot);
+    assert.deepEqual(f.database.prepare("SELECT * FROM habits ORDER BY id").all(), habitSnapshot);
+
+    await f.dreams.updateDream(dream.id, { isArchived: false });
+    assert.deepEqual(await Promise.all(reads.map(async (read) => ids(await read()))), before);
+    assert.equal((await f.quests.getScheduledQuestCounts("2026-10-01", "2026-10-31")).get("2026-10-14"), 3);
+
+    // Background overdue cleanup must leave archived schedules untouched.
+    await f.dreams.updateDream(dream.id, { isArchived: true });
+    assert.equal(await f.quests.rolloverOverdueQuests("2026-10-15"), 1);
+    assert.deepEqual(f.database.prepare("SELECT * FROM quests WHERE milestone_id = 1 ORDER BY id").all(), questSnapshot.slice(0, 4));
+    await f.dreams.updateDream(dream.id, { isArchived: false });
+    assert.deepEqual(ids(await f.quests.getOverdueQuests("2026-10-15")), [1]);
   } finally { f.database.close(); }
 });
 

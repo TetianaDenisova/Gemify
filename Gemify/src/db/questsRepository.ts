@@ -40,7 +40,7 @@ const SELECT_QUEST_WITH_BREADCRUMB = `
                         1)) AS progress_percent
   FROM quests q
   JOIN milestones m ON m.id = q.milestone_id
-  JOIN dreams d ON d.id = m.dream_id
+  JOIN dreams d ON d.id = m.dream_id AND d.is_archived = 0
 `;
 
 function toQuest(row: QuestRow): Quest {
@@ -70,7 +70,11 @@ function toQuestWithBreadcrumb(row: QuestBreadcrumbRow): QuestWithBreadcrumb {
 export async function getQuests(milestoneId: number): Promise<Quest[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<QuestRow>(
-    `${SELECT_QUEST} WHERE milestone_id = ? ORDER BY id`,
+    `${SELECT_QUEST} WHERE milestone_id = ?
+       AND milestone_id IN (SELECT m.id FROM milestones m
+                            JOIN dreams d ON d.id = m.dream_id
+                            WHERE d.is_archived = 0)
+     ORDER BY id`,
     [milestoneId],
   );
   return rows.map(toQuest);
@@ -84,6 +88,7 @@ export async function getQuestsByDream(dreamId: number): Promise<Quest[]> {
             q.scheduled_date, q.scheduled_time, q.is_planned, q.completed_at
      FROM quests q
      JOIN milestones m ON m.id = q.milestone_id
+     JOIN dreams d ON d.id = m.dream_id AND d.is_archived = 0
      WHERE m.dream_id = ?
      ORDER BY q.id`,
     [dreamId],
@@ -157,10 +162,12 @@ export async function getScheduledQuestCounts(
 ): Promise<Map<string, number>> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ count: number; date: string }>(
-    `SELECT scheduled_date AS date, COUNT(*) AS count
-     FROM quests
-     WHERE scheduled_date BETWEEN ? AND ?
-     GROUP BY scheduled_date`,
+    `SELECT q.scheduled_date AS date, COUNT(*) AS count
+     FROM quests q
+     JOIN milestones m ON m.id = q.milestone_id
+     JOIN dreams d ON d.id = m.dream_id
+     WHERE q.scheduled_date BETWEEN ? AND ? AND d.is_archived = 0
+     GROUP BY q.scheduled_date`,
     [fromDate, toDate],
   );
   return new Map(rows.map((row) => [row.date, row.count]));
@@ -291,7 +298,10 @@ export async function rolloverOverdueQuests(
   const db = await getDatabase();
   const result = await db.runAsync(
     `UPDATE quests SET scheduled_date = NULL, scheduled_time = NULL, is_planned = 0
-     WHERE is_done = 0 AND scheduled_date IS NOT NULL AND scheduled_date < ?`,
+     WHERE is_done = 0 AND scheduled_date IS NOT NULL AND scheduled_date < ?
+       AND milestone_id IN (SELECT m.id FROM milestones m
+                            JOIN dreams d ON d.id = m.dream_id
+                            WHERE d.is_archived = 0)`,
     [beforeDate],
   );
   return result.changes;

@@ -30,6 +30,9 @@ const SELECT_HABIT = `
   FROM habits
 `;
 
+// Hide a dream's habits without changing their own archive/completion flags.
+const VISIBLE_DREAM = "dream_id IN (SELECT id FROM dreams WHERE is_archived = 0)";
+
 function toHabit(row: HabitRow): Habit {
   return {
     id: row.id,
@@ -102,7 +105,7 @@ export async function createHabit(input: NewHabit): Promise<Habit> {
 
 /**
  * All active habits (Habits screen groups them by dream) — archived and
- * completed hidden.
+ * completed hidden, along with habits belonging to archived dreams.
  */
 export async function getHabits(includeArchived = false): Promise<Habit[]> {
   const db = await getDatabase();
@@ -110,6 +113,7 @@ export async function getHabits(includeArchived = false): Promise<Habit[]> {
     includeArchived
       ? `${SELECT_HABIT} WHERE is_completed = 0 ORDER BY dream_id, id`
       : `${SELECT_HABIT} WHERE is_archived = 0 AND is_completed = 0
+         AND ${VISIBLE_DREAM}
          ORDER BY dream_id, id`,
   );
   return rows.map(toHabit);
@@ -120,6 +124,7 @@ export async function getHabitsByDream(dreamId: number): Promise<Habit[]> {
   const rows = await db.getAllAsync<HabitRow>(
     `${SELECT_HABIT}
      WHERE dream_id = ? AND is_archived = 0 AND is_completed = 0
+       AND ${VISIBLE_DREAM}
      ORDER BY id`,
     [dreamId],
   );
@@ -131,6 +136,7 @@ export async function getCompletedHabits(): Promise<Habit[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<HabitRow>(
     `${SELECT_HABIT} WHERE is_archived = 0 AND is_completed = 1
+       AND ${VISIBLE_DREAM}
      ORDER BY dream_id, id`,
   );
   return rows.map(toHabit);
