@@ -26,6 +26,7 @@ import {
   AppModal,
   AppText,
   ActionMenuSheet,
+  ArchiveIcon,
   CheckIcon,
   CloseIcon,
   DotsIcon,
@@ -539,6 +540,7 @@ export type JourneyMapControlsProps = {
   editMode: boolean;
   /** Marks the dream finished; the screen celebrates and offers a memory. */
   onCompleteDream: () => void;
+  onArchiveDream: () => void;
   onDeleteDream: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
@@ -562,6 +564,7 @@ export function JourneyMapControls({
   dreamName,
   editMode,
   onCompleteDream,
+  onArchiveDream,
   onDeleteDream,
   onEnterEditMode,
   onExitEditMode,
@@ -685,6 +688,7 @@ export function JourneyMapControls({
           { id: "edit", icon: PencilIcon, label: "Edit Dream", onPress: () => runFromMenu(() => setDreamEditVisible(true)) },
           { id: "path", icon: MilestoneIcon, label: "Edit Path", onPress: () => runFromMenu(onEnterEditMode) },
           { id: "what-if", icon: SparklesIcon, label: "What If Plan", onPress: () => runFromMenu(openWhatIfPlan) },
+          dreamId !== undefined && { id: "archive", icon: ArchiveIcon, label: "Archive Dream", onPress: () => runFromMenu(onArchiveDream) },
           { id: "complete", icon: CheckIcon, label: "Complete Dream", kind: "completion", onPress: () => runFromMenu(onCompleteDream) },
           showDeleteDream && { id: "delete", icon: TrashIcon, label: "Delete Dream", kind: "destructive", onPress: () => runFromMenu(onDeleteDream) },
         ]}

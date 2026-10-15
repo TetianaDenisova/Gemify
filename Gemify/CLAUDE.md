@@ -61,7 +61,7 @@ Centralized design tokens in `src/theme/`:
 - `ScreenScaffold` (background/keyboard/scroll/tab-clearance wrapper for every screen), `ScreenHeader` (left button · title/subtitle · right button; `asStackHeader` for stack screens, `backFallback` for no-history back), `IconButton`, `AppButton` (primary gold-gradient CTA / secondary / ghost), `AppText` (all text — variants map to theme typography), `AppInput`, `Card` (default/glass/strong), `ConfirmDialog` (the app-wide delete/confirm modal), `ProgressRing`, `ProgressBar`, `Checkbox`, `Chip`, `Badge`, `ListItem`, `SectionHeader`, `AppModal` (center/sheet), `HintRow`, and the shared SVG icon set in `icons.tsx`.
 - Never render raw `<Text>` in screens — use `AppText` with a variant.
 - Never define a screen-local SVG icon that duplicates a shared one — add it to `src/shared/components/icons.tsx` instead.
-- `useCompact()` in `src/hooks/` replaces hand-rolled `width < layout.compactBreakpoint` checks.
+- `useLayoutSize()` in `src/hooks/` provides the shared `compact`, `phone`, and `short` layout flags.
 
 ### Feature components
 - `src/components/home/` — HomeHeader, GoalCard, TodayProgressCard, DayCompleteCard

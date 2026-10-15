@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, View, type ImageSourcePropType } from "react-native";
 
-import type { BoardHabit } from "@/components/HabitBoardCard";
+import type { BoardHabit } from "@/data/habitBoard";
 import type { HabitCompletion } from "@/components/HabitItem";
 import { getHabitCompletions, type Dream, type HabitDetailSection } from "@/db";
 import {

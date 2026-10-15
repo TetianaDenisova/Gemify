@@ -19,6 +19,7 @@ export type { ChipProps } from "./Chip";
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export {
+  ArchiveIcon,
   ArrowRightIcon,
   BackIcon,
   BookIcon,

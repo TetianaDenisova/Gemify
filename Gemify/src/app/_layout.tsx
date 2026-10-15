@@ -76,6 +76,7 @@ export default function RootLayout() {
           <Stack.Screen key={name} name={name} options={transparentHeaderOptions} />
         ))}
         <Stack.Screen name="create-habit" options={{ headerShown: false }} />
+        <Stack.Screen name="archived-dreams" options={{ headerShown: false }} />
         <Stack.Screen name="milestone-ideas" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>

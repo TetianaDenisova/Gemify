@@ -162,21 +162,6 @@ export function useHabitWeek(dreamId?: number): UseHabitWeekResult {
   return { habits, loading, error, weekDates, refresh, setCompletion };
 }
 
-export type HabitStatus = "today" | "other" | "done";
-
-/**
- * Which section a habit belongs in: waiting for today, scheduled for another
- * day, or already ticked off today. `todayIndex` is Monday-first, matching
- * `scheduleDays` and `weekProgress`.
- */
-export function habitStatus(
-  view: HabitWeekView,
-  todayIndex: number,
-): HabitStatus {
-  if (!view.scheduleDays.includes(todayIndex)) return "other";
-  return view.weekProgress[todayIndex] === "done" ? "done" : "today";
-}
-
 /**
  * Where a habit sits in the day. `time_blocks` are stored in day order
  * (ORDER BY position), so the block's index is the order; a habit with no

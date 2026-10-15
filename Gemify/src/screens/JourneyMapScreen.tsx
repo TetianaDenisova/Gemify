@@ -1227,6 +1227,7 @@ export function GoalJourneyMapScreen() {
   const openedInEditFlow = edit === "1";
   const [dream, setDream] = useState<Dream | null>(null);
   const [dreamCompleted, setDreamCompleted] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [dbMilestones, setDbMilestones] = useState<Milestone[]>([]);
   const [isEditMode, setIsEditMode] = useState(openedInEditFlow);
   // Guided reverse planning: the journey is built backwards from the dream —
@@ -1548,6 +1549,17 @@ export function GoalJourneyMapScreen() {
     }
   };
 
+  const handleArchiveDream = async () => {
+    if (!dream) return;
+    try {
+      const updated = await updateDream(dream.id, { isArchived: true });
+      if (!updated) throw new Error("This dream is no longer available.");
+      router.dismissTo("/");
+    } catch (cause) {
+      setArchiveError(cause instanceof Error ? cause.message : "Failed to archive the dream.");
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <JourneyMapScroll
@@ -1686,6 +1698,7 @@ export function GoalJourneyMapScreen() {
         }
         photoUri={dream?.photoUri ?? null}
         onCompleteDream={handleCompleteDream}
+        onArchiveDream={handleArchiveDream}
         onDeleteDream={handleDeleteDream}
         onEnterEditMode={() => {
           setIsEditMode(true);
@@ -1715,6 +1728,12 @@ export function GoalJourneyMapScreen() {
         title="Dream Complete!"
         visible={dreamCompleted}
       />
+
+      <AppModal visible={archiveError !== null} onClose={() => setArchiveError(null)}>
+        <AppText variant="cardTitle">Could not archive dream</AppText>
+        <AppText style={{ marginVertical: spacing.md }}>{archiveError}</AppText>
+        <AppButton label="OK" onPress={() => setArchiveError(null)} />
+      </AppModal>
 
       <MilestoneModal
         onClose={() => setModalState(null)}

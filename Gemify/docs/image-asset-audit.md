@@ -42,7 +42,7 @@ These files had no direct reference in `src`, `app.json`, `app.config.js`, `publ
 
 - Group assets by their owning feature, including both icons and illustrations.
 - Store shared artwork once in its owning feature folder; consumers can reference it from other screens.
-- Keep the TypeScript registries in `src/data/icons.ts`, `src/data/menuIcons.ts`, and `src/data/images/index.ts`. They now reference files under `assets/`; no image binaries remain in `src/data`.
+- Keep the TypeScript registries in `src/data/menuIcons.ts` and `src/data/images/index.ts`. They reference files under `assets/`; no image binaries remain in `src/data`. The unused `src/data/icons.ts` registry was removed during code cleanup.
 - Keep public web icons in `public/icons/` so their `/icons/...` URLs remain stable.
 - Leave quarantined files in `assets/_unused/` until deletion is explicitly requested.
 

@@ -8,6 +8,25 @@ export type IconProps = {
   strokeWidth?: number;
 };
 
+export function ArchiveIcon({
+  color = colors.primary,
+  size = 24,
+  strokeWidth = 2,
+}: IconProps) {
+  return (
+    <Svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <Rect height={4} rx={1} stroke={color} strokeWidth={strokeWidth} width={20} x={2} y={3} />
+      <Path
+        d="M4 7v13h16V7M9 11h6"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+    </Svg>
+  );
+}
+
 export function LockIcon({
   color = colors.primary,
   size = 24,

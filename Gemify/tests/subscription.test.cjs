@@ -239,6 +239,66 @@ test("SQLite test Premium allows multiple records; Basic downgrade preserves and
   } finally { f.database.close(); }
 });
 
+test("archiving preserves a dream's journey and restoration returns it to Home summaries", async () => {
+  const f = repositories(true);
+  try {
+    f.database.exec(`
+      CREATE TABLE milestones (id INTEGER PRIMARY KEY, dream_id INTEGER, title TEXT, status TEXT, sequence_number INTEGER);
+      CREATE TABLE quests (id INTEGER PRIMARY KEY, milestone_id INTEGER, is_done INTEGER, is_active INTEGER);
+    `);
+    const dream = await f.dreams.createDream({ title: "Learn piano", visionStatement: "Play my favorite song" });
+    const other = await f.dreams.createDream({ title: "Travel" });
+    f.database.prepare("INSERT INTO milestones VALUES (1, ?, 'First song', 'active', 0)").run(dream.id);
+    f.database.exec("INSERT INTO quests VALUES (1, 1, 1, 1), (2, 1, 0, 1)");
+    await f.habits.createHabit({ title: "Practice", dreamId: dream.id });
+    const before = (await f.dreams.getDreamSummaries()).find((item) => item.id === dream.id);
+
+    await f.dreams.updateDream(dream.id, { isArchived: true });
+    assert.deepEqual(Array.from(await f.dreams.getDreamSummaries(), (item) => item.id), [other.id]);
+    const archived = await f.dreams.getArchivedDreams();
+    assert.deepEqual(Array.from(archived, (item) => item.id), [dream.id]);
+    assert.equal(archived[0].visionStatement, "Play my favorite song");
+    assert.equal((await f.habits.getHabitById(1)).dreamId, dream.id);
+
+    await f.dreams.updateDream(dream.id, { isArchived: false, isCompleted: false });
+    assert.equal((await f.dreams.getArchivedDreams()).length, 0);
+    const restored = (await f.dreams.getDreamSummaries()).find((item) => item.id === dream.id);
+    assert.deepEqual(restored, before);
+    assert.equal(restored.progressPercent, 50);
+  } finally { f.database.close(); }
+});
+
+test("Basic restoration keeps a dream archived at the limit and succeeds when a slot is free", async () => {
+  const f = repositories(false);
+  try {
+    const first = await f.dreams.createDream({ title: "First" });
+    await f.dreams.updateDream(first.id, { isArchived: true });
+    const second = await f.dreams.createDream({ title: "Second" });
+    await assert.rejects(
+      f.dreams.updateDream(first.id, { isArchived: false, isCompleted: false }),
+      /Basic includes 1 active dream/,
+    );
+    assert.equal((await f.dreams.getDreamById(first.id)).isArchived, true);
+    await f.dreams.updateDream(second.id, { isArchived: true });
+    await f.dreams.updateDream(first.id, { isArchived: false, isCompleted: false });
+    assert.deepEqual(Array.from(await f.dreams.getDreams(), (item) => item.id), [first.id]);
+  } finally { f.database.close(); }
+});
+
+test("restoring an archived completed dream makes it active again", async () => {
+  const f = repositories(false);
+  try {
+    const dream = await f.dreams.createDream({ title: "Restart" });
+    await f.dreams.updateDream(dream.id, { isArchived: true, isCompleted: true });
+    await f.dreams.updateDream(dream.id, { isArchived: false, isCompleted: false });
+    const restored = (await f.dreams.getDreams())[0];
+    assert.equal(restored.id, dream.id);
+    assert.equal(restored.isCompleted, false);
+    assert.equal(restored.completedAt, null);
+    assert.equal((await f.dreams.getArchivedDreams()).length, 0);
+  } finally { f.database.close(); }
+});
+
 function deleteEndpoint({ signedIn = true, removeFails = false } = {}) {
   let handler;
   const removed = [];

@@ -11,7 +11,7 @@ import { notifySyncApplied } from "@/sync/events";
 import { deleteAccount } from "@/sync/account";
 import { signOut } from "@/sync";
 import {
-  AppButton, AppModal, AppText, ArrowRightIcon, CheckIcon, CloseIcon,
+  AppButton, AppModal, AppText, ArchiveIcon, ArrowRightIcon, CheckIcon, CloseIcon,
   PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon, UserIcon,
 } from "@/shared/components";
 import { PREMIUM_MONTHLY_PRICE, PRIVACY_URL, TERMS_URL } from "@/subscription/config";
@@ -201,6 +201,11 @@ export default function AccountSubscriptionScreen() {
             icon={accountBusy ? <ActivityIndicator color={colors.primaryBright} /> : undefined}
             onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
             style={styles.authButton} textStyle={styles.authLabel} />
+        </View>
+
+        <View style={styles.dataSection}>
+          <AppButton label="Show archived dreams" icon={<ArchiveIcon size={20} />} variant="secondary"
+            onPress={() => router.push("/archived-dreams")} />
         </View>
 
         {subscription.premium && (

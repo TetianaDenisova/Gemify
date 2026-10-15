@@ -209,7 +209,7 @@ test("forecast card displays the year and pending state without menu controls", 
     "@/shared/components": { AppText: "AppText", Card: "Card" },
     "@/theme/colors": { colors: {} },
     "@/theme/theme": { spacing: {} },
-    "../../assets/will-achieve.png": "castle.png",
+    "../../assets/home/will-achieve.png": "castle.png",
   });
   const root = DreamForecastCard({ forecasts: [
     { dreamId: 1, title: "Become a Millionaire", date: "2027-03-02" },

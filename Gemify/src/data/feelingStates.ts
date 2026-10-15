@@ -21,4 +21,3 @@ export const FEELING_STATES = [
   { icon: "✧", label: "Desired" },
 ] as const;
 
-export type FeelingStateEntry = (typeof FEELING_STATES)[number];

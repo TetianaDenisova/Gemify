@@ -7,8 +7,6 @@ export type TimelineIconKey =
   | "target"
   | "milestoneCompleted";
 
-export type ProgressAccent = "violet" | "gold" | "pink" | "ember" | "muted";
-
 export interface ProgressGoalOption {
   key: string;
   label: string;

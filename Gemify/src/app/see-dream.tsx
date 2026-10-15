@@ -64,7 +64,6 @@ export default function SeeDreamScreen() {
     description?: string;
   }>();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [aiHint, setAiHint] = useState(false);
 
   const pickPhoto = async (source: "camera" | "library") => {
     try {

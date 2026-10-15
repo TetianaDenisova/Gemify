@@ -99,6 +99,15 @@ export async function getDreams(includeArchived = false): Promise<Dream[]> {
   return rows.map(toDream);
 }
 
+/** Archived dreams kept for later, including their full journey and memories. */
+export async function getArchivedDreams(): Promise<Dream[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<DreamRow>(
+    `${SELECT_DREAM} WHERE is_archived = 1 ORDER BY id DESC`,
+  );
+  return rows.map(toDream);
+}
+
 /** Finished dreams, newest first — the Memories history sheet. */
 export async function getCompletedDreams(): Promise<Dream[]> {
   const db = await getDatabase();

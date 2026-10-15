@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useCallback, useMemo, useState } from "react";
 
-import { toBoardHabit, type BoardHabit } from "@/components/HabitBoardCard";
+import { toBoardHabit, type BoardHabit } from "@/data/habitBoard";
 import { IllustratedHabitCard } from "@/components/IllustratedHabitCard";
 import { mainDreamBackgrounds } from "@/data/images";
 import {

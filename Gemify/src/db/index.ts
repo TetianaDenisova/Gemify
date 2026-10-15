@@ -8,6 +8,7 @@ export type { ImportSummary } from "./backup";
 export {
   createDream,
   deleteDream,
+  getArchivedDreams,
   getCompletedDreams,
   getDreamById,
   getDreams,

@@ -20,9 +20,12 @@ export type UseOncePerDayResult = {
 export function useOncePerDay(key: string): UseOncePerDayResult {
   const [state, setState] = useState({ due: false, key });
 
+  if (state.key !== key) {
+    setState({ due: false, key });
+  }
+
   useEffect(() => {
     let active = true;
-    setState({ due: false, key });
     if (key === "") {
       return () => {
         active = false;
