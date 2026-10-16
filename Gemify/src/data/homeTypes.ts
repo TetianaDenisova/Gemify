@@ -16,6 +16,9 @@ export interface Goal {
   id: string;
   title: string;
   progressPercent: number;
+  activeMilestone: string | null;
+  completedQuests: number;
+  totalQuests: number;
   themeColor: ThemeColor;
   imageKey: GoalImageKey;
   iconKey: GoalIconKey;

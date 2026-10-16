@@ -185,7 +185,8 @@ function repositories(testMode) {
       id INTEGER PRIMARY KEY, seed_key TEXT, title TEXT, vision_statement TEXT,
       photo_uri TEXT, photo_remote_key TEXT, photo_focus_x REAL DEFAULT 0.5,
       photo_focus_y REAL DEFAULT 0.5, photo_scale REAL DEFAULT 1,
-      is_archived INTEGER DEFAULT 0, is_completed INTEGER DEFAULT 0, completed_at TEXT
+      is_archived INTEGER DEFAULT 0, is_completed INTEGER DEFAULT 0, completed_at TEXT,
+      active_milestone_uid TEXT
     );
     CREATE TABLE habits (
       id INTEGER PRIMARY KEY, dream_id INTEGER, title TEXT, cue TEXT, time_block_key TEXT,
@@ -244,12 +245,12 @@ test("archiving preserves a dream's journey and restoration returns it to Home s
   const f = repositories(true);
   try {
     f.database.exec(`
-      CREATE TABLE milestones (id INTEGER PRIMARY KEY, dream_id INTEGER, title TEXT, status TEXT, sequence_number INTEGER);
+      CREATE TABLE milestones (id INTEGER PRIMARY KEY, dream_id INTEGER, title TEXT, status TEXT, sequence_number INTEGER, uid TEXT);
       CREATE TABLE quests (id INTEGER PRIMARY KEY, milestone_id INTEGER, is_done INTEGER, is_active INTEGER);
     `);
     const dream = await f.dreams.createDream({ title: "Learn piano", visionStatement: "Play my favorite song" });
     const other = await f.dreams.createDream({ title: "Travel" });
-    f.database.prepare("INSERT INTO milestones VALUES (1, ?, 'First song', 'active', 0)").run(dream.id);
+    f.database.prepare("INSERT INTO milestones VALUES (1, ?, 'First song', 'active', 0, 'first-song')").run(dream.id);
     f.database.exec("INSERT INTO quests VALUES (1, 1, 1, 1), (2, 1, 0, 1)");
     await f.habits.createHabit({ title: "Practice", dreamId: dream.id });
     const before = (await f.dreams.getDreamSummaries()).find((item) => item.id === dream.id);

@@ -688,6 +688,14 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // A stable uid avoids a circular dream -> milestone foreign key and
+    // preserves the selection across devices and backup imports.
+    toVersion: 25,
+    up: async (db) => {
+      await db.execAsync(`ALTER TABLE dreams ADD COLUMN active_milestone_uid TEXT;`);
+    },
+  },
 ];
 
 /** Global reference seeds: routine time blocks and the feeling-state catalog. */

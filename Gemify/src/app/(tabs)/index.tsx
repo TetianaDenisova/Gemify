@@ -8,6 +8,7 @@ import { DayActionCard, DayActionList } from "@/components/DayActionCard";
 import { HabitActionRow } from "@/components/HabitActionRow";
 import { QuestActionRow } from "@/components/QuestActionRow";
 import { DayCompleteCard, GoalCard, HomeHeader } from "@/components/home";
+import { HomeSectionHeader } from "@/components/home/HomeSectionHeader";
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import { habitVisualsFor } from "@/data/habitVisuals";
 import type { Goal, GoalIconKey, GoalImageKey, ThemeColor } from "@/data/homeTypes";
@@ -30,7 +31,6 @@ import {
   MilestoneIcon,
   PlusIcon,
   ScreenScaffold,
-  SectionHeader,
   SparkIcon,
 } from "@/shared/components";
 import { colors } from "@/theme/colors";
@@ -133,6 +133,9 @@ function toGoal(dream: DreamSummary): Goal {
     id: String(dream.id),
     title: dream.title,
     progressPercent: dream.progressPercent,
+    activeMilestone: dream.currentMilestone,
+    completedQuests: dream.milestoneCompletedQuests,
+    totalQuests: dream.milestoneTotalQuests,
     ...visuals,
   };
 }
@@ -341,10 +344,10 @@ export default function HomeScreen() {
   const focusActions = currentBlock?.actions ?? [];
 
   return (
-    <ScreenScaffold tabClearance topInset>
+    <ScreenScaffold contentStyle={styles.screenContent} style={styles.screen} tabClearance topInset>
       <HomeHeader greeting={greetingForNow(new Date())} />
 
-      <SectionHeader
+      <HomeSectionHeader
         action={{
           accessibilityLabel: addGoalLocked ? "Add Goal, Premium required" : "Add Goal",
           icon: addGoalLocked ? <LockIcon size={14} /> : <PlusIcon size={14} />,
@@ -384,7 +387,7 @@ export default function HomeScreen() {
           section stays hidden until the first dream exists. */}
       {dreams.length > 0 ? (
         <>
-      <SectionHeader
+      <HomeSectionHeader
         style={styles.sectionHeader}
         // The planning nudge only appears when nothing at all is planned for
         // today; otherwise the section names what it shows: the current
@@ -464,7 +467,7 @@ export default function HomeScreen() {
                   <View style={styles.laterDividerLine} />
                 </View>
               )}
-              <SectionHeader
+              <HomeSectionHeader
                 style={styles.sectionHeader}
                 title="LATER TODAY"
                 variant="eyebrow"
@@ -589,6 +592,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: "#040D14" },
+  screenContent: { paddingHorizontal: 22 },
   currentBlock: {
     marginBottom: spacing.md,
   },
@@ -601,8 +606,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   sectionHeader: {
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
+    marginBottom: 10,
+    marginTop: 12,
   },
   upcomingPill: {
     alignSelf: "center",

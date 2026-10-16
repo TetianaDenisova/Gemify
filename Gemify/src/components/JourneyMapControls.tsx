@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { ActiveMilestonePicker } from "@/components/ActiveMilestonePicker";
 
 import {
   clampPhotoScale,
@@ -581,6 +582,7 @@ export function JourneyMapControls({
   >(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dreamEditVisible, setDreamEditVisible] = useState(false);
+  const [milestonePickerVisible, setMilestonePickerVisible] = useState(false);
 
   // The daily greeting, per dream. A dream with neither photo nor
   // description has nothing to greet the user with, so it stays quiet.
@@ -687,12 +689,17 @@ export function JourneyMapControls({
         options={[
           { id: "edit", icon: PencilIcon, label: "Edit Dream", onPress: () => runFromMenu(() => setDreamEditVisible(true)) },
           { id: "path", icon: MilestoneIcon, label: "Edit Path", onPress: () => runFromMenu(onEnterEditMode) },
+          dreamId !== undefined && { id: "active-milestone", icon: MilestoneIcon, label: "Set Active Milestone", onPress: () => runFromMenu(() => setMilestonePickerVisible(true)) },
           { id: "what-if", icon: SparklesIcon, label: "What If Plan", onPress: () => runFromMenu(openWhatIfPlan) },
           dreamId !== undefined && { id: "archive", icon: ArchiveIcon, label: "Archive Dream", onPress: () => runFromMenu(onArchiveDream) },
           { id: "complete", icon: CheckIcon, label: "Complete Dream", kind: "completion", onPress: () => runFromMenu(onCompleteDream) },
           showDeleteDream && { id: "delete", icon: TrashIcon, label: "Delete Dream", kind: "destructive", onPress: () => runFromMenu(onDeleteDream) },
         ]}
       />
+
+      {milestonePickerVisible && dreamId !== undefined ? (
+        <ActiveMilestonePicker dreamId={dreamId} onClose={() => setMilestonePickerVisible(false)} />
+      ) : null}
 
       <DreamEditModal
         dreamName={dreamName}

@@ -86,6 +86,8 @@ type BackupUpgrade = {
  * here that reshapes a version N-1 backup document into version N.
  */
 const backupUpgrades: BackupUpgrade[] = [
+  // New nullable fields need no JSON transformation: omitted columns use
+  // SQLite defaults. Keep upgrades below in ascending schema order.
   {
     // v4 added tasks.is_planned; older backups predate the flag, so mirror
     // the migration default (1 = keep every task visible on the board).
@@ -299,6 +301,10 @@ const backupUpgrades: BackupUpgrade[] = [
         }
       }
     },
+  },
+  {
+    toVersion: 25,
+    up: () => {},
   },
 ];
 

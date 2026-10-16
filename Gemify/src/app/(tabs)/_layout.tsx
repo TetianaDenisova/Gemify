@@ -14,7 +14,7 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { colors } from "@/theme/colors";
 import { UserIcon } from "@/shared/components";
-import { layout, tabBarHeightFor, typography } from "@/theme/theme";
+import { fonts, layout, tabBarHeightFor } from "@/theme/theme";
 
 interface TabIconProps {
   focused: boolean;
@@ -252,16 +252,16 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Flat edge-to-edge bar: the tab bar reads as part of the screen edge, so
-  // pinned footer cards (e.g. the weekly ascent capsule) stay the only
-  // rounded surface at the bottom.
   tabBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 0,
-    backgroundColor: colors.surface,
+    borderColor: "rgba(154, 163, 173, 0.08)",
+    borderTopWidth: 1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: "#071119",
     elevation: 0,
   },
 
@@ -276,7 +276,9 @@ const styles = StyleSheet.create({
   },
 
   tabBarLabel: {
-    ...typography.micro,
+    fontFamily: fonts.serif,
+    fontSize: 11,
+    lineHeight: 15,
     letterSpacing: 0,
     marginTop: 0,
     minWidth: 50,

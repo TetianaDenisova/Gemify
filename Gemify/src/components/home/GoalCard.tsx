@@ -2,12 +2,12 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import type { Goal, ThemeColor } from "@/data/homeTypes";
-import { useLayoutSize } from "@/hooks/useLayoutSize";
+import type { Goal } from "@/data/homeTypes";
 import { goalImages } from "@/data/images";
+import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { AppText, LockIcon, ProgressRing } from "@/shared/components";
 import { colors } from "@/theme/colors";
-import { pressed, radius, shadows, spacing } from "@/theme/theme";
+import { fonts, pressed, radius, spacing } from "@/theme/theme";
 
 interface GoalCardProps {
   goal: Goal;
@@ -15,213 +15,81 @@ interface GoalCardProps {
   onPress?: (goal: Goal) => void;
 }
 
-/**
- * Left-to-right shade over the goal art: dark under the icon/title so the
- * copy reads, thinning out so the artwork glows on the right (the same
- * treatment as the milestone hero and the plan-week card).
- */
-const GOAL_SHADE = [
-  "rgba(4, 7, 17, 0.96)",
-  "rgba(4, 7, 17, 0.72)",
-  "rgba(4, 7, 17, 0.16)",
-] as const;
-
-/**
- * The dream art is ultra-wide (~2.4:1) with the glowing subject on the right,
- * so it anchors right at full card height instead of covering (which would
- * crop the spires). It stops short of the progress column, so the ring sits
- * on the card backing rather than over the artwork; that backing matches the
- * art's near-black left edge, making the hand-off invisible under the shade.
- */
-const ART_ASPECT_RATIO = 2.4;
-const ART_BACKING = "#01030E";
-
-/**
- * Fixed right-hand column reserved for the progress ring. Its width is where
- * the art stops (and where the seam scrim below ends), so the ring always has
- * clear backing under it on phone and on wide screens alike.
- */
-const RING_SIZE = 50;
-const RING_SIZE_PHONE = 42;
-const RING_EDGE_GAP = spacing.md;
-const ART_RING_GAP = 14;
-const ringColumnWidth = (ringSize: number) =>
-  ringSize + RING_EDGE_GAP + ART_RING_GAP;
-const SEAM_WIDTH = 72;
-
-/**
- * Soft scrim over the art's right edge, fading it into the card backing that
- * carries the progress ring. It sits entirely left of the ring column, so the
- * ring reads on flat backing and the art's glowing subject stays visible.
- */
-const SEAM_SHADE = [
-  "rgba(1, 3, 14, 0)",
-  "rgba(1, 3, 14, 0.32)",
-  "rgba(1, 3, 14, 0.7)",
-] as const;
-
-const absoluteFill = {
-  bottom: 0,
-  height: "100%" as const,
-  left: 0,
-  position: "absolute" as const,
-  right: 0,
-  top: 0,
-  width: "100%" as const,
-};
-
-function getThemeColor(themeColor: ThemeColor) {
-  return themeColor === "gold" ? colors.primary : colors.primarySoft;
-}
-
 export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
-  const accentColor = getThemeColor(goal.themeColor);
   const { phone } = useLayoutSize();
-  const ringSize = phone ? RING_SIZE_PHONE : RING_SIZE;
+  const milestoneProgress = goal.totalQuests > 0 ? goal.completedQuests / goal.totalQuests : 0;
 
   return (
     <Pressable
-      accessibilityLabel={locked ? `${goal.title}, Premium required` : goal.title}
+      accessibilityLabel={locked
+        ? `${goal.title}, Premium required`
+        : `${goal.title}, ${Math.round(goal.progressPercent)} percent. ${goal.activeMilestone ?? "No milestones yet"}. ${goal.completedQuests} of ${goal.totalQuests} quests complete`}
       accessibilityRole="button"
       onPress={() => onPress?.(goal)}
-      style={({ pressed: isPressed }) => [
-        styles.card,
-        phone && styles.cardPhone,
-        isPressed && pressed,
-      ]}
+      style={({ pressed: isPressed }) => [styles.card, phone && styles.cardPhone, isPressed && pressed]}
     >
-      {/* Always the preset art for the goal's slot — the user's dream photo
-          stays on the journey map, not the home list. The art ends where the
-          progress column starts, so the ring never sits on top of it. */}
-      <View
-        style={[styles.artContainer, { right: ringColumnWidth(ringSize) }]}
-      >
-        <Image
-          source={goalImages[goal.imageKey]}
-          style={styles.backgroundImage}
-          contentFit="cover"
-          transition={180}
-        />
-      </View>
-
+      <Image contentFit="cover" source={goalImages[goal.imageKey]} style={styles.art} transition={180} />
       <LinearGradient
-        colors={GOAL_SHADE}
-        end={{ x: 1, y: 0.5 }}
-        start={{ x: 0, y: 0.5 }}
-        style={styles.shade}
+        colors={["#050C13", "rgba(5, 12, 19, 0.92)", "rgba(5, 12, 19, 0.08)", "rgba(5, 12, 19, 0.6)"]}
+        locations={[0, 0.28, 0.7, 1]}
+        end={{ x: 1, y: 0.5 }} start={{ x: 0, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
       />
-
       <LinearGradient
-        colors={SEAM_SHADE}
-        end={{ x: 1, y: 0.5 }}
-        start={{ x: 0, y: 0.5 }}
-        style={[
-          styles.seamShade,
-          { right: ringColumnWidth(ringSize), width: SEAM_WIDTH },
-        ]}
+        colors={["rgba(5, 12, 19, 0)", "rgba(5, 12, 19, 0.75)"]}
+        style={StyleSheet.absoluteFill}
       />
-
-      <View style={[styles.inner, phone && styles.innerPhone]}>
-        <View style={styles.titleBlock}>
-          <AppText numberOfLines={2} variant="pill">
-            {goal.title}
+      <View style={[styles.content, phone && styles.contentPhone]}>
+        <AppText numberOfLines={2} style={[styles.title, phone && styles.titlePhone]} variant="cardTitle">
+          {goal.title}
+        </AppText>
+        <View style={styles.milestone}>
+          <AppText color="#A6A39C" numberOfLines={1} style={styles.milestoneTitle} variant="bodySerif">
+            {goal.activeMilestone ?? "Add your first milestone"}
           </AppText>
         </View>
-
-        <View style={[styles.progressColumn, { width: ringSize }]}>
-          {locked ? (
-            <View style={[styles.lock, { height: ringSize, width: ringSize }]}>
-              <LockIcon color={colors.primary} size={phone ? 26 : 30} />
-            </View>
-          ) : (
-            <ProgressRing
-              backgroundColor={colors.surfaceDeep}
-              color={accentColor}
-              labelColor={accentColor}
-              size={ringSize}
-              strokeWidth={2}
-              value={goal.progressPercent}
-            />
-          )}
+        <View style={styles.progressRow}>
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${Math.min(1, milestoneProgress) * 100}%` }]} />
+          </View>
+          <AppText color="#8E9399" style={styles.count} variant="bodySerif">
+            {goal.completedQuests}/{goal.totalQuests}
+          </AppText>
         </View>
+      </View>
+      <View style={[styles.ring, phone && styles.ringPhone]}>
+        {locked ? (
+          <View style={styles.lock}><LockIcon color={colors.primary} size={28} /></View>
+        ) : (
+          <ProgressRing
+            color={colors.primary}
+            labelColor={colors.primary}
+            size={phone ? 52 : 62}
+            strokeWidth={3}
+            trackColor="#1C252D"
+            value={goal.progressPercent}
+          />
+        )}
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  artContainer: {
-    bottom: 0,
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 0,
-  },
-
-  backgroundImage: {
-    aspectRatio: ART_ASPECT_RATIO,
-    bottom: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-
-  card: {
-    backgroundColor: ART_BACKING,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    marginBottom: spacing.sm,
-    minHeight: 132,
-    overflow: "hidden",
-    position: "relative",
-    ...shadows.softDark,
-  },
-
-  cardPhone: {
-    minHeight: 112,
-  },
-
-  shade: {
-    ...absoluteFill,
-    zIndex: 1,
-  },
-
-  seamShade: {
-    bottom: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 2,
-  },
-
-  inner: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    zIndex: 3,
-  },
-
-  innerPhone: {
-    paddingVertical: 10,
-  },
-
-  titleBlock: {
-    flex: 1,
-    paddingRight: 12,
-  },
-
-  progressColumn: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lock: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  card: { backgroundColor: "#050C13", borderColor: "rgba(154, 163, 173, 0.13)", borderRadius: radius.md, borderWidth: 1, marginBottom: 10, minHeight: 164, overflow: "hidden" },
+  cardPhone: { minHeight: 136 },
+  art: { bottom: 0, position: "absolute", right: 0, top: 0, width: "100%" },
+  content: { paddingHorizontal: 22, paddingVertical: 18 },
+  contentPhone: { paddingHorizontal: 18, paddingVertical: 18 },
+  title: { color: "#F3EFDF", fontSize: 30, fontWeight: "400", lineHeight: 33, minHeight: 66, width: "72%" },
+  titlePhone: { fontSize: 25, lineHeight: 27, minHeight: 54, width: "72%" },
+  milestone: { alignItems: "center", flexDirection: "row", gap: spacing.sm, marginTop: 12, width: "78%" },
+  milestoneTitle: { flex: 1, fontSize: 14, lineHeight: 19 },
+  progressRow: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 7, width: "58%" },
+  track: { backgroundColor: "#1C252D", borderRadius: radius.round, flex: 1, height: 7, overflow: "hidden" },
+  fill: { backgroundColor: "#89775A", borderRadius: radius.round, height: "100%" },
+  count: { fontFamily: fonts.serif, fontSize: 15, lineHeight: 18 },
+  ring: { position: "absolute", right: 18, top: 20 },
+  ringPhone: { right: 13, top: 16 },
+  lock: { alignItems: "center", height: 52, justifyContent: "center", width: 52 },
 });

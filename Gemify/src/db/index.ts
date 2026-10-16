@@ -9,6 +9,7 @@ export {
   createDream,
   deleteDream,
   getArchivedDreams,
+  getActiveMilestoneId,
   getCompletedDreams,
   getDreamById,
   getDreams,
@@ -16,6 +17,7 @@ export {
   getDreamSummaries,
   getFeelingStates,
   getWeekAscent,
+  setActiveMilestone,
   updateDream,
 } from "./dreamsRepository";
 export type { DreamSummary, WeekAscentEntry } from "./dreamsRepository";

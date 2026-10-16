@@ -132,8 +132,11 @@ export async function getDreamsWithCompleted(): Promise<Dream[]> {
 }
 
 export type DreamSummary = Dream & {
-  /** Title of the first not-completed milestone (or the last one when done). */
+  /** Selected milestone, falling back to the first milestone in path order. */
   currentMilestone: string | null;
+  currentMilestoneId: number | null;
+  milestoneCompletedQuests: number;
+  milestoneTotalQuests: number;
   completedQuests: number;
   totalQuests: number;
   /**
@@ -144,12 +147,49 @@ export type DreamSummary = Dream & {
   progressPercent: number;
 };
 
+// A missing selection (including a deleted milestone) always means the first
+// milestone. Restrict both lookups to the dream, even for stale synced data.
+const ACTIVE_MILESTONE_ID = `COALESCE(
+  (SELECT m.id FROM milestones m
+   WHERE m.dream_id = d.id AND m.uid = d.active_milestone_uid LIMIT 1),
+  (SELECT m.id FROM milestones m
+   WHERE m.dream_id = d.id ORDER BY m.sequence_number, m.id LIMIT 1)
+)`;
+
+export async function getActiveMilestoneId(dreamId: number): Promise<number | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ milestone_id: number | null }>(
+    `SELECT ${ACTIVE_MILESTONE_ID} AS milestone_id FROM dreams d WHERE d.id = ?`,
+    [dreamId],
+  );
+  return row?.milestone_id ?? null;
+}
+
+/** Save the choice on the dream so it travels with cloud sync and backups. */
+export async function setActiveMilestone(dreamId: number, milestoneId: number): Promise<void> {
+  const db = await getDatabase();
+  const result = await db.runAsync(
+    `UPDATE dreams SET active_milestone_uid = (
+       SELECT uid FROM milestones WHERE id = ? AND dream_id = ?
+     ) WHERE id = ? AND EXISTS (
+       SELECT 1 FROM milestones WHERE id = ? AND dream_id = ? AND uid IS NOT NULL
+     )`,
+    [milestoneId, dreamId, dreamId, milestoneId, dreamId],
+  );
+  if (result.changes === 0) {
+    throw new Error("This milestone is no longer available. Please choose another.");
+  }
+}
+
 /** Home-screen cards: each dream with its current milestone and quest counts. */
 export async function getDreamSummaries(): Promise<DreamSummary[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<
     DreamRow & {
       current_milestone: string | null;
+      current_milestone_id: number | null;
+      milestone_completed_quests: number;
+      milestone_total_quests: number;
       completed_quests: number;
       total_quests: number;
       progress_fraction: number;
@@ -168,18 +208,18 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
                      0)
               END AS progress
        FROM milestones m
+     ), selected_milestones AS (
+       SELECT d.id AS dream_id, ${ACTIVE_MILESTONE_ID} AS milestone_id FROM dreams d
      )
      SELECT d.id, d.seed_key, d.title, d.vision_statement, d.photo_uri,
             d.photo_focus_x, d.photo_focus_y, d.photo_scale, d.is_archived,
             d.is_completed, d.completed_at,
-            COALESCE(
-              (SELECT m.title FROM milestones m
-               WHERE m.dream_id = d.id AND m.status = 'active'
-               ORDER BY m.sequence_number LIMIT 1),
-              (SELECT m.title FROM milestones m
-               WHERE m.dream_id = d.id
-               ORDER BY m.sequence_number DESC LIMIT 1)
-            ) AS current_milestone,
+            sm.milestone_id AS current_milestone_id,
+            (SELECT title FROM milestones WHERE id = sm.milestone_id) AS current_milestone,
+            (SELECT COUNT(*) FROM quests q WHERE q.milestone_id = sm.milestone_id
+               AND q.is_active = 1 AND q.is_done = 1) AS milestone_completed_quests,
+            (SELECT COUNT(*) FROM quests q WHERE q.milestone_id = sm.milestone_id
+               AND q.is_active = 1) AS milestone_total_quests,
             (SELECT COUNT(*) FROM quests q
              JOIN milestones m ON m.id = q.milestone_id
              WHERE m.dream_id = d.id AND q.is_done = 1) AS completed_quests,
@@ -193,6 +233,7 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
                  WHERE m.dream_id = d.id),
               0) AS progress_fraction
      FROM dreams d
+     JOIN selected_milestones sm ON sm.dream_id = d.id
      WHERE d.is_archived = 0 AND d.is_completed = 0
      ORDER BY d.id`,
   );
@@ -200,6 +241,9 @@ export async function getDreamSummaries(): Promise<DreamSummary[]> {
   return rows.map((row) => ({
     ...toDream(row),
     currentMilestone: row.current_milestone,
+    currentMilestoneId: row.current_milestone_id,
+    milestoneCompletedQuests: row.milestone_completed_quests,
+    milestoneTotalQuests: row.milestone_total_quests,
     completedQuests: row.completed_quests,
     totalQuests: row.total_quests,
     progressPercent: row.progress_fraction * 100,
