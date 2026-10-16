@@ -610,8 +610,8 @@ export function TrashIcon({
   );
 }
 
-/** Feature-art tints for the create-habit step medallions (violet family). */
-const STEP_ICON_HIGHLIGHT = "#F1B3FF";
+/** Theme highlight for the create-habit step medallions. */
+const STEP_ICON_HIGHLIGHT = colors.primaryBright;
 
 export type StepIconName =
   | "calendar"
@@ -636,7 +636,7 @@ export function StepIcon({
         <Path
           d="M9 22c0-8 7-14 16-14s16 6 16 14-7 14-16 14c-2 0-4-.3-5.8-.9L10 40l3-8.1A13 13 0 0 1 9 22Z"
           fill="none"
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeLinejoin="round"
           strokeWidth={2.6}
         />
@@ -654,7 +654,7 @@ export function StepIcon({
           fill="none"
           height={29}
           rx={4}
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeWidth={2.5}
           width={32}
           x={8}
@@ -679,7 +679,7 @@ export function StepIcon({
           cy={24}
           fill="none"
           r={15.5}
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeWidth={2.6}
         />
         <Path
@@ -700,7 +700,7 @@ export function StepIcon({
         <Path
           d="M24 5 39 11v11c0 10-6 17-15 21C15 39 9 32 9 22V11l15-6Z"
           fill="none"
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeLinejoin="round"
           strokeWidth={2.7}
         />
@@ -722,7 +722,7 @@ export function StepIcon({
         <Path
           d="M24 39V24M24 25c-9-1-14-7-14-15 9 0 14 6 14 15ZM24 27c10-2 15-9 15-18-10 1-15 8-15 18Z"
           fill="none"
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeLinejoin="round"
           strokeWidth={2.7}
         />
@@ -743,7 +743,7 @@ export function StepIcon({
         <Path
           d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
           fill="none"
-          stroke={colors.accentViolet}
+          stroke={colors.primary}
           strokeLinejoin="round"
           strokeWidth={2.7}
         />
@@ -762,12 +762,12 @@ export function StepIcon({
     <Svg height={size} viewBox="0 0 48 48" width={size}>
       <Path
         d="M37 8C23 9 13 18 12 34c12-1 22-8 25-26Z"
-        fill={colors.accentViolet}
+        fill={colors.primary}
       />
       <Path
         d="M14 34c7-8 13-13 21-18M18 30l-2 10"
         fill="none"
-        stroke="#32143D"
+        stroke={colors.textOnPrimary}
         strokeLinecap="round"
         strokeWidth={2.4}
       />

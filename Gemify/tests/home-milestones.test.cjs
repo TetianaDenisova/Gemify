@@ -47,7 +47,7 @@ async function fixture() {
       (21, 2, 0, 'Daily care', 'active');
     INSERT INTO quests (milestone_id, title, is_active, is_done) VALUES
       (11, 'Read', 1, 1), (11, 'Unwind', 1, 0), (11, 'Retired quest', 0, 1),
-      (12, 'Sleep on time', 1, 0), (21, 'Hydrate', 1, 1);
+      (12, 'Sleep on time', 1, 0), (12, 'Retired sleep quest', 0, 1), (21, 'Hydrate', 1, 1);
   `);
   for (const migration of migrations.filter((entry) => entry.toVersion > 24)) await migration.up(db);
   const repository = load("src/db/dreamsRepository.ts", {
@@ -58,17 +58,17 @@ async function fixture() {
   return { sqlite, repository, close: () => sqlite.close() };
 }
 
-test("existing dreams default to the first milestone, including a completed first milestone", async () => {
+test("existing dreams default to the first unfinished milestone and skip completed ones", async () => {
   const app = await fixture();
   try {
     const summaries = await app.repository.getDreamSummaries();
     const dream = summaries.find((row) => row.id === 1);
-    assert.equal(dream.currentMilestoneId, 11);
-    assert.equal(dream.currentMilestone, "Evening routine");
-    assert.equal(dream.milestoneCompletedQuests, 1);
-    assert.equal(dream.milestoneTotalQuests, 2, "Inactive quests must not enter the milestone bar");
+    assert.equal(dream.currentMilestoneId, 12);
+    assert.equal(dream.currentMilestone, "Restful sleep");
+    assert.equal(dream.milestoneCompletedQuests, 0);
+    assert.equal(dream.milestoneTotalQuests, 1, "Inactive quests must not enter the milestone bar");
     assert.equal(dream.progressPercent, 50, "Completed milestones retain their full share of dream progress");
-    assert.equal(await app.repository.getActiveMilestoneId(1), 11);
+    assert.equal(await app.repository.getActiveMilestoneId(1), 12);
     const empty = summaries.find((row) => row.id === 3);
     assert.equal(empty.currentMilestoneId, null);
     assert.equal(empty.currentMilestone, null);
@@ -80,7 +80,8 @@ test("existing dreams default to the first milestone, including a completed firs
 test("choosing a milestone persists its stable identity and changes only the milestone bar", async () => {
   const app = await fixture();
   try {
-    app.sqlite.exec("UPDATE dreams SET sync_dirty = 0");
+    app.sqlite.exec("UPDATE milestones SET status = 'active' WHERE id = 11; UPDATE dreams SET sync_dirty = 0;");
+    assert.equal(await app.repository.getActiveMilestoneId(1), 11);
     await app.repository.setActiveMilestone(1, 12);
     const stored = app.sqlite.prepare("SELECT active_milestone_uid, sync_dirty FROM dreams WHERE id = 1").get();
     const milestone = app.sqlite.prepare("SELECT uid FROM milestones WHERE id = 12").get();
@@ -91,7 +92,7 @@ test("choosing a milestone persists its stable identity and changes only the mil
     assert.equal(dream.currentMilestone, "Restful sleep");
     assert.equal(dream.milestoneCompletedQuests, 0);
     assert.equal(dream.milestoneTotalQuests, 1);
-    assert.equal(dream.progressPercent, 50);
+    assert.equal(dream.progressPercent, 25);
     assert.equal(await app.repository.getActiveMilestoneId(2), 21, "Other dreams retain their selection");
     // Renumbering local ids (as on another device) must preserve the selection.
     app.sqlite.exec("UPDATE quests SET milestone_id = 11 WHERE milestone_id = 12; UPDATE milestones SET id = 120 WHERE id = 12;");
@@ -102,6 +103,7 @@ test("choosing a milestone persists its stable identity and changes only the mil
 test("deleted and invalid selections fall back safely without crossing dreams", async () => {
   const app = await fixture();
   try {
+    app.sqlite.exec("UPDATE milestones SET status = 'active' WHERE id = 11");
     await assert.rejects(app.repository.setActiveMilestone(1, 21), /no longer available/);
     await assert.rejects(app.repository.setActiveMilestone(1, 999), /no longer available/);
     await app.repository.setActiveMilestone(1, 12);
@@ -113,5 +115,24 @@ test("deleted and invalid selections fall back safely without crossing dreams", 
     assert.equal(await app.repository.getActiveMilestoneId(1), 11);
     app.sqlite.exec("DELETE FROM milestones WHERE dream_id = 1");
     assert.equal(await app.repository.getActiveMilestoneId(1), null);
+  } finally { app.close(); }
+});
+
+test("completing the selected milestone advances to the next unfinished milestone", async () => {
+  const app = await fixture();
+  try {
+    await assert.rejects(app.repository.setActiveMilestone(1, 11), /no longer available/);
+    await app.repository.setActiveMilestone(1, 12);
+    app.sqlite.exec("INSERT INTO milestones (id, dream_id, sequence_number, title) VALUES (13, 1, 2, 'Morning calm')");
+    assert.equal(await app.repository.getActiveMilestoneId(1), 12);
+    app.sqlite.exec("UPDATE milestones SET status = 'completed' WHERE id = 12");
+    assert.equal(await app.repository.getActiveMilestoneId(1), 13);
+    const [dream] = await app.repository.getDreamSummaries();
+    assert.equal(dream.currentMilestone, "Morning calm");
+    app.sqlite.exec("UPDATE milestones SET status = 'completed' WHERE id = 13");
+    assert.equal(await app.repository.getActiveMilestoneId(1), null);
+    const [finished] = await app.repository.getDreamSummaries();
+    assert.equal(finished.currentMilestone, null);
+    assert.equal(finished.progressPercent, 100);
   } finally { app.close(); }
 });

@@ -30,13 +30,13 @@ export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
     >
       <Image contentFit="cover" source={goalImages[goal.imageKey]} style={styles.art} transition={180} />
       <LinearGradient
-        colors={["rgba(5, 12, 19, 0.95)", "rgba(5, 12, 19, 0.68)", "rgba(5, 12, 19, 0)", "rgba(5, 12, 19, 0.14)"]}
-        locations={[0, 0.25, 0.64, 1]}
+        colors={["#050C13", "rgba(5, 12, 19, 0.92)", "rgba(5, 12, 19, 0.08)", "rgba(5, 12, 19, 0.6)"]}
+        locations={[0, 0.28, 0.7, 1]}
         end={{ x: 1, y: 0.5 }} start={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={["rgba(5, 12, 19, 0)", "rgba(5, 12, 19, 0.24)"]}
+        colors={["rgba(5, 12, 19, 0)", "rgba(5, 12, 19, 0.75)"]}
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.content, phone && styles.contentPhone]}>
@@ -45,7 +45,7 @@ export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
         </AppText>
         <View style={styles.milestone}>
           <AppText color="#A6A39C" numberOfLines={1} style={styles.milestoneTitle} variant="bodySerif">
-            {goal.activeMilestone ?? "Add your first milestone"}
+            {goal.activeMilestone ?? "No active milestone"}
           </AppText>
         </View>
         <View style={styles.progressRow}>

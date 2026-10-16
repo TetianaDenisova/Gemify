@@ -132,7 +132,7 @@ export async function getDreamsWithCompleted(): Promise<Dream[]> {
 }
 
 export type DreamSummary = Dream & {
-  /** Selected milestone, falling back to the first milestone in path order. */
+  /** Selected unfinished milestone, or the first unfinished one in path order. */
   currentMilestone: string | null;
   currentMilestoneId: number | null;
   milestoneCompletedQuests: number;
@@ -147,13 +147,15 @@ export type DreamSummary = Dream & {
   progressPercent: number;
 };
 
-// A missing selection (including a deleted milestone) always means the first
+// Missing, deleted or completed selections fall back to the first unfinished
 // milestone. Restrict both lookups to the dream, even for stale synced data.
 const ACTIVE_MILESTONE_ID = `COALESCE(
   (SELECT m.id FROM milestones m
-   WHERE m.dream_id = d.id AND m.uid = d.active_milestone_uid LIMIT 1),
+   WHERE m.dream_id = d.id AND m.uid = d.active_milestone_uid
+     AND m.status != 'completed' LIMIT 1),
   (SELECT m.id FROM milestones m
-   WHERE m.dream_id = d.id ORDER BY m.sequence_number, m.id LIMIT 1)
+   WHERE m.dream_id = d.id AND m.status != 'completed'
+   ORDER BY m.sequence_number, m.id LIMIT 1)
 )`;
 
 export async function getActiveMilestoneId(dreamId: number): Promise<number | null> {
@@ -170,9 +172,10 @@ export async function setActiveMilestone(dreamId: number, milestoneId: number): 
   const db = await getDatabase();
   const result = await db.runAsync(
     `UPDATE dreams SET active_milestone_uid = (
-       SELECT uid FROM milestones WHERE id = ? AND dream_id = ?
+       SELECT uid FROM milestones WHERE id = ? AND dream_id = ? AND status != 'completed'
      ) WHERE id = ? AND EXISTS (
-       SELECT 1 FROM milestones WHERE id = ? AND dream_id = ? AND uid IS NOT NULL
+       SELECT 1 FROM milestones WHERE id = ? AND dream_id = ?
+         AND status != 'completed' AND uid IS NOT NULL
      )`,
     [milestoneId, dreamId, dreamId, milestoneId, dreamId],
   );

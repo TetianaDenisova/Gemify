@@ -22,7 +22,7 @@ export function ActiveMilestonePicker({ dreamId, onClose }: {
     Promise.all([getMilestones(dreamId), getActiveMilestoneId(dreamId)])
       .then(([path, activeId]) => {
         if (cancelled) return;
-        setMilestones(path);
+        setMilestones(path.filter((milestone) => milestone.status !== "completed"));
         setSelected(activeId);
       })
       .catch((cause: unknown) => {
@@ -50,17 +50,18 @@ export function ActiveMilestonePicker({ dreamId, onClose }: {
     <AppModal onClose={onClose} visible>
       <AppText variant="titleSm">Active milestone</AppText>
       <AppText style={styles.description}>
-        Choose the milestone shown on Home. Your first milestone is selected by default.
+        Choose the milestone shown on Home. Your first unfinished milestone is selected by default.
       </AppText>
       {loading ? <AppText>Loading milestones…</AppText> : null}
       {!loading && milestones.length === 0 && !error ? (
-        <AppText>Add a milestone to your dream’s path to get started.</AppText>
+        <AppText>No unfinished milestones. Add a new milestone to your dream’s path.</AppText>
       ) : null}
       <ScrollView style={styles.list}>
         {milestones.map((milestone) => (
           <Pressable
             accessibilityRole="radio"
-            accessibilityState={{ checked: selected === milestone.id, disabled: saving }}
+            aria-checked={selected === milestone.id}
+            aria-disabled={saving}
             disabled={saving}
             key={milestone.id}
             onPress={() => setSelected(milestone.id)}
@@ -72,7 +73,7 @@ export function ActiveMilestonePicker({ dreamId, onClose }: {
           >
             <AppText color={colors.primary} variant="bodySerif">{milestone.sequenceNumber + 1}</AppText>
             <AppText style={styles.optionTitle} variant="bodySerif">{milestone.title}</AppText>
-            {selected === milestone.id ? <CheckIcon size={20} /> : <View style={styles.checkSpace} />}
+            {selected === milestone.id ? <CheckIcon color={colors.primary} size={20} /> : <View style={styles.checkSpace} />}
           </Pressable>
         ))}
       </ScrollView>

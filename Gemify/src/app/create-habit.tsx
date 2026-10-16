@@ -58,11 +58,6 @@ import {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-/** Feature-art tints for the step medallions (no violet-border tokens). */
-const ICON_RING_BORDER = "rgba(216, 138, 255, 0.74)";
-const ICON_RING_INNER = "rgba(216, 138, 255, 0.68)";
-const ICON_RING_FILL = "rgba(32, 13, 54, 0.8)";
-
 type Day = (typeof DAYS)[number];
 
 type FormStep = {
@@ -749,9 +744,9 @@ export default function CreateHabitScreen() {
               ]}
             >
               <View style={styles.addStepCircle}>
-                <PlusIcon color={colors.accentViolet} size={13} strokeWidth={2} />
+                <PlusIcon color={colors.primary} size={13} strokeWidth={2} />
               </View>
-              <AppText color={colors.accentViolet} variant="labelStrong">
+              <AppText color={colors.primary} variant="labelStrong">
                 Add another step
               </AppText>
             </Pressable>
@@ -824,10 +819,10 @@ export default function CreateHabitScreen() {
 }
 
 const styles = StyleSheet.create({
-  /** "+ Add another step" — quiet violet row under the step fields. */
+  /** "+ Add another step" uses the form's primary accent. */
   addStepCircle: {
     alignItems: "center",
-    borderColor: colors.accentViolet,
+    borderColor: colors.primary,
     borderRadius: radius.round,
     borderWidth: 1,
     height: 24,
@@ -979,15 +974,15 @@ const styles = StyleSheet.create({
   },
   stepIcon: {
     alignItems: "center",
-    backgroundColor: ICON_RING_FILL,
-    borderColor: ICON_RING_BORDER,
+    backgroundColor: colors.surfaceDeep,
+    borderColor: colors.borderStrong,
     borderRadius: radius.round,
     borderWidth: 1,
     justifyContent: "center",
-    ...shadowStyle({ color: colors.accentVioletStrong, opacity: 0.26, radius: 11 }),
+    ...shadowStyle({ color: colors.primary, opacity: 0.26, radius: 11 }),
   },
   stepIconRing: {
-    borderColor: ICON_RING_INNER,
+    borderColor: colors.borderFaint,
     borderRadius: radius.round,
     borderWidth: 1,
     position: "absolute",
