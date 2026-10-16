@@ -41,7 +41,6 @@ import {
   PlusIcon,
   ScreenHeader,
   ScreenScaffold,
-  SparkIcon,
   StepIcon,
   type StepIconName,
 } from "@/shared/components";
@@ -781,7 +780,6 @@ export default function CreateHabitScreen() {
 
       <AppButton
         disabled={saving}
-        icon={<SparkIcon color={colors.textOnPrimary} size={22} />}
         label={isEditMode ? "Save Habit" : "Create Habit"}
         onPress={handleSave}
         size="lg"

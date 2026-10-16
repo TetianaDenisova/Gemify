@@ -426,7 +426,6 @@ function AddRiskModal({
           />
 
           <AppButton
-            icon={<SparkIcon color={colors.textOnPrimary} size={22} />}
             label="Add Risk"
             onPress={handleAdd}
             size="lg"

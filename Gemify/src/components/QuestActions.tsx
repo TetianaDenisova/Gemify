@@ -22,7 +22,6 @@ import {
   HintRow,
   MilestoneIcon,
   PencilIcon,
-  SparkIcon,
   SunHorizonIcon,
   TrashIcon,
 } from "@/shared/components";
@@ -586,8 +585,6 @@ export function AcceptQuestModal({
 
       <AppButton
         disabled={slotKey === null || (customHourSelected && !customTimeValid)}
-        icon={<SparkIcon color={colors.textOnPrimary} size={iconSizes.md} />}
-        iconPosition="before"
         label={ctaLabel}
         onPress={() => onAccept(toDateKey(selectedDate), acceptTime)}
         size="lg"
