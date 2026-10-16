@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { PremiumRequiredError } from "@/subscription/entitlements";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BlockIconArt } from "@/components/TimeBlockTabs";
 import {
@@ -35,7 +35,6 @@ import {
   CheckIcon,
   ChevronIcon,
   Chip,
-  CloseIcon,
   ListItem,
   MilestoneIcon,
   PlusIcon,
@@ -49,6 +48,7 @@ import { colors } from "@/theme/colors";
 import {
   gradients,
   inputFocusReset,
+  layout,
   pressed,
   radius,
   shadowStyle,
@@ -109,21 +109,6 @@ type EasyStep = {
 };
 
 const EMPTY_EASY_STEP: EasyStep = { addedTo: null, text: "" };
-
-function HeaderOrnament() {
-  return (
-    <View style={[styles.ornamentRow, { pointerEvents: "none" }]}>
-      <View style={styles.ornamentLine} />
-      <Svg height={24} viewBox="0 0 32 32" width={24}>
-        <Path
-          d="M16 2c2.5 7.9 6.1 11.5 14 14-7.9 2.5-11.5 6.1-14 14C13.5 22.1 9.9 18.5 2 16 9.9 13.5 13.5 9.9 16 2Z"
-          fill={colors.primary}
-        />
-      </Svg>
-      <View style={styles.ornamentLine} />
-    </View>
-  );
-}
 
 type DropdownOption = {
   icon?: ReactNode;
@@ -241,6 +226,7 @@ export default function CreateHabitScreen() {
   // thing a 402 pt screen can drop six times over.
   const { phone } = useLayoutSize();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { dreamId: dreamIdParam, habitId: habitIdParam } =
     useLocalSearchParams<{ dreamId?: string; habitId?: string }>();
   const editHabitId = Number(habitIdParam);
@@ -538,283 +524,280 @@ export default function CreateHabitScreen() {
   }
 
   return (
-    <ScreenScaffold
-      backgroundGradient={gradients.background}
-      keyboardAvoiding
-      topInset
-    >
+    <>
       <ScreenHeader
+        asStackHeader
         onBack={handleBack}
-        rightAction={{
-          accessibilityLabel: "Close",
-          icon: <CloseIcon size={24} />,
-          onPress: handleBack,
-        }}
-        style={styles.header}
         title={isEditMode ? "Edit Habit" : "Create Habit"}
       />
-      <HeaderOrnament />
+      <ScreenScaffold
+        backgroundGradient={gradients.background}
+        contentStyle={{
+          paddingTop: insets.top + (phone ? layout.headerHeightPhone : layout.headerHeight),
+        }}
+        keyboardAvoiding
+      >
+        <View style={styles.form}>
+          {renderTextStep(textSteps[0])}
+          {renderTextStep(textSteps[1])}
 
-      <View style={styles.form}>
-        {renderTextStep(textSteps[0])}
-        {renderTextStep(textSteps[1])}
-
-        <View style={[styles.formRow, phone && styles.formRowPhone]}>
-          <StepIconMedallion name="leaf" />
-          <View style={styles.formMain}>
-            <AppText
-              color={colors.primary}
-              style={styles.stepLabel}
-              variant="subtitle"
-            >
-              3. Attach to a dream
-            </AppText>
-            <DropdownField
-              accessibilityLabel="Choose a dream"
-              onSelect={(key) => setSelectedDreamId(Number(key))}
-              options={dreams.map((dream) => ({
-                key: String(dream.id),
-                label: dream.title,
-              }))}
-              placeholder="Choose a dream"
-              selectedKey={
-                selectedDreamId === null ? null : String(selectedDreamId)
-              }
-            />
-            {/* The "no dreams yet" branch reports state rather than
-                explaining, so it survives on every tier. */}
-            {phone && dreams.length > 0 ? null : (
-              <AppText color={colors.textMuted} style={styles.helperText}>
-                {dreams.length > 0
-                  ? "This habit will support the dream you pick."
-                  : "Create a dream first — habits live inside one."}
+          <View style={[styles.formRow, phone && styles.formRowPhone]}>
+            <StepIconMedallion name="leaf" />
+            <View style={styles.formMain}>
+              <AppText
+                color={colors.primary}
+                style={styles.stepLabel}
+                variant="subtitle"
+              >
+                3. Attach to a dream
               </AppText>
-            )}
-          </View>
-        </View>
-
-        <View style={[styles.formRow, phone && styles.formRowPhone]}>
-          <StepIconMedallion name="calendar" />
-          <View style={styles.formMain}>
-            <AppText
-              color={colors.primary}
-              style={styles.stepLabel}
-              variant="subtitle"
-            >
-              4. Frequency
-            </AppText>
-            <View style={styles.dayGrid}>
-              {DAYS.map((day) => (
-                <Chip
-                  key={day}
-                  label={day}
-                  onPress={() => toggleDay(day)}
-                  selected={selectedDays.has(day)}
-                  style={[styles.dayChip, phone && styles.dayChipPhone]}
-                />
-              ))}
+              <DropdownField
+                accessibilityLabel="Choose a dream"
+                onSelect={(key) => setSelectedDreamId(Number(key))}
+                options={dreams.map((dream) => ({
+                  key: String(dream.id),
+                  label: dream.title,
+                }))}
+                placeholder="Choose a dream"
+                selectedKey={
+                  selectedDreamId === null ? null : String(selectedDreamId)
+                }
+              />
+              {/* The "no dreams yet" branch reports state rather than
+                  explaining, so it survives on every tier. */}
+              {phone && dreams.length > 0 ? null : (
+                <AppText color={colors.textMuted} style={styles.helperText}>
+                  {dreams.length > 0
+                    ? "This habit will support the dream you pick."
+                    : "Create a dream first — habits live inside one."}
+                </AppText>
+              )}
             </View>
-            {phone ? null : (
-              <AppText color={colors.textMuted} style={styles.helperText}>
-                Select the days you want to practice this habit.
-              </AppText>
-            )}
           </View>
-        </View>
 
-        <View style={[styles.formRow, phone && styles.formRowPhone]}>
-          <StepIconMedallion name="clock" />
-          <View style={styles.formMain}>
-            <AppText
-              color={colors.primary}
-              style={styles.stepLabel}
-              variant="subtitle"
-            >
-              5. Time of day
-            </AppText>
-            <DropdownField
-              accessibilityLabel="Choose a time of day"
-              onSelect={setSelectedTime}
-              options={timeBlocks.map((block) => ({
-                icon: (
-                  <BlockIconArt
-                    color={colors.primary}
-                    icon={block.iconKey as BlockIcon}
-                    size={20}
-                  />
-                ),
-                key: block.key,
-                label: block.startTime
-                  ? `${block.label} · ${block.startTime}`
-                  : block.label,
-              }))}
-              placeholder="Choose a time of day"
-              selectedKey={selectedTime}
-            />
-            {phone ? null : (
-              <AppText color={colors.textMuted} style={styles.helperText}>
-                Your My Day time blocks — the habit will live in the one you
-                pick.
+          <View style={[styles.formRow, phone && styles.formRowPhone]}>
+            <StepIconMedallion name="calendar" />
+            <View style={styles.formMain}>
+              <AppText
+                color={colors.primary}
+                style={styles.stepLabel}
+                variant="subtitle"
+              >
+                4. Frequency
               </AppText>
-            )}
-          </View>
-        </View>
-
-        <View style={[styles.formRow, phone && styles.formRowPhone]}>
-          <StepIconMedallion name="sprout" />
-          <View style={styles.formMain}>
-            <AppText
-              color={colors.primary}
-              style={styles.stepLabel}
-              variant="subtitle"
-            >
-              6. Make it easy to start
-            </AppText>
-            {easySteps.map((step, index) => {
-              const isAdded = step.addedTo !== null;
-              const canAdd = step.text.trim().length > 0;
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.easyStepField,
-                    index > 0 && styles.easyStepFieldSpacing,
-                  ]}
-                >
-                  <TextInput
-                    accessibilityLabel={`Easy step ${index + 1}`}
-                    editable={!isAdded}
-                    multiline
-                    onChangeText={(text) => updateEasyStep(index, text)}
-                    placeholder={
-                      index === 0
-                        ? "Put vegetables on the lunch plate before I start eating."
-                        : "Another small step…"
-                    }
-                    placeholderTextColor={colors.textPlaceholder}
-                    selectionColor={colors.primary}
-                    style={[
-                      styles.easyStepInput,
-                      isAdded && styles.easyStepInputAdded,
-                    ]}
-                    value={step.text}
+              <View style={styles.dayGrid}>
+                {DAYS.map((day) => (
+                  <Chip
+                    key={day}
+                    label={day}
+                    onPress={() => toggleDay(day)}
+                    selected={selectedDays.has(day)}
+                    style={[styles.dayChip, phone && styles.dayChipPhone]}
                   />
-                  <View style={styles.easyStepDivider} />
-                  {isAdded ? (
-                    <View style={styles.easyStepAction}>
-                      <View style={styles.easyStepAddedCircle}>
-                        <CheckIcon color={colors.textMuted} size={11} />
-                      </View>
-                      <AppText color={colors.textMuted} variant="labelStrong">
-                        Added
-                      </AppText>
-                    </View>
-                  ) : (
-                    <Pressable
-                      accessibilityLabel={`Add step ${index + 1} as a task`}
-                      accessibilityRole="button"
-                      disabled={!canAdd}
-                      hitSlop={6}
-                      onPress={() => handleAddAsTask(index)}
-                      style={({ pressed: isPressed }) => [
-                        styles.easyStepAction,
-                        !canAdd && styles.easyStepActionDisabled,
-                        isPressed && pressed,
-                      ]}
-                    >
-                      <View style={styles.easyStepPlusBox}>
-                        <PlusIcon size={12} strokeWidth={2.2} />
-                      </View>
-                      <AppText color={colors.primary} variant="labelStrong">
-                        Add as task
-                      </AppText>
-                    </Pressable>
-                  )}
-                </View>
-              );
-            })}
-            <Pressable
-              accessibilityLabel="Add another step"
-              accessibilityRole="button"
-              hitSlop={6}
-              onPress={addEasyStep}
-              style={({ pressed: isPressed }) => [
-                styles.addStepRow,
-                isPressed && pressed,
-              ]}
-            >
-              <View style={styles.addStepCircle}>
-                <PlusIcon color={colors.primary} size={13} strokeWidth={2} />
+                ))}
               </View>
-              <AppText color={colors.primary} variant="labelStrong">
-                Add another step
-              </AppText>
-            </Pressable>
-            {phone ? null : (
-              <AppText color={colors.textMuted} style={styles.helperText}>
-                Small steps that make starting effortless. “Add as task” turns a
-                step into a milestone quest instead of saving it here.
-              </AppText>
-            )}
+              {phone ? null : (
+                <AppText color={colors.textMuted} style={styles.helperText}>
+                  Select the days you want to practice this habit.
+                </AppText>
+              )}
+            </View>
           </View>
+
+          <View style={[styles.formRow, phone && styles.formRowPhone]}>
+            <StepIconMedallion name="clock" />
+            <View style={styles.formMain}>
+              <AppText
+                color={colors.primary}
+                style={styles.stepLabel}
+                variant="subtitle"
+              >
+                5. Time of day
+              </AppText>
+              <DropdownField
+                accessibilityLabel="Choose a time of day"
+                onSelect={setSelectedTime}
+                options={timeBlocks.map((block) => ({
+                  icon: (
+                    <BlockIconArt
+                      color={colors.primary}
+                      icon={block.iconKey as BlockIcon}
+                      size={20}
+                    />
+                  ),
+                  key: block.key,
+                  label: block.startTime
+                    ? `${block.label} · ${block.startTime}`
+                    : block.label,
+                }))}
+                placeholder="Choose a time of day"
+                selectedKey={selectedTime}
+              />
+              {phone ? null : (
+                <AppText color={colors.textMuted} style={styles.helperText}>
+                  Your My Day time blocks — the habit will live in the one you
+                  pick.
+                </AppText>
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.formRow, phone && styles.formRowPhone]}>
+            <StepIconMedallion name="sprout" />
+            <View style={styles.formMain}>
+              <AppText
+                color={colors.primary}
+                style={styles.stepLabel}
+                variant="subtitle"
+              >
+                6. Make it easy to start
+              </AppText>
+              {easySteps.map((step, index) => {
+                const isAdded = step.addedTo !== null;
+                const canAdd = step.text.trim().length > 0;
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.easyStepField,
+                      index > 0 && styles.easyStepFieldSpacing,
+                    ]}
+                  >
+                    <TextInput
+                      accessibilityLabel={`Easy step ${index + 1}`}
+                      editable={!isAdded}
+                      multiline
+                      onChangeText={(text) => updateEasyStep(index, text)}
+                      placeholder={
+                        index === 0
+                          ? "Put vegetables on the lunch plate before I start eating."
+                          : "Another small step…"
+                      }
+                      placeholderTextColor={colors.textPlaceholder}
+                      selectionColor={colors.primary}
+                      style={[
+                        styles.easyStepInput,
+                        isAdded && styles.easyStepInputAdded,
+                      ]}
+                      value={step.text}
+                    />
+                    <View style={styles.easyStepDivider} />
+                    {isAdded ? (
+                      <View style={styles.easyStepAction}>
+                        <View style={styles.easyStepAddedCircle}>
+                          <CheckIcon color={colors.textMuted} size={11} />
+                        </View>
+                        <AppText color={colors.textMuted} variant="labelStrong">
+                          Added
+                        </AppText>
+                      </View>
+                    ) : (
+                      <Pressable
+                        accessibilityLabel={`Add step ${index + 1} as a task`}
+                        accessibilityRole="button"
+                        disabled={!canAdd}
+                        hitSlop={6}
+                        onPress={() => handleAddAsTask(index)}
+                        style={({ pressed: isPressed }) => [
+                          styles.easyStepAction,
+                          !canAdd && styles.easyStepActionDisabled,
+                          isPressed && pressed,
+                        ]}
+                      >
+                        <View style={styles.easyStepPlusBox}>
+                          <PlusIcon size={12} strokeWidth={2.2} />
+                        </View>
+                        <AppText color={colors.primary} variant="labelStrong">
+                          Add as task
+                        </AppText>
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })}
+              <Pressable
+                accessibilityLabel="Add another step"
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={addEasyStep}
+                style={({ pressed: isPressed }) => [
+                  styles.addStepRow,
+                  isPressed && pressed,
+                ]}
+              >
+                <View style={styles.addStepCircle}>
+                  <PlusIcon color={colors.primary} size={13} strokeWidth={2} />
+                </View>
+                <AppText color={colors.primary} variant="labelStrong">
+                  Add another step
+                </AppText>
+              </Pressable>
+              {phone ? null : (
+                <AppText color={colors.textMuted} style={styles.helperText}>
+                  Small steps that make starting effortless. “Add as task” turns a
+                  step into a milestone quest instead of saving it here.
+                </AppText>
+              )}
+            </View>
+          </View>
+
+          {textSteps.slice(2).map(renderTextStep)}
         </View>
 
-        {textSteps.slice(2).map(renderTextStep)}
-      </View>
+        {formError ? (
+          <AppText
+            align="center"
+            color={colors.danger}
+            style={styles.formErrorText}
+            variant="caption"
+          >
+            {formError}
+          </AppText>
+        ) : null}
 
-      {formError ? (
-        <AppText
-          align="center"
-          color={colors.danger}
-          style={styles.formErrorText}
-          variant="caption"
-        >
-          {formError}
-        </AppText>
-      ) : null}
-
-      <AppButton
-        disabled={saving}
-        label={isEditMode ? "Save Habit" : "Create Habit"}
-        onPress={handleSave}
-        size="lg"
-        style={styles.continueButton}
-        variant="primary"
-      />
-
-      {isEditMode ? (
         <AppButton
           disabled={saving}
-          label="Delete Habit"
-          onPress={() => setDeleteConfirmOpen(true)}
-          style={[styles.continueButton, styles.deleteButton]}
-          textStyle={styles.deleteLabel}
-          variant="secondary"
+          label={isEditMode ? "Save Habit" : "Create Habit"}
+          onPress={handleSave}
+          size="lg"
+          style={styles.continueButton}
+          variant="primary"
         />
-      ) : null}
 
-      <ConfirmDialog
-        body={`“${values.habitName || "This habit"}” and its progress will be removed.`}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={handleDeleteConfirmed}
-        title="Delete this habit?"
-        visible={deleteConfirmOpen}
-      />
+        {isEditMode ? (
+          <AppButton
+            disabled={saving}
+            label="Delete Habit"
+            onPress={() => setDeleteConfirmOpen(true)}
+            style={[styles.continueButton, styles.deleteButton]}
+            textStyle={styles.deleteLabel}
+            variant="secondary"
+          />
+        ) : null}
 
-      {/* Milestone picker for the "Add as task" starter quest. */}
-      <ActionMenuSheet
-        eyebrow="Milestones"
-        onClose={() => setTaskMilestones(null)}
-        title="Add the task to which milestone?"
-        visible={taskMilestones !== null}
-        options={(taskMilestones ?? []).map((milestone) => ({
-          id: String(milestone.id),
-          icon: MilestoneIcon,
-          label: milestone.title,
-          onPress: () => { void handleTaskMilestonePicked(milestone); },
-        }))}
-      />
-    </ScreenScaffold>
+        <ConfirmDialog
+          body={`“${values.habitName || "This habit"}” and its progress will be removed.`}
+          onCancel={() => setDeleteConfirmOpen(false)}
+          onConfirm={handleDeleteConfirmed}
+          title="Delete this habit?"
+          visible={deleteConfirmOpen}
+        />
+
+        {/* Milestone picker for the "Add as task" starter quest. */}
+        <ActionMenuSheet
+          eyebrow="Milestones"
+          onClose={() => setTaskMilestones(null)}
+          title="Add the task to which milestone?"
+          visible={taskMilestones !== null}
+          options={(taskMilestones ?? []).map((milestone) => ({
+            id: String(milestone.id),
+            icon: MilestoneIcon,
+            label: milestone.title,
+            onPress: () => { void handleTaskMilestonePicked(milestone); },
+          }))}
+        />
+      </ScreenScaffold>
+    </>
   );
 }
 
@@ -952,25 +935,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
-  header: {
-    paddingHorizontal: 0,
-  },
   helperText: {
     marginTop: spacing.sm,
-  },
-  ornamentLine: {
-    backgroundColor: colors.primary,
-    flex: 1,
-    height: 1,
-    maxWidth: 170,
-    opacity: 0.62,
-  },
-  ornamentRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    marginTop: spacing.xs,
   },
   stepIcon: {
     alignItems: "center",

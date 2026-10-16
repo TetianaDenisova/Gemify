@@ -16,6 +16,7 @@ import { colors } from "@/theme/colors";
  */
 const TRANSPARENT_HEADER_SCREENS = [
   "cloud-sync",
+  "create-habit",
   "journey-map",
   "what-if-plan",
   "create-goal",
@@ -75,7 +76,6 @@ export default function RootLayout() {
         {TRANSPARENT_HEADER_SCREENS.map((name) => (
           <Stack.Screen key={name} name={name} options={transparentHeaderOptions} />
         ))}
-        <Stack.Screen name="create-habit" options={{ headerShown: false }} />
         <Stack.Screen name="archived-dreams" options={{ headerShown: false }} />
         <Stack.Screen name="milestone-ideas" options={{ headerShown: false }} />
       </Stack>

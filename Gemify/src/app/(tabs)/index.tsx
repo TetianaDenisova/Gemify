@@ -17,6 +17,7 @@ import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { habitIconForId } from "@/hooks/useDayHabits";
 import { currentBlockKey, useDayQuestBlocks } from "@/hooks/useDayQuestBlocks";
 import { useDreamSummaries } from "@/hooks/useDreamSummaries";
+import { useHomePreferences } from "@/hooks/useHomePreferences";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useHabitWeek } from "@/hooks/useHabitWeek";
 import {
@@ -144,6 +145,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { phone } = useLayoutSize();
   const today = todayKey();
+  const homePreferences = useHomePreferences();
   const { dreams, loading, refresh: refreshDreams } = useDreamSummaries();
   const subscription = useSubscription();
   const addGoalLocked = !subscription.premium && dreams.length > 0;
@@ -362,6 +364,7 @@ export default function HomeScreen() {
       {dreams.map((dream, index) => (
         <GoalCard
           goal={toGoal(dream)}
+          showActiveMilestone={!homePreferences.loading && homePreferences.showActiveMilestone}
           key={dream.id}
           locked={!subscription.premium && index > 0}
           onPress={() =>

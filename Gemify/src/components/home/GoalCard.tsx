@@ -12,10 +12,11 @@ import { fonts, pressed, radius } from "@/theme/theme";
 interface GoalCardProps {
   goal: Goal;
   locked?: boolean;
+  showActiveMilestone?: boolean;
   onPress?: (goal: Goal) => void;
 }
 
-export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
+export function GoalCard({ goal, locked = false, onPress, showActiveMilestone = true }: GoalCardProps) {
   const { phone } = useLayoutSize();
   const milestoneProgress = goal.totalQuests > 0 ? goal.completedQuests / goal.totalQuests : 0;
 
@@ -23,10 +24,18 @@ export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
     <Pressable
       accessibilityLabel={locked
         ? `${goal.title}, Premium required`
-        : `${goal.title}, ${Math.round(goal.progressPercent)} percent. ${goal.activeMilestone ?? "No milestones yet"}. ${goal.completedQuests} of ${goal.totalQuests} quests complete`}
+        : `${goal.title}, ${Math.round(goal.progressPercent)} percent${showActiveMilestone
+          ? `. ${goal.activeMilestone ?? "No active milestone"}. ${goal.completedQuests} of ${goal.totalQuests} quests complete`
+          : ""}`}
       accessibilityRole="button"
       onPress={() => onPress?.(goal)}
-      style={({ pressed: isPressed }) => [styles.card, phone && styles.cardPhone, isPressed && pressed]}
+      style={({ pressed: isPressed }) => [
+        styles.card,
+        phone && styles.cardPhone,
+        !showActiveMilestone && styles.cardWithoutMilestone,
+        !showActiveMilestone && phone && styles.cardWithoutMilestonePhone,
+        isPressed && pressed,
+      ]}
     >
       <Image contentFit="cover" source={goalImages[goal.imageKey]} style={styles.art} transition={180} />
       <LinearGradient
@@ -43,19 +52,23 @@ export function GoalCard({ goal, locked = false, onPress }: GoalCardProps) {
         <AppText numberOfLines={2} style={[styles.title, phone && styles.titlePhone]} variant="cardTitle">
           {goal.title}
         </AppText>
-        <View style={styles.milestone}>
-          <AppText color="#A6A39C" numberOfLines={1} style={styles.milestoneTitle} variant="bodySerif">
-            {goal.activeMilestone ?? "No active milestone"}
-          </AppText>
-        </View>
-        <View style={styles.progressRow}>
-          <View style={styles.track}>
-            <View style={[styles.fill, { width: `${Math.min(1, milestoneProgress) * 100}%` }]} />
-          </View>
-          <AppText color="#8E9399" style={styles.count} variant="bodySerif">
-            {goal.completedQuests}/{goal.totalQuests}
-          </AppText>
-        </View>
+        {showActiveMilestone ? (
+          <>
+            <View style={styles.milestone}>
+              <AppText color="#A6A39C" numberOfLines={1} style={styles.milestoneTitle} variant="bodySerif">
+                {goal.activeMilestone ?? "No active milestone"}
+              </AppText>
+            </View>
+            <View style={styles.progressRow}>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width: `${Math.min(1, milestoneProgress) * 100}%` }]} />
+              </View>
+              <AppText color="#8E9399" style={styles.count} variant="bodySerif">
+                {goal.completedQuests}/{goal.totalQuests}
+              </AppText>
+            </View>
+          </>
+        ) : null}
       </View>
       <View style={[styles.ring, phone && styles.ringPhone]}>
         {locked ? (
@@ -86,6 +99,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardPhone: { minHeight: 136 },
+  cardWithoutMilestone: { minHeight: 132 },
+  cardWithoutMilestonePhone: { minHeight: 112 },
   art: {
     bottom: 0,
     position: "absolute",

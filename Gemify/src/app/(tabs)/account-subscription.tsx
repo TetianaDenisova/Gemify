@@ -6,6 +6,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, Vi
 
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useHomePreferences } from "@/hooks/useHomePreferences";
 import { exportBackup, pickAndImportBackup } from "@/db";
 import { notifySyncApplied } from "@/sync/events";
 import { deleteAccount } from "@/sync/account";
@@ -36,6 +37,7 @@ export default function AccountSubscriptionScreen() {
   const router = useRouter();
   const account = useCloudSync();
   const subscription = useSubscription();
+  const homePreferences = useHomePreferences();
   const [selectedPlan, setSelectedPlan] = useState<"premium" | "standard">("premium");
   const [accountBusy, setAccountBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -185,6 +187,30 @@ export default function AccountSubscriptionScreen() {
           </View>
         )}
 
+        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Home screen</AppText>
+        <View style={styles.preferenceRow}>
+          <View style={styles.flex}>
+            <AppText color={colors.textPrimary} variant="bodySmall">Show active milestone</AppText>
+            <AppText color={colors.textSecondary} variant="caption" style={styles.preferenceDescription}>
+              Display the active milestone and its progress bar on dream cards.
+            </AppText>
+          </View>
+          <Switch
+            accessibilityLabel="Show active milestone on Home"
+            disabled={homePreferences.loading || homePreferences.saving}
+            value={homePreferences.showActiveMilestone}
+            onValueChange={(value) => void homePreferences.updateShowActiveMilestone(value)}
+            trackColor={{ false: colors.secondary, true: colors.primary }}
+            thumbColor={colors.textPrimary}
+            ios_backgroundColor={colors.secondary}
+          />
+        </View>
+        {homePreferences.error ? (
+          <AppText accessibilityRole="alert" color={colors.danger} variant="caption">
+            {homePreferences.error}
+          </AppText>
+        ) : null}
+
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Account</AppText>
         <View style={styles.account}>
           <View style={styles.avatar} accessible={false}>
@@ -293,6 +319,16 @@ export default function AccountSubscriptionScreen() {
 const styles = StyleSheet.create({
   content: { maxWidth: 660 },
   sectionLabel: { marginBottom: 12, marginTop: 16 },
+  preferenceRow: {
+    alignItems: "center",
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  preferenceDescription: { marginTop: spacing.xs },
   account: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 18, paddingHorizontal: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.borderSoft },
   avatar: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(245, 184, 75, 0.08)", alignItems: "center", justifyContent: "center" },
   email: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24 },
