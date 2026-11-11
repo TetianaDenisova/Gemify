@@ -250,7 +250,7 @@ function TimelineMomentItem({
         align="center"
         numberOfLines={2}
         style={styles.timelineName}
-        variant={milestoneCompleted ? "caption" : "pill"}
+        variant="pill"
       >
         {moment.label}
       </AppText>

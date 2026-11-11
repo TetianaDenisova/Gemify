@@ -24,7 +24,7 @@ const BACKGROUND = require("../../../assets/subscription/subscription-bg.png");
 const SECTIONS = ["subscription", "settings", "account"] as const;
 type Section = (typeof SECTIONS)[number];
 const PREMIUM_FEATURES = ["Unlimited Dreams", "Unlimited Habits", "Sync across devices", "Import & export data"];
-const FREE_FEATURES = ["1 active Dream", "1 active Habit", "Stored on this device"];
+const FREE_FEATURES = ["1 Active Dream", "1 Active Habit", "Local Device Storage"];
 
 function ArchivedDreamsSection() {
   const [dreams, setDreams] = useState<Dream[]>([]);
@@ -142,7 +142,7 @@ export default function AccountSubscriptionScreen() {
     void runAction(subscription.manage);
   }
 
-  const premiumPrice = `${subscription.price ?? PREMIUM_MONTHLY_PRICE}/month`;
+  const premiumAmount = subscription.price ?? PREMIUM_MONTHLY_PRICE;
   const renewal = subscription.expiresAt
     ? `${subscription.willRenew === false ? "Available until" : subscription.willRenew ? "Renews" : "Next billing date"} ${new Date(subscription.expiresAt).toLocaleDateString()}`
     : null;
@@ -233,22 +233,28 @@ export default function AccountSubscriptionScreen() {
           <View style={styles.premiumPlan}>
             <Image source={BACKGROUND} contentFit="cover" contentPosition="top"
               style={StyleSheet.absoluteFill} accessible={false} />
-            <LinearGradient colors={["rgba(2, 5, 12, 0.94)", "rgba(2, 5, 12, 0.76)", "rgba(2, 5, 12, 0.96)"]}
+            <LinearGradient colors={["rgba(2, 5, 12, 0.9)", "rgba(2, 5, 12, 0.62)", "rgba(2, 5, 12, 0.9)"]}
               locations={[0, 0.46, 1]} style={StyleSheet.absoluteFill} />
-            <LinearGradient colors={["rgba(2, 5, 12, 0.34)", "rgba(2, 5, 12, 0.9)"]}
+            <LinearGradient colors={["rgba(2, 5, 12, 0.18)", "rgba(2, 5, 12, 0.88)"]}
               start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={StyleSheet.absoluteFill} />
             <View style={styles.premiumContent}>
               <View style={styles.planHeading}>
                 <AppText style={[styles.premiumName, styles.planTitle]} numberOfLines={1}
                   adjustsFontSizeToFit minimumFontScale={0.75}>Premium</AppText>
-                {subscription.premium ? (
-                  <View style={styles.currentBadge}>
-                    <AppText style={styles.currentBadgeLabel} numberOfLines={1}>Current Plan</AppText>
+                <View style={styles.premiumMeta}>
+                  <View style={styles.premiumPriceRow}>
+                    <AppText style={styles.premiumPriceAmount} numberOfLines={1}
+                      adjustsFontSizeToFit minimumFontScale={0.75}>{premiumAmount}</AppText>
+                    <AppText style={styles.premiumPriceCadence}>/month</AppText>
                   </View>
-                ) : null}
+                  {subscription.premium ? (
+                    <View style={styles.currentBadge}>
+                      <AppText style={styles.currentBadgeLabel} numberOfLines={1}>Current Plan</AppText>
+                    </View>
+                  ) : null}
+                </View>
               </View>
               <AppText style={styles.premiumSubtitle}>Your journey, without limits.</AppText>
-              <AppText style={styles.premiumPrice}>{premiumPrice}</AppText>
               {subscription.premium && renewal ? (
                 <AppText variant="caption" color="#D8CDB4" style={styles.renewal}>{renewal}</AppText>
               ) : null}
@@ -457,10 +463,10 @@ const styles = StyleSheet.create({
   authLabel: { fontSize: 16, lineHeight: 22, textAlign: "center" },
   testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   flex: { flex: 1, minWidth: 0 },
-  plans: { gap: spacing.xl },
+  plans: { gap: spacing.lg },
   freePlan: { padding: spacing.lg, borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.card, backgroundColor: colors.surfaceDeep },
   premiumPlan: { overflow: "hidden", borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.card, backgroundColor: "#03070E", ...shadowStyle({ color: colors.primary, opacity: 0.24, radius: 14 }) },
-  premiumContent: { padding: spacing.xl },
+  premiumContent: { padding: spacing.lg },
   planHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   planTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 0 },
   freePlanName: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.textPrimary },
@@ -468,23 +474,26 @@ const styles = StyleSheet.create({
   currentBadge: { flexShrink: 1, paddingHorizontal: 11, paddingVertical: 5, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round, backgroundColor: "rgba(245, 184, 75, 0.09)" },
   currentBadgeLabel: { color: colors.primaryBright, fontSize: 11, lineHeight: 15, fontWeight: "700", textTransform: "uppercase" },
   premiumSubtitle: { marginTop: 4, color: "#F1E8D5", fontSize: 16, lineHeight: 23 },
-  premiumPrice: { marginTop: 14, fontFamily: fonts.serif, fontSize: 23, lineHeight: 29, color: colors.primaryBright },
+  premiumMeta: { flexShrink: 1, alignItems: "flex-end", gap: 6 },
+  premiumPriceRow: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  premiumPriceAmount: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 38, color: colors.primaryBright },
+  premiumPriceCadence: { color: "#D8CDB4", fontSize: 14, lineHeight: 20 },
   renewal: { marginTop: 4 },
   freeFeatures: { gap: 10, marginTop: spacing.md },
   feature: { flexDirection: "row", alignItems: "center", gap: 14 },
-  freeFeatureLabel: { flex: 1, color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
+  freeFeatureLabel: { flex: 1, color: "#D8CDB4", fontSize: 15, lineHeight: 22 },
   premiumFeatureLabel: { flex: 1, color: "#F7F0E2", fontSize: 16, lineHeight: 23 },
-  premiumFeatures: { gap: 14, marginTop: spacing.xl },
+  premiumFeatures: { gap: 12, marginTop: spacing.lg },
   planActions: { gap: 12, marginTop: spacing.xl },
   manageButton: { borderColor: colors.primary, borderRadius: 12, backgroundColor: "rgba(2, 5, 8, 0.8)" },
-  upgrade: { width: "100%", padding: 3, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "#6D4B1C", ...shadowStyle({ color: colors.primary, opacity: 0.45, radius: 14 }) },
+  upgrade: { width: "100%", padding: 3, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "#6D4B1C", ...shadowStyle({ color: colors.primary, opacity: 0.28, radius: 10 }) },
   upgradeFill: { minHeight: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "#FFF0B0", borderRadius: radius.round },
   upgradeLabel: { flexShrink: 1, fontFamily: fonts.serif, fontSize: 23, lineHeight: 30, color: colors.textOnPrimary, textAlign: "center" },
   dimmed: { opacity: 0.5 },
   errorRow: { marginTop: 16 },
   dataSection: { marginTop: 16 },
   dataActions: { gap: 12 },
-  billingFooter: { gap: 8, paddingTop: 12 },
+  billingFooter: { gap: 8, paddingTop: 12, paddingBottom: spacing.sm },
   legalLinks: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: 24, paddingVertical: 8 },
   dangerLabel: { marginBottom: 12, marginTop: "auto", paddingTop: 28 },
   deleteRow: { flexDirection: "row", alignItems: "center", gap: 16, padding: 20, borderWidth: 1, borderColor: "#B03332", borderRadius: radius.card, backgroundColor: "rgba(29, 5, 9, 0.86)" },
