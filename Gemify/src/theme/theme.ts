@@ -105,6 +105,14 @@ export const iconSizes = {
 } as const;
 
 export const typography = {
+  /** Task and habit titles share room for two readable lines. */
+  actionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    fontWeight: "500",
+    lineHeight: lineHeights.lg,
+  } satisfies TextStyle,
   screenTitle: {
     color: colors.textPrimary,
     fontFamily: fonts.serif,
@@ -275,6 +283,10 @@ export const typography = {
  * reads this table.
  */
 export const typographyPhone: Partial<Record<keyof typeof typography, TextStyle>> = {
+  actionTitle: {
+    fontSize: fontSizes.md,
+    lineHeight: 22,
+  },
   cardTitle: {
     fontSize: fontSizes.xxxl,
     lineHeight: lineHeights.xxxl,

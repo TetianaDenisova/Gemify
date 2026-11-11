@@ -61,9 +61,9 @@ export function DayActionRow({
           <View style={styles.titleRow}>
             <AppText
               color={colors.textPrimary}
-              numberOfLines={1}
-              style={[styles.title, phone && styles.titlePhone, done && styles.titleDone]}
-              variant="pill"
+              numberOfLines={2}
+              style={[styles.title, done && styles.titleDone]}
+              variant="actionTitle"
             >
               {title}
             </AppText>
@@ -203,12 +203,6 @@ const styles = StyleSheet.create({
   },
   title: {
     flexShrink: 1,
-    fontSize: fontSizes.xl,
-    lineHeight: lineHeights.xl,
-  },
-  titlePhone: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
   },
   titleDone: {
     textDecorationLine: "line-through",

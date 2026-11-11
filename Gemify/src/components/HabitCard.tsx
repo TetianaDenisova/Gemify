@@ -24,9 +24,7 @@ import {
 import { useLayoutSize } from "@/hooks/useLayoutSize";
 import { colors } from "@/theme/colors";
 import {
-  fontSizes,
   iconSizes,
-  lineHeights,
   pressed,
   radius,
   spacing,
@@ -170,11 +168,8 @@ export function HabitCard({
                   <AppText
                     color={colors.textPrimary}
                     numberOfLines={2}
-                    style={[
-                      styles.boardTitle,
-                      compact && styles.boardTitleCompact,
-                    ]}
-                    variant="pill"
+                    style={styles.boardTitle}
+                    variant="actionTitle"
                   >
                     {title}
                   </AppText>
@@ -306,12 +301,6 @@ const styles = StyleSheet.create({
   },
   boardTitle: {
     flexShrink: 1,
-    fontSize: fontSizes.xl,
-    lineHeight: lineHeights.xl,
-  },
-  boardTitleCompact: {
-    fontSize: fontSizes.lg,
-    lineHeight: lineHeights.lg,
   },
   boardTitleRow: {
     alignItems: "center",

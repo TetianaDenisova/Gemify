@@ -242,7 +242,7 @@ function QuestRow({
         >
           <QuestSparkIcon color={colors.primary} variant={iconVariant} />
           <View style={styles.questCopy}>
-            <AppText numberOfLines={2} variant={phone ? "pill" : "cardTitle"}>
+            <AppText numberOfLines={2} variant="actionTitle">
               {quest.title}
             </AppText>
             {isAccepted ? (

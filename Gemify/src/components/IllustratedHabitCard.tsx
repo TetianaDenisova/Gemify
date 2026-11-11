@@ -126,8 +126,9 @@ export function IllustratedHabitCard({
           >
             <AppText
               color={expanded ? colors.primary : "#F3EDE3"}
-              style={[styles.title, compact && styles.titleCompact, expanded && styles.expandedTitle, compact && expanded && styles.expandedTitleCompact]}
-              variant="cardTitle"
+              numberOfLines={2}
+              style={styles.title}
+              variant="actionTitle"
             >
               {habit.title}
             </AppText>
@@ -243,10 +244,7 @@ const styles = StyleSheet.create({
   art: { position: "absolute", top: 0, bottom: 0, right: 0, width: "56%", overflow: "hidden" },
   content: { padding: 22, paddingRight: 66, gap: 10 },
   contentCompact: { paddingHorizontal: 14, paddingVertical: 10, paddingRight: 52, gap: 4 },
-  title: { fontSize: 24, lineHeight: 30, fontWeight: "400", letterSpacing: 0 },
-  titleCompact: { fontSize: 18, lineHeight: 23 },
-  expandedTitle: { fontSize: 30, lineHeight: 37, maxWidth: "76%" },
-  expandedTitleCompact: { fontSize: 24, lineHeight: 29, maxWidth: "82%" },
+  title: { fontWeight: "400", letterSpacing: 0 },
   streak: { alignItems: "center", flexDirection: "row", gap: 8 },
   streakCompact: { fontSize: 15, lineHeight: 21 },
   metadata: { flexDirection: "row", flexWrap: "wrap", columnGap: 14, rowGap: 6, marginTop: 2 },

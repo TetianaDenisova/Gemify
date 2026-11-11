@@ -209,7 +209,7 @@ export default function HabitsScreen() {
           {completedHabits.map(({ doneCount, habit }) => (
             <View key={habit.id} style={styles.manageRow}>
               <View style={styles.manageCopy}>
-                <AppText numberOfLines={1} variant="button">{habit.title}</AppText>
+                <AppText numberOfLines={2} variant="actionTitle">{habit.title}</AppText>
                 <View style={styles.manageMetaRow}>
                   <DreamIcon size={14} />
                   <AppText color={colors.textMuted} numberOfLines={1} style={styles.manageMetaDream} variant="bodySmall">

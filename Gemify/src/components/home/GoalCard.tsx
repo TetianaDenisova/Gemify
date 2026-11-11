@@ -49,7 +49,16 @@ export function GoalCard({ goal, locked = false, onPress, showActiveMilestone = 
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.content, phone && styles.contentPhone]}>
-        <AppText numberOfLines={2} style={[styles.title, phone && styles.titlePhone]} variant="cardTitle">
+        <AppText
+          numberOfLines={2}
+          style={[
+            styles.title,
+            phone && styles.titlePhone,
+            !showActiveMilestone && styles.titleWithoutMilestone,
+            !showActiveMilestone && phone && styles.titleWithoutMilestonePhone,
+          ]}
+          variant="cardTitle"
+        >
           {goal.title}
         </AppText>
         {showActiveMilestone ? (
@@ -99,7 +108,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardPhone: { minHeight: 136 },
-  cardWithoutMilestone: { minHeight: 132 },
+  cardWithoutMilestone: { justifyContent: "center", minHeight: 132 },
   cardWithoutMilestonePhone: { minHeight: 112 },
   art: {
     bottom: 0,
@@ -119,6 +128,8 @@ const styles = StyleSheet.create({
     width: "72%",
   },
   titlePhone: { fontSize: 25, lineHeight: 27, minHeight: 54, width: "72%" },
+  titleWithoutMilestone: { fontSize: 27, lineHeight: 29.7, minHeight: 0 },
+  titleWithoutMilestonePhone: { fontSize: 22.5, lineHeight: 24.3 },
   milestone: {
     alignItems: "center",
     flexDirection: "row",

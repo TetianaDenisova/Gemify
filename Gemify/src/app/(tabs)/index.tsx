@@ -512,7 +512,7 @@ export default function HomeScreen() {
                     <View style={styles.laterActionTitleRow}>
                       <AppText
                         color={LATER_COLORS.title}
-                        numberOfLines={phone ? undefined : 2}
+                        numberOfLines={2}
                         style={[
                           styles.laterQuestTitle,
                           styles.laterActionTitleText,
