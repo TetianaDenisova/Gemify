@@ -94,12 +94,13 @@ function ArchivedDreamsSection() {
       ) : null}
       <View style={styles.archiveList}>
         {dreams.map((dream) => (
-          <Card key={dream.id} variant="strong" style={styles.archiveDream}>
-            <AppText variant="cardTitle" numberOfLines={2} style={styles.archiveDreamTitle}>{dream.title}</AppText>
+          <Card key={dream.id} padded={false} variant="strong" style={styles.archiveDream}>
+            <AppText numberOfLines={2} style={styles.archiveDreamTitle}>{dream.title}</AppText>
             <AppButton label={restoringId === dream.id ? "Restoring..." : "Restore"}
               accessibilityLabel={`Restore ${dream.title}`} icon={<SyncIcon size={18} />}
               density="compact" variant="secondary" disabled={restoringId !== null}
-              onPress={() => void restoreDream(dream)} style={styles.archiveRestore} />
+              onPress={() => void restoreDream(dream)} style={styles.archiveRestore}
+              textStyle={styles.archiveRestoreLabel} />
           </Card>
         ))}
       </View>
@@ -437,10 +438,11 @@ const styles = StyleSheet.create({
   archiveLoader: { marginVertical: spacing.md },
   archiveMessage: { gap: spacing.md, marginTop: spacing.sm },
   archiveEmpty: { alignItems: "center", gap: spacing.xs, marginTop: spacing.sm, paddingVertical: spacing.lg },
-  archiveList: { gap: spacing.md, marginTop: spacing.sm },
-  archiveDream: { minHeight: 88, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
-  archiveDreamTitle: { flex: 1, minWidth: 0 },
-  archiveRestore: { flexShrink: 0, minHeight: 48, minWidth: 126, borderColor: colors.borderStrong, borderRadius: radius.round, backgroundColor: colors.surfaceDeep },
+  archiveList: { gap: spacing.sm, marginTop: spacing.sm },
+  archiveDream: { minHeight: 72, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  archiveDreamTitle: { flex: 1, minWidth: 0, color: colors.textPrimary, fontFamily: fonts.serif, fontSize: 18, lineHeight: 24 },
+  archiveRestore: { flexShrink: 0, minHeight: 48, minWidth: 106, borderColor: colors.borderStrong, borderRadius: radius.round, backgroundColor: colors.surfaceDeep },
+  archiveRestoreLabel: { fontSize: 15, lineHeight: 20 },
   preferenceRow: {
     alignItems: "center",
     borderColor: colors.borderSoft,
