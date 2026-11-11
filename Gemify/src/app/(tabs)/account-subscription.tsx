@@ -142,7 +142,6 @@ export default function AccountSubscriptionScreen() {
     void runAction(subscription.manage);
   }
 
-  const features = subscription.premium ? PREMIUM_FEATURES : FREE_FEATURES;
   const premiumPrice = `${subscription.price ?? PREMIUM_MONTHLY_PRICE}/month`;
   const renewal = subscription.expiresAt
     ? `${subscription.willRenew === false ? "Available until" : subscription.willRenew ? "Renews" : "Next billing date"} ${new Date(subscription.expiresAt).toLocaleDateString()}`
@@ -208,74 +207,78 @@ export default function AccountSubscriptionScreen() {
           </View>
         )}
 
-        <View style={styles.plan}>
-          <Image source={BACKGROUND} contentFit="cover" contentPosition={subscription.premium ? "top" : "center"}
-            style={StyleSheet.absoluteFill} accessible={false} />
-          <LinearGradient colors={["rgba(3, 7, 12, 0.64)", "rgba(3, 7, 12, 0.12)"]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-          <LinearGradient colors={["rgba(3, 7, 12, 0.08)", "rgba(3, 7, 12, 0.76)"]} style={StyleSheet.absoluteFill} />
-          <View style={styles.planHeading}>
-            <AppText style={[styles.planName, styles.planTitle]} numberOfLines={1}
-              adjustsFontSizeToFit minimumFontScale={0.7}>
-              {subscription.premium ? "Premium" : "Free"}
-            </AppText>
-            <View style={styles.statusBadge}>
-              <View style={[styles.statusDot, subscription.premium && styles.statusDotActive]} />
-              <AppText style={styles.statusBadgeLabel} numberOfLines={1}>
-                {!subscription.ready ? "Checking" : subscription.premium ? "Active" : "Current plan"}
-              </AppText>
-            </View>
-          </View>
-          <AppText style={styles.planPrice}>{subscription.premium ? premiumPrice : "Free forever"}</AppText>
-          {subscription.premium && renewal ? (
-            <AppText variant="caption" color={colors.textSecondary} style={styles.renewal}>{renewal}</AppText>
-          ) : null}
-          <View style={styles.features}>
-            {features.map((feature) => (
-              <View key={feature} style={styles.feature}>
-                <CheckIcon color={colors.primaryBright} size={20} />
-                <AppText style={styles.featureLabel} color="#EEECE5">{feature}</AppText>
-              </View>
-            ))}
-          </View>
-          {!subscription.premium ? (
-            <View style={styles.premiumPreview}>
-              <View style={styles.premiumPreviewHeading}>
-                <View style={styles.flex}>
-                  <AppText variant="eyebrow" color={colors.primaryBright}>Premium includes</AppText>
-                  <AppText variant="caption" color={colors.textSecondary} style={styles.premiumPreviewDescription}>
-                    Build without limits and keep your journey available across devices.
+        <View style={styles.plans}>
+          <View style={styles.freePlan}>
+            <View style={styles.planHeading}>
+              <AppText style={[styles.freePlanName, styles.planTitle]} numberOfLines={1}
+                adjustsFontSizeToFit minimumFontScale={0.8}>Free Plan</AppText>
+              {!subscription.ready || !subscription.premium ? (
+                <View style={styles.currentBadge}>
+                  <AppText style={styles.currentBadgeLabel} numberOfLines={1}>
+                    {subscription.ready ? "Current Plan" : "Checking"}
                   </AppText>
                 </View>
-                <AppText style={styles.premiumPreviewPrice} numberOfLines={1}>{premiumPrice}</AppText>
+              ) : null}
+            </View>
+            <View style={styles.freeFeatures}>
+              {FREE_FEATURES.map((feature) => (
+                <View key={feature} style={styles.feature}>
+                  <CheckIcon color={colors.textSecondary} size={18} />
+                  <AppText style={styles.freeFeatureLabel}>{feature}</AppText>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.premiumPlan}>
+            <Image source={BACKGROUND} contentFit="cover" contentPosition="top"
+              style={StyleSheet.absoluteFill} accessible={false} />
+            <LinearGradient colors={["rgba(2, 5, 12, 0.94)", "rgba(2, 5, 12, 0.76)", "rgba(2, 5, 12, 0.96)"]}
+              locations={[0, 0.46, 1]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={["rgba(2, 5, 12, 0.34)", "rgba(2, 5, 12, 0.9)"]}
+              start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={StyleSheet.absoluteFill} />
+            <View style={styles.premiumContent}>
+              <View style={styles.planHeading}>
+                <AppText style={[styles.premiumName, styles.planTitle]} numberOfLines={1}
+                  adjustsFontSizeToFit minimumFontScale={0.75}>Premium</AppText>
+                {subscription.premium ? (
+                  <View style={styles.currentBadge}>
+                    <AppText style={styles.currentBadgeLabel} numberOfLines={1}>Current Plan</AppText>
+                  </View>
+                ) : null}
               </View>
+              <AppText style={styles.premiumSubtitle}>Your journey, without limits.</AppText>
+              <AppText style={styles.premiumPrice}>{premiumPrice}</AppText>
+              {subscription.premium && renewal ? (
+                <AppText variant="caption" color="#D8CDB4" style={styles.renewal}>{renewal}</AppText>
+              ) : null}
               <View style={styles.premiumFeatures}>
                 {PREMIUM_FEATURES.map((feature) => (
                   <View key={feature} style={styles.feature}>
                     <CheckIcon color={colors.primaryBright} size={20} />
-                    <AppText style={styles.featureLabel} color="#EEECE5">{feature}</AppText>
+                    <AppText style={styles.premiumFeatureLabel}>{feature}</AppText>
                   </View>
                 ))}
               </View>
+              <View style={styles.planActions}>
+                {!subscription.premium ? (
+                  <Pressable accessibilityRole="button"
+                    accessibilityLabel="Upgrade to Premium"
+                    accessibilityState={{ disabled: busy || !subscription.ready, busy: subscription.busy }}
+                    disabled={busy || !subscription.ready} onPress={() => void subscription.upgrade()}
+                    style={({ pressed }) => [styles.upgrade, (pressed || busy || !subscription.ready) && styles.dimmed]}>
+                    <LinearGradient colors={["#FFE89D", "#F9CD65", "#DFA849", "#B47C2A"]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upgradeFill}>
+                      {subscription.busy && <ActivityIndicator color={colors.textOnPrimary} />}
+                      <AppText style={styles.upgradeLabel}>Upgrade to Premium</AppText>
+                    </LinearGradient>
+                  </Pressable>
+                ) : (
+                  <AppButton label="Manage subscription" variant="secondary" icon={<ArrowRightIcon size={20} />}
+                    disabled={busy} onPress={handleManage} style={styles.manageButton} />
+                )}
+              </View>
             </View>
-          ) : null}
-          <View style={styles.planActions}>
-          {!subscription.premium ? (
-            <Pressable accessibilityRole="button"
-              accessibilityLabel="Get Premium"
-              accessibilityState={{ disabled: busy || !subscription.ready, busy: subscription.busy }}
-              disabled={busy || !subscription.ready} onPress={() => void subscription.upgrade()}
-              style={({ pressed }) => [styles.upgrade, (pressed || busy || !subscription.ready) && styles.dimmed]}>
-              <LinearGradient colors={["#FFE89D", "#F9CD65", "#DFA849", "#B47C2A"]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upgradeFill}>
-                {subscription.busy && <ActivityIndicator color={colors.textOnPrimary} />}
-                <AppText style={styles.upgradeLabel}>Get Premium</AppText>
-              </LinearGradient>
-            </Pressable>
-          ) : (
-            <AppButton label="Manage subscription" variant="secondary" icon={<ArrowRightIcon size={20} />}
-              disabled={busy} onPress={handleManage} style={styles.manageButton} />
-          )}
           </View>
         </View>
 
@@ -454,25 +457,25 @@ const styles = StyleSheet.create({
   authLabel: { fontSize: 16, lineHeight: 22, textAlign: "center" },
   testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   flex: { flex: 1, minWidth: 0 },
-  plan: { minHeight: 240, padding: 22, borderWidth: 1, borderColor: colors.primary, borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
-  statusBadge: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, paddingHorizontal: 11, paddingVertical: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round, backgroundColor: "rgba(3, 7, 12, 0.72)" },
-  statusBadgeLabel: { color: colors.primaryBright, fontSize: 12, lineHeight: 16, fontWeight: "600" },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.textMuted },
-  statusDotActive: { backgroundColor: colors.accentGreen },
+  plans: { gap: spacing.xl },
+  freePlan: { padding: spacing.lg, borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.card, backgroundColor: colors.surfaceDeep },
+  premiumPlan: { overflow: "hidden", borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.card, backgroundColor: "#03070E", ...shadowStyle({ color: colors.primary, opacity: 0.24, radius: 14 }) },
+  premiumContent: { padding: spacing.xl },
   planHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   planTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 0 },
-  planName: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 43, color: "#F5EEDB" },
-  planPrice: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 26, color: colors.textPrimary },
-  renewal: { marginTop: 2 },
-  features: { gap: 10, marginTop: 18 },
+  freePlanName: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.textPrimary },
+  premiumName: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 43, color: "#FFF2D0" },
+  currentBadge: { flexShrink: 1, paddingHorizontal: 11, paddingVertical: 5, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round, backgroundColor: "rgba(245, 184, 75, 0.09)" },
+  currentBadgeLabel: { color: colors.primaryBright, fontSize: 11, lineHeight: 15, fontWeight: "700", textTransform: "uppercase" },
+  premiumSubtitle: { marginTop: 4, color: "#F1E8D5", fontSize: 16, lineHeight: 23 },
+  premiumPrice: { marginTop: 14, fontFamily: fonts.serif, fontSize: 23, lineHeight: 29, color: colors.primaryBright },
+  renewal: { marginTop: 4 },
+  freeFeatures: { gap: 10, marginTop: spacing.md },
   feature: { flexDirection: "row", alignItems: "center", gap: 14 },
-  featureLabel: { fontSize: 16, lineHeight: 22, flex: 1 },
-  premiumPreview: { marginTop: 22, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.borderSoft },
-  premiumPreviewHeading: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
-  premiumPreviewDescription: { marginTop: spacing.xs },
-  premiumPreviewPrice: { flexShrink: 0, color: colors.primaryBright, fontFamily: fonts.serif, fontSize: 17, lineHeight: 22 },
-  premiumFeatures: { gap: 10, marginTop: 18 },
-  planActions: { gap: 12, marginTop: 22 },
+  freeFeatureLabel: { flex: 1, color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
+  premiumFeatureLabel: { flex: 1, color: "#F7F0E2", fontSize: 16, lineHeight: 23 },
+  premiumFeatures: { gap: 14, marginTop: spacing.xl },
+  planActions: { gap: 12, marginTop: spacing.xl },
   manageButton: { borderColor: colors.primary, borderRadius: 12, backgroundColor: "rgba(2, 5, 8, 0.8)" },
   upgrade: { width: "100%", padding: 3, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "#6D4B1C", ...shadowStyle({ color: colors.primary, opacity: 0.45, radius: 14 }) },
   upgradeFill: { minHeight: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "#FFF0B0", borderRadius: radius.round },
