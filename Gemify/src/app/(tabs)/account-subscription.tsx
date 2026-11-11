@@ -1,18 +1,19 @@
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Switch, View } from "react-native";
 
 import { useCloudSync } from "@/hooks/useCloudSync";
+import { useRefreshOnSync } from "@/hooks/useRefreshOnSync";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useHomePreferences } from "@/hooks/useHomePreferences";
-import { exportBackup, pickAndImportBackup } from "@/db";
+import { exportBackup, getArchivedDreams, pickAndImportBackup, updateDream, type Dream } from "@/db";
 import { notifySyncApplied } from "@/sync/events";
 import { deleteAccount } from "@/sync/account";
 import { signOut } from "@/sync";
 import {
-  AppButton, AppModal, AppText, ArchiveIcon, ArrowRightIcon, CheckIcon, CloseIcon,
+  AppButton, AppModal, AppText, ArchiveIcon, ArrowRightIcon, Card, CheckIcon,
   PlusIcon, TabScreenHeader, ScreenScaffold, SyncIcon, TrashIcon, UserIcon,
 } from "@/shared/components";
 import { PREMIUM_MONTHLY_PRICE, PRIVACY_URL, TERMS_URL } from "@/subscription/config";
@@ -20,25 +21,102 @@ import { colors } from "@/theme/colors";
 import { fonts, radius, shadowStyle, spacing } from "@/theme/theme";
 
 const BACKGROUND = require("../../../assets/subscription/subscription-bg.png");
-const PLANS = [
-  { value: "premium", label: "Premium" },
-  { value: "standard", label: "Standard" },
-] as const;
+const SECTIONS = ["subscription", "settings", "account"] as const;
+type Section = (typeof SECTIONS)[number];
 const PREMIUM_FEATURES = ["Unlimited Dreams", "Unlimited Habits", "Sync across devices", "Import & export data"];
-const BASIC_FEATURES = [
-  { label: "1 active Dream", available: true },
-  { label: "1 active Habit", available: true },
-  { label: "Local data only", available: true },
-  { label: "No cloud sync", available: false },
-  { label: "No import or export data", available: false },
-];
+const FREE_FEATURES = ["1 active Dream", "1 active Habit", "Stored on this device"];
+
+function ArchivedDreamsSection() {
+  const [dreams, setDreams] = useState<Dream[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoredTitle, setRestoredTitle] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
+  const restoring = useRef(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      setDreams(await getArchivedDreams());
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : "Failed to load archived dreams.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const task = setTimeout(() => { void refresh(); }, 0);
+    return () => clearTimeout(task);
+  }, [refresh]);
+  useRefreshOnSync(refresh);
+
+  async function restoreDream(dream: Dream) {
+    if (restoring.current) return;
+    restoring.current = true;
+    setRestoringId(dream.id);
+    setRestoreError(null);
+    setRestoredTitle(null);
+    try {
+      const updated = await updateDream(dream.id, { isArchived: false, isCompleted: false });
+      if (!updated) throw new Error("This dream is no longer available.");
+      setDreams((current) => current.filter((item) => item.id !== dream.id));
+      setRestoredTitle(dream.title);
+    } catch (cause) {
+      setRestoreError(cause instanceof Error ? cause.message : "Failed to restore the dream.");
+    } finally {
+      restoring.current = false;
+      setRestoringId(null);
+    }
+  }
+
+  return (
+    <View style={styles.archiveSection}>
+      <View style={styles.archiveHeading}>
+        <View style={styles.archiveTitleRow}>
+          <ArchiveIcon size={20} color={colors.primaryBright} />
+          <AppText variant="eyebrow" color={colors.primaryBright}>Archived dreams</AppText>
+        </View>
+      </View>
+      {loading ? <ActivityIndicator accessibilityLabel="Loading archived dreams" color={colors.primary} style={styles.archiveLoader} /> : null}
+      {loadError ? (
+        <View style={styles.archiveMessage}>
+          <AppText accessibilityRole="alert" color={colors.danger} variant="bodySmall">{loadError}</AppText>
+          <AppButton label="Try again" variant="secondary" onPress={() => void refresh()} />
+        </View>
+      ) : null}
+      {restoreError ? <AppText accessibilityRole="alert" color={colors.danger} variant="bodySmall">{restoreError}</AppText> : null}
+      {restoredTitle ? <AppText accessibilityRole="alert" color={colors.accentGreen} variant="bodySmall">{restoredTitle} restored.</AppText> : null}
+      {!loading && !loadError && dreams.length === 0 ? (
+        <Card style={styles.archiveEmpty}>
+          <AppText variant="bodySmall" align="center">No archived dreams</AppText>
+          <AppText variant="caption" align="center" color={colors.textSecondary}>
+            Dreams you archive will appear here.
+          </AppText>
+        </Card>
+      ) : null}
+      <View style={styles.archiveList}>
+        {dreams.map((dream) => (
+          <Card key={dream.id} variant="strong" style={styles.archiveDream}>
+            <AppText variant="cardTitle" numberOfLines={2} style={styles.archiveDreamTitle}>{dream.title}</AppText>
+            <AppButton label={restoringId === dream.id ? "Restoring..." : "Restore"}
+              accessibilityLabel={`Restore ${dream.title}`} icon={<SyncIcon size={18} />}
+              density="compact" variant="secondary" disabled={restoringId !== null}
+              onPress={() => void restoreDream(dream)} style={styles.archiveRestore} />
+          </Card>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function AccountSubscriptionScreen() {
   const router = useRouter();
   const account = useCloudSync();
   const subscription = useSubscription();
   const homePreferences = useHomePreferences();
-  const [selectedPlan, setSelectedPlan] = useState<"premium" | "standard">("premium");
+  const [activeSection, setActiveSection] = useState<Section>("subscription");
   const [accountBusy, setAccountBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -64,11 +142,7 @@ export default function AccountSubscriptionScreen() {
     void runAction(subscription.manage);
   }
 
-  const showingPremium = selectedPlan === "premium";
-  const isCurrentPlan = showingPremium === subscription.premium;
-  const features = showingPremium
-    ? PREMIUM_FEATURES.map((label) => ({ label, available: true }))
-    : BASIC_FEATURES;
+  const features = subscription.premium ? PREMIUM_FEATURES : FREE_FEATURES;
   const premiumPrice = `${subscription.price ?? PREMIUM_MONTHLY_PRICE}/month`;
   const renewal = subscription.expiresAt
     ? `${subscription.willRenew === false ? "Available until" : subscription.willRenew ? "Renews" : "Next billing date"} ${new Date(subscription.expiresAt).toLocaleDateString()}`
@@ -78,6 +152,49 @@ export default function AccountSubscriptionScreen() {
     <>
       <ScreenScaffold topInset tabClearance contentStyle={styles.content}>
         <TabScreenHeader title="Account" />
+
+        <View accessibilityRole="tablist" style={styles.sectionTabs}>
+          {SECTIONS.map((section) => {
+            const selected = activeSection === section;
+            const label = section === "subscription" ? "Subscription" : section === "settings" ? "Settings" : "Account";
+            return (
+              <Pressable key={section} accessibilityRole="tab" accessibilityLabel={label}
+                accessibilityState={{ selected }} onPress={() => setActiveSection(section)}
+                style={({ pressed }) => [styles.sectionTab, selected && styles.sectionTabSelected, pressed && styles.tabPressed]}>
+                <AppText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}
+                  style={styles.sectionTabLabel} color={selected ? colors.textOnPrimary : colors.textSecondary}>
+                  {label}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {activeSection === "account" ? (
+        <View style={styles.accountCard}>
+          <View style={styles.account}>
+            <View style={styles.avatar} accessible={false}>
+              <UserIcon size={25} color={colors.primaryBright} strokeWidth={1.7} />
+            </View>
+            <View style={styles.flex}>
+              <AppText color={colors.textSecondary} variant="caption">
+                {account.signedIn ? "Signed in" : "Gemify account"}
+              </AppText>
+              <AppText selectable={account.ready && !!account.email} color={colors.textPrimary} style={styles.email}>
+                {account.ready ? account.email ?? "Not signed in" : "Loading account..."}
+              </AppText>
+            </View>
+          </View>
+          <AppButton label={accountBusy ? "Please wait" : account.signedIn ? "Sign out" : "Sign in"}
+            variant="secondary" disabled={busy || !account.ready}
+            icon={accountBusy ? <ActivityIndicator color={colors.primaryBright} /> : undefined}
+            onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
+            style={styles.authButton} textStyle={styles.authLabel} />
+        </View>
+        ) : null}
+
+        {activeSection === "subscription" ? (
+        <>
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Subscription</AppText>
         {subscription.testMode && (
           <View style={styles.testRow}>
@@ -91,23 +208,8 @@ export default function AccountSubscriptionScreen() {
           </View>
         )}
 
-        <View accessibilityRole="tablist" style={styles.planSwitcher}>
-          {PLANS.map((plan) => {
-            const selected = selectedPlan === plan.value;
-            return (
-              <Pressable key={plan.value} accessibilityRole="tab" accessibilityLabel={plan.label}
-                accessibilityState={{ selected }} onPress={() => setSelectedPlan(plan.value)}
-                style={({ pressed }) => [styles.planTab, selected && styles.selectedPlanTab, pressed && styles.tabPressed]}>
-                {selected && <LinearGradient colors={["rgba(245, 184, 75, 0.24)", "rgba(245, 184, 75, 0.07)", "rgba(245, 184, 75, 0.2)"]}
-                  style={[StyleSheet.absoluteFill, styles.planTabFill]} />}
-                <AppText style={styles.planTabLabel} color={selected ? colors.primaryBright : colors.textSecondary}>{plan.label}</AppText>
-              </Pressable>
-            );
-          })}
-        </View>
-
         <View style={styles.plan}>
-          <Image source={BACKGROUND} contentFit="cover" contentPosition={showingPremium ? "top" : "center"}
+          <Image source={BACKGROUND} contentFit="cover" contentPosition={subscription.premium ? "top" : "center"}
             style={StyleSheet.absoluteFill} accessible={false} />
           <LinearGradient colors={["rgba(3, 7, 12, 0.64)", "rgba(3, 7, 12, 0.12)"]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -115,54 +217,67 @@ export default function AccountSubscriptionScreen() {
           <View style={styles.planHeading}>
             <AppText style={[styles.planName, styles.planTitle]} numberOfLines={1}
               adjustsFontSizeToFit minimumFontScale={0.7}>
-              {showingPremium ? "Premium" : "Basic"}
+              {subscription.premium ? "Premium" : "Free"}
             </AppText>
-            {showingPremium && (
-              <View style={styles.priceBadge}>
-                <AppText style={styles.priceBadgeLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{premiumPrice}</AppText>
-              </View>
-            )}
-            {!showingPremium && (!subscription.ready || isCurrentPlan) && (
-              <View style={styles.priceBadge}>
-                <AppText style={styles.priceBadgeLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                  {!subscription.ready ? "Checking..." : "Current plan"}
-                </AppText>
-              </View>
-            )}
+            <View style={styles.statusBadge}>
+              <View style={[styles.statusDot, subscription.premium && styles.statusDotActive]} />
+              <AppText style={styles.statusBadgeLabel} numberOfLines={1}>
+                {!subscription.ready ? "Checking" : subscription.premium ? "Active" : "Current plan"}
+              </AppText>
+            </View>
           </View>
-          <AppText style={styles.planPrice}>{showingPremium ? "Monthly subscription" : "Free"}</AppText>
+          <AppText style={styles.planPrice}>{subscription.premium ? premiumPrice : "Free forever"}</AppText>
+          {subscription.premium && renewal ? (
+            <AppText variant="caption" color={colors.textSecondary} style={styles.renewal}>{renewal}</AppText>
+          ) : null}
           <View style={styles.features}>
             {features.map((feature) => (
-              <View key={feature.label} style={styles.feature}>
-                {feature.available ? <CheckIcon color={colors.primaryBright} size={21} /> : <CloseIcon color="#96958E" size={21} />}
-                <AppText style={styles.featureLabel} color={feature.available ? "#EEECE5" : "#AAA69C"}>{feature.label}</AppText>
+              <View key={feature} style={styles.feature}>
+                <CheckIcon color={colors.primaryBright} size={20} />
+                <AppText style={styles.featureLabel} color="#EEECE5">{feature}</AppText>
               </View>
             ))}
           </View>
-        </View>
-
-        {(subscription.premium || showingPremium) && <View style={styles.planActions}>
-          {showingPremium && (
+          {!subscription.premium ? (
+            <View style={styles.premiumPreview}>
+              <View style={styles.premiumPreviewHeading}>
+                <View style={styles.flex}>
+                  <AppText variant="eyebrow" color={colors.primaryBright}>Premium includes</AppText>
+                  <AppText variant="caption" color={colors.textSecondary} style={styles.premiumPreviewDescription}>
+                    Build without limits and keep your journey available across devices.
+                  </AppText>
+                </View>
+                <AppText style={styles.premiumPreviewPrice} numberOfLines={1}>{premiumPrice}</AppText>
+              </View>
+              <View style={styles.premiumFeatures}>
+                {PREMIUM_FEATURES.map((feature) => (
+                  <View key={feature} style={styles.feature}>
+                    <CheckIcon color={colors.primaryBright} size={20} />
+                    <AppText style={styles.featureLabel} color="#EEECE5">{feature}</AppText>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+          <View style={styles.planActions}>
+          {!subscription.premium ? (
             <Pressable accessibilityRole="button"
-              accessibilityLabel={subscription.premium ? "Current plan" : "Upgrade to Premium"}
-              accessibilityState={{ disabled: subscription.premium || busy || !subscription.ready, busy: !subscription.premium && subscription.busy }}
-              disabled={subscription.premium || busy || !subscription.ready} onPress={() => void subscription.upgrade()}
-              style={({ pressed }) => [styles.upgrade, !subscription.premium && (pressed || busy || !subscription.ready) && styles.dimmed]}>
+              accessibilityLabel="Get Premium"
+              accessibilityState={{ disabled: busy || !subscription.ready, busy: subscription.busy }}
+              disabled={busy || !subscription.ready} onPress={() => void subscription.upgrade()}
+              style={({ pressed }) => [styles.upgrade, (pressed || busy || !subscription.ready) && styles.dimmed]}>
               <LinearGradient colors={["#FFE89D", "#F9CD65", "#DFA849", "#B47C2A"]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upgradeFill}>
-                {!subscription.premium && subscription.busy && <ActivityIndicator color={colors.textOnPrimary} />}
-                <AppText style={styles.upgradeLabel}>
-                  {subscription.premium ? "Current plan" : "Upgrade to Premium"}
-                </AppText>
+                {subscription.busy && <ActivityIndicator color={colors.textOnPrimary} />}
+                <AppText style={styles.upgradeLabel}>Get Premium</AppText>
               </LinearGradient>
             </Pressable>
-          )}
-          {subscription.premium && renewal && <AppText variant="caption" color={colors.textSecondary}>{renewal}</AppText>}
-          {subscription.premium && (
+          ) : (
             <AppButton label="Manage subscription" variant="secondary" icon={<ArrowRightIcon size={20} />}
               disabled={busy} onPress={handleManage} style={styles.manageButton} />
           )}
-        </View>}
+          </View>
+        </View>
 
         {subscription.error && (
           <View style={styles.errorRow}>
@@ -186,11 +301,15 @@ export default function AccountSubscriptionScreen() {
             </View>
           </View>
         )}
+        </>
+        ) : null}
 
+        {activeSection === "settings" ? (
+        <>
         <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Home screen</AppText>
         <View style={styles.preferenceRow}>
           <View style={styles.flex}>
-            <AppText color={colors.textPrimary} variant="bodySmall">Show active milestone</AppText>
+            <AppText color={colors.textPrimary} variant="bodySmall">Show milestone progress</AppText>
             <AppText color={colors.textSecondary} variant="caption" style={styles.preferenceDescription}>
               Display the active milestone and its progress bar on dream cards.
             </AppText>
@@ -211,57 +330,40 @@ export default function AccountSubscriptionScreen() {
           </AppText>
         ) : null}
 
-        <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Account</AppText>
-        <View style={styles.account}>
-          <View style={styles.avatar} accessible={false}>
-            <UserIcon size={25} color={colors.primaryBright} strokeWidth={1.7} />
-          </View>
-          <AppText selectable={account.ready && !!account.email} color={colors.textPrimary} style={styles.email}>
-            {account.ready ? account.email ?? "Not signed in" : "Loading account..."}
-          </AppText>
-        </View>
-
-        <View style={styles.authActions}>
-          <AppButton label={accountBusy ? "Please wait" : account.signedIn ? "Log out" : "Sign in"}
-            variant="secondary" disabled={busy || !account.ready}
-            icon={accountBusy ? <ActivityIndicator color={colors.primaryBright} /> : undefined}
-            onPress={() => account.signedIn ? void runAction(signOut) : router.push("/cloud-sync")}
-            style={styles.authButton} textStyle={styles.authLabel} />
-        </View>
+        <ArchivedDreamsSection />
 
         <View style={styles.dataSection}>
-          <AppButton label="Show archived dreams" icon={<ArchiveIcon size={20} />} variant="secondary"
-            onPress={() => router.push("/archived-dreams")} />
-        </View>
-
-        {subscription.premium && (
-          <View style={styles.dataSection}>
-            <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Data</AppText>
-            <View style={styles.dataActions}>
-              <AppButton label="Cloud sync" icon={<SyncIcon size={20} />} variant="secondary" disabled={busy}
-                onPress={() => router.push("/cloud-sync")} />
-              <AppButton label="Export data" icon={<ArrowRightIcon size={20} />} variant="secondary" disabled={busy}
-                onPress={() => void runAction(exportBackup)} />
-              <AppButton label="Import data" icon={<PlusIcon size={20} />} variant="secondary" disabled={busy}
-                onPress={() => setImportOpen(true)} />
-            </View>
+          <AppText variant="eyebrow" color={colors.primaryBright} style={styles.sectionLabel}>Data &amp; sync</AppText>
+          <View style={styles.dataActions}>
+            <AppButton label={subscription.premium ? "Sync across devices" : "Sync across devices · Premium"} icon={<SyncIcon size={20} />} variant="secondary" disabled={busy || !subscription.premium}
+              onPress={() => router.push("/cloud-sync")} />
+            <AppButton label={subscription.premium ? "Export backup" : "Export backup · Premium"} icon={<ArrowRightIcon size={20} />} variant="secondary" disabled={busy || !subscription.premium}
+              onPress={() => void runAction(exportBackup)} />
+            <AppButton label={subscription.premium ? "Import backup" : "Import backup · Premium"} icon={<PlusIcon size={20} />} variant="secondary" disabled={busy || !subscription.premium}
+              onPress={() => setImportOpen(true)} />
           </View>
-        )}
+        </View>
+        </>
+        ) : null}
 
+        {activeSection === "account" ? (
+        <>
         {account.signedIn && (
           <>
-            <View style={styles.divider} />
+            <AppText variant="eyebrow" color={colors.danger} style={styles.dangerLabel}>Danger zone</AppText>
             <Pressable accessibilityRole="button" accessibilityLabel="Delete account" disabled={busy}
               onPress={() => setDeleteOpen(true)} style={({ pressed }) => [styles.deleteRow, (pressed || busy) && styles.dimmed]}>
               <TrashIcon color="#FA5C54" size={28} />
               <View style={styles.flex}>
                 <AppText style={styles.deleteTitle}>Delete account</AppText>
-                <AppText variant="caption" color="#BFC0C7">Permanently delete your account and data</AppText>
+                <AppText variant="caption" color="#BFC0C7">Delete your account and all associated data</AppText>
               </View>
               <ArrowRightIcon color="#FA5C54" size={22} />
             </Pressable>
           </>
         )}
+        </>
+        ) : null}
 
       </ScreenScaffold>
 
@@ -317,8 +419,23 @@ export default function AccountSubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { maxWidth: 660 },
+  content: { flexGrow: 1, maxWidth: 660 },
+  sectionTabs: { flexDirection: "row", gap: 4, marginBottom: 8, padding: 4, borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.round, backgroundColor: colors.surfaceDeep },
+  sectionTab: { flex: 1, minWidth: 0, minHeight: 42, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, borderRadius: radius.round },
+  sectionTabSelected: { backgroundColor: colors.primary, ...shadowStyle({ color: colors.primary, opacity: 0.28, radius: 8 }) },
+  sectionTabLabel: { fontSize: 12, lineHeight: 16, fontWeight: "700", textAlign: "center" },
+  tabPressed: { opacity: 0.78 },
   sectionLabel: { marginBottom: 12, marginTop: 16 },
+  archiveSection: { gap: spacing.sm, marginTop: spacing.xl },
+  archiveHeading: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  archiveTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  archiveLoader: { marginVertical: spacing.md },
+  archiveMessage: { gap: spacing.md, marginTop: spacing.sm },
+  archiveEmpty: { alignItems: "center", gap: spacing.xs, marginTop: spacing.sm, paddingVertical: spacing.lg },
+  archiveList: { gap: spacing.md, marginTop: spacing.sm },
+  archiveDream: { minHeight: 88, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+  archiveDreamTitle: { flex: 1, minWidth: 0 },
+  archiveRestore: { flexShrink: 0, minHeight: 48, minWidth: 126, borderColor: colors.borderStrong, borderRadius: radius.round, backgroundColor: colors.surfaceDeep },
   preferenceRow: {
     alignItems: "center",
     borderColor: colors.borderSoft,
@@ -329,31 +446,33 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   preferenceDescription: { marginTop: spacing.xs },
-  account: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 18, paddingHorizontal: 4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.borderSoft },
+  accountCard: { gap: spacing.md, padding: spacing.md, borderWidth: 1, borderColor: colors.borderSoft, borderRadius: radius.card, backgroundColor: colors.surfaceDeep },
+  account: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatar: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(245, 184, 75, 0.08)", alignItems: "center", justifyContent: "center" },
   email: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24 },
-  authActions: { marginTop: 16 },
   authButton: { minHeight: 52, borderColor: colors.border, borderRadius: 12, backgroundColor: "rgba(245, 184, 75, 0.04)" },
   authLabel: { fontSize: 16, lineHeight: 22, textAlign: "center" },
   testRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 16, paddingHorizontal: 4, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   flex: { flex: 1, minWidth: 0 },
-  planSwitcher: { flexDirection: "row", borderWidth: 1, borderColor: "#A77C35", borderRadius: radius.round, backgroundColor: "rgba(3, 7, 12, 0.9)", marginBottom: 14 },
-  planTab: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 12, paddingVertical: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent", borderRadius: radius.round },
-  selectedPlanTab: { borderColor: colors.primary, ...shadowStyle({ color: colors.primary, opacity: 0.3, radius: 10 }) },
-  planTabFill: { borderRadius: radius.round },
-  planTabLabel: { fontSize: 13, lineHeight: 20, fontWeight: "600", textTransform: "uppercase", textAlign: "center" },
-  tabPressed: { opacity: 0.8 },
-  plan: { minHeight: 300, padding: 24, borderWidth: 1, borderColor: colors.primary, borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
-  priceBadge: { maxWidth: "50%", flexShrink: 1, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "rgba(81, 55, 17, 0.75)", ...shadowStyle({ color: colors.primary, opacity: 0.3, radius: 8 }) },
-  priceBadgeLabel: { fontFamily: fonts.serif, fontSize: 17, lineHeight: 22, color: colors.primaryBright },
+  plan: { minHeight: 240, padding: 22, borderWidth: 1, borderColor: colors.primary, borderRadius: 16, overflow: "hidden", backgroundColor: "#060B13" },
+  statusBadge: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1, paddingHorizontal: 11, paddingVertical: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radius.round, backgroundColor: "rgba(3, 7, 12, 0.72)" },
+  statusBadgeLabel: { color: colors.primaryBright, fontSize: 12, lineHeight: 16, fontWeight: "600" },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.textMuted },
+  statusDotActive: { backgroundColor: colors.accentGreen },
   planHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   planTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 130, minWidth: 0 },
   planName: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 43, color: "#F5EEDB" },
   planPrice: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 26, color: colors.textPrimary },
-  features: { gap: 12, marginTop: 24 },
+  renewal: { marginTop: 2 },
+  features: { gap: 10, marginTop: 18 },
   feature: { flexDirection: "row", alignItems: "center", gap: 14 },
   featureLabel: { fontSize: 16, lineHeight: 22, flex: 1 },
-  planActions: { gap: 12, marginTop: 18 },
+  premiumPreview: { marginTop: 22, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.borderSoft },
+  premiumPreviewHeading: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  premiumPreviewDescription: { marginTop: spacing.xs },
+  premiumPreviewPrice: { flexShrink: 0, color: colors.primaryBright, fontFamily: fonts.serif, fontSize: 17, lineHeight: 22 },
+  premiumFeatures: { gap: 10, marginTop: 18 },
+  planActions: { gap: 12, marginTop: 22 },
   manageButton: { borderColor: colors.primary, borderRadius: 12, backgroundColor: "rgba(2, 5, 8, 0.8)" },
   upgrade: { width: "100%", padding: 3, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.round, backgroundColor: "#6D4B1C", ...shadowStyle({ color: colors.primary, opacity: 0.45, radius: 14 }) },
   upgradeFill: { minHeight: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "#FFF0B0", borderRadius: radius.round },
@@ -364,7 +483,7 @@ const styles = StyleSheet.create({
   dataActions: { gap: 12 },
   billingFooter: { gap: 8, paddingTop: 12 },
   legalLinks: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: 24, paddingVertical: 8 },
-  divider: { height: 1, backgroundColor: colors.borderSoft, marginTop: 26, marginBottom: 20 },
+  dangerLabel: { marginBottom: 12, marginTop: "auto", paddingTop: 28 },
   deleteRow: { flexDirection: "row", alignItems: "center", gap: 16, padding: 20, borderWidth: 1, borderColor: "#B03332", borderRadius: radius.card, backgroundColor: "rgba(29, 5, 9, 0.86)" },
   deleteTitle: { color: "#FA5C54", fontFamily: fonts.serif, fontSize: 21, lineHeight: 27, marginBottom: 3 },
   modalBody: { marginTop: spacing.md },
