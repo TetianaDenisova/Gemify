@@ -31,7 +31,6 @@ function ArchivedDreamsSection() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [restoredTitle, setRestoredTitle] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<number | null>(null);
   const restoring = useRef(false);
 
@@ -57,12 +56,10 @@ function ArchivedDreamsSection() {
     restoring.current = true;
     setRestoringId(dream.id);
     setRestoreError(null);
-    setRestoredTitle(null);
     try {
       const updated = await updateDream(dream.id, { isArchived: false, isCompleted: false });
       if (!updated) throw new Error("This dream is no longer available.");
       setDreams((current) => current.filter((item) => item.id !== dream.id));
-      setRestoredTitle(dream.title);
     } catch (cause) {
       setRestoreError(cause instanceof Error ? cause.message : "Failed to restore the dream.");
     } finally {
@@ -87,7 +84,6 @@ function ArchivedDreamsSection() {
         </View>
       ) : null}
       {restoreError ? <AppText accessibilityRole="alert" color={colors.danger} variant="bodySmall">{restoreError}</AppText> : null}
-      {restoredTitle ? <AppText accessibilityRole="alert" color={colors.accentGreen} variant="bodySmall">{restoredTitle} restored.</AppText> : null}
       {!loading && !loadError && dreams.length === 0 ? (
         <Card style={styles.archiveEmpty}>
           <AppText variant="bodySmall" align="center">No archived dreams</AppText>
